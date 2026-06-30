@@ -1,7 +1,10 @@
-def main():
-    print("====================================")
-    print(" Psychology Tarot AI System Started ")
-    print("====================================")
+from fastapi import FastAPI
 
-if __name__ == "__main__":
-    main()
+app = FastAPI(title="Psychology Tarot AI System")
+
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "message": "Psychology Tarot AI System Core Operating Successfully"
+    }
