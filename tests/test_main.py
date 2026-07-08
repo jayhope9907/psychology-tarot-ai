@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -471,12 +472,74 @@ def test_purge_commits_with_valid_token_and_writes_security_audit_log(monkeypatc
     assert audit_log_path.exists()
     audit_lines = audit_log_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(audit_lines) == 1
-    audit_entry = json.loads(audit_lines[0])
-    assert audit_entry["user_id"] == "user-purge-commit"
-    assert audit_entry["action_type"] == "PURGE_COMMITTED"
-    assert "T" in audit_entry["timestamp"]
-    assert "user_story" not in audit_entry
-    assert "output" not in audit_entry
+    decrypted_payload = json.loads(main_module._get_fernet().decrypt(audit_lines[0].encode("utf-8")).decode("utf-8"))
+    assert decrypted_payload["user_id"] == "user-purge-commit"
+    assert decrypted_payload["action_type"] == "PURGE_COMMITTED"
+    assert "T" in decrypted_payload["timestamp"]
+    assert "user_story" not in decrypted_payload
+    assert "output" not in decrypted_payload
+
+
+def test_purge_audit_log_rotates_when_size_threshold_is_exceeded(monkeypatch, tmp_path):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
+    audit_log_path = tmp_path / "purge_audit.jsonl"
+    monkeypatch.setenv("PURGE_AUDIT_LOG_PATH", str(audit_log_path))
+    monkeypatch.setenv("PURGE_AUDIT_MAX_BYTES", "1")
+
+    for user_id in ["user-purge-rotate-size-1", "user-purge-rotate-size-2"]:
+        client.post(
+            "/api/v1/therapy/read",
+            json={
+                "user_id": user_id,
+                "user_story": "크기 기준 로테이션을 검증합니다.",
+                "drawn_card": "The Hermit",
+                "plan": "PREMIUM",
+            },
+        )
+        response = client.request(
+            "DELETE",
+            "/api/v1/therapy/purge",
+            json={"user_id": user_id},
+            headers={"X-Audit-Token": "secure-audit-token"},
+        )
+        assert response.status_code == 200
+
+    active_lines = audit_log_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(active_lines) == 1
+    assert any(path.name != audit_log_path.name for path in tmp_path.iterdir())
+
+
+def test_purge_audit_log_rotates_when_daily_interval_elapsed(monkeypatch, tmp_path):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
+    audit_log_path = tmp_path / "purge_audit.jsonl"
+    monkeypatch.setenv("PURGE_AUDIT_LOG_PATH", str(audit_log_path))
+    monkeypatch.setenv("PURGE_AUDIT_ROTATION_INTERVAL_SECONDS", "1")
+    audit_log_path.write_text("stale-entry\n", encoding="utf-8")
+
+    stale_time = datetime.now(timezone.utc) - timedelta(days=2)
+    os.utime(audit_log_path, (stale_time.timestamp(), stale_time.timestamp()))
+
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-purge-rotate-day",
+            "user_story": "일간 로테이션을 검증합니다.",
+            "drawn_card": "The Magician",
+            "plan": "PREMIUM",
+        },
+    )
+    response = client.request(
+        "DELETE",
+        "/api/v1/therapy/purge",
+        json={"user_id": "user-purge-rotate-day"},
+        headers={"X-Audit-Token": "secure-audit-token"},
+    )
+
+    assert response.status_code == 200
+    active_lines = audit_log_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(active_lines) == 1
+    backups = [path for path in tmp_path.iterdir() if path.name.startswith("purge_audit.jsonl.")]
+    assert backups
 
 
 def test_backoffice_analytics_summary_reports_empty_fallback_profile():

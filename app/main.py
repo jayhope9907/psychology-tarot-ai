@@ -21,6 +21,7 @@ app = FastAPI(title="Psychology Tarot AI System")
 
 import base64
 import json
+import shutil
 from typing import Any, Dict, List, Optional
 
 from cryptography.fernet import Fernet
@@ -61,8 +62,18 @@ class InMemoryTTLCache:
     def invalidate(self, key: Optional[str] = None) -> None:
         if key is None:
             self._entries.clear()
-        else:
-            self._entries.pop(key, None)
+            return
+
+        matching_keys = [
+            entry_key
+            for entry_key in self._entries.keys()
+            if entry_key == key
+            or entry_key.startswith(f"{key}:")
+            or entry_key.startswith(f"dashboard:{key}:")
+            or entry_key.startswith(f"analytics:{key}:")
+        ]
+        for entry_key in matching_keys:
+            self._entries.pop(entry_key, None)
 
 
 DASHBOARD_CACHE = InMemoryTTLCache()
@@ -104,6 +115,43 @@ def _encrypt_payload(payload: Dict[str, Any]) -> str:
 
 def _decrypt_payload(token: str) -> Dict[str, Any]:
     return json.loads(_get_fernet().decrypt(token.encode("utf-8")).decode("utf-8"))
+
+
+def _rotate_audit_log_if_needed(audit_log_path: str) -> None:
+    if not audit_log_path:
+        return
+
+    if not os.path.exists(audit_log_path):
+        directory = os.path.dirname(audit_log_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+        return
+
+    try:
+        current_size = os.path.getsize(audit_log_path)
+    except OSError:
+        current_size = 0
+
+    max_bytes = int(os.getenv("PURGE_AUDIT_MAX_BYTES", "1048576").strip() or "1048576")
+    interval_seconds = int(os.getenv("PURGE_AUDIT_ROTATION_INTERVAL_SECONDS", "0").strip() or "0")
+
+    should_rotate_by_size = max_bytes > 0 and current_size >= max_bytes
+    should_rotate_by_interval = False
+    if interval_seconds > 0:
+        try:
+            modified_at = datetime.fromtimestamp(os.path.getmtime(audit_log_path), tz=timezone.utc)
+            should_rotate_by_interval = (datetime.now(timezone.utc) - modified_at).total_seconds() >= interval_seconds
+        except OSError:
+            should_rotate_by_interval = False
+
+    if not should_rotate_by_size and not should_rotate_by_interval:
+        return
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    backup_path = f"{audit_log_path}.{timestamp}"
+    shutil.copy2(audit_log_path, backup_path)
+    with open(audit_log_path, "w", encoding="utf-8"):
+        pass
 
 
 class ClinicalSchool(str, Enum):
@@ -901,13 +949,17 @@ async def therapy_purge(request: Request, user_id: Optional[str] = None):
         audit_dir = os.path.dirname(audit_log_path)
         if audit_dir:
             os.makedirs(audit_dir, exist_ok=True)
+
+        _rotate_audit_log_if_needed(audit_log_path)
+
         audit_entry = {
             "user_id": target_user_id,
             "action_type": "PURGE_COMMITTED",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+        encrypted_entry = _get_fernet().encrypt(json.dumps(audit_entry, separators=(",", ":")).encode("utf-8")).decode("utf-8")
         with open(audit_log_path, "a", encoding="utf-8") as handle:
-            handle.write(json.dumps(audit_entry, separators=(",", ":")) + "\n")
+            handle.write(encrypted_entry + "\n")
 
         return {"status": "purged", "user_id": target_user_id, "memory_erased": True}
     except HTTPException:
