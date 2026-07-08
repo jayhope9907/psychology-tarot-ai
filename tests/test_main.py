@@ -143,6 +143,48 @@ def test_clinical_school_switching_tails_behavior_metadata():
     assert "reflection" in freud_payload["daily_logotherapy_homework_style"].lower()
 
 
+def test_analytics_endpoint_ranks_cognitive_distortions():
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-analytics",
+            "user_story": "실수하면 모든 게 망가진 것처럼 느껴집니다.",
+            "drawn_card": "The Tower",
+            "plan": "PREMIUM",
+            "preferred_school": "BECK_CBT",
+        },
+    )
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-analytics",
+            "user_story": "실패를 반복하면 나는 역시 실패자라고 느낍니다.",
+            "drawn_card": "The Magician",
+            "plan": "PREMIUM",
+            "preferred_school": "BECK_CBT",
+        },
+    )
+
+    response = client.get("/api/v1/therapy/analytics/user-analytics")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user_id"] == "user-analytics"
+    assert body["total_entries"] == 2
+    assert body["distribution_profile"]["all_or_nothing"] >= 0.0
+    assert body["distribution_profile"]["overgeneralization"] >= 0.0
+    assert body["ranked_patterns"][0]["pattern"] in {"all_or_nothing", "overgeneralization"}
+
+
+def test_analytics_endpoint_returns_empty_profile_when_no_history_exists():
+    response = client.get("/api/v1/therapy/analytics/empty-analytics")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user_id"] == "empty-analytics"
+    assert body["total_entries"] == 0
+    assert body["distribution_profile"] == {}
+    assert body["ranked_patterns"] == []
+
+
 def test_backoffice_samples_and_purge_work():
     create_response = client.post(
         "/api/v1/therapy/read",

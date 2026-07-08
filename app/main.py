@@ -470,6 +470,48 @@ async def therapy_dashboard(user_id: str, membership_tier: Optional[str] = None)
     return _build_dashboard_payload(user_id, tier)
 
 
+@app.get("/api/v1/therapy/analytics/{user_id}")
+async def therapy_analytics(user_id: str):
+    history = _load_history(user_id)
+    if not history:
+        return {
+            "user_id": user_id,
+            "total_entries": 0,
+            "distribution_profile": {},
+            "ranked_patterns": [],
+        }
+
+    counts: Dict[str, int] = {}
+    for entry in history:
+        distortions = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("detected_cognitive_distortions", [])
+        if not isinstance(distortions, list):
+            continue
+        for distortion in distortions:
+            if not isinstance(distortion, str):
+                continue
+            normalized = distortion.strip().lower()
+            if not normalized:
+                continue
+            counts[normalized] = counts.get(normalized, 0) + 1
+
+    total_entries = max(1, len(history))
+    distribution_profile = {
+        key: round(value / total_entries * 100.0, 2)
+        for key, value in sorted(counts.items(), key=lambda item: item[0])
+    }
+    ranked_patterns = [
+        {"pattern": key, "count": counts[key], "percentage": distribution_profile[key]}
+        for key in sorted(counts, key=lambda item: (-counts[item], item))
+    ]
+
+    return {
+        "user_id": user_id,
+        "total_entries": len(history),
+        "distribution_profile": distribution_profile,
+        "ranked_patterns": ranked_patterns,
+    }
+
+
 @app.delete("/api/v1/therapy/purge")
 async def therapy_purge(request: Optional[PurgeRequest] = None, user_id: Optional[str] = None):
     try:
