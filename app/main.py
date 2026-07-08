@@ -135,6 +135,76 @@ class InvalidPersonaException(PsychologyApiException):
         super().__init__(f"Unsupported persona requested: {persona}", status_code=400, error_code="INVALID_PERSONA")
 
 
+class PromptContextWeightBindingFactory:
+    def __init__(self, school: ClinicalSchool, psychological_readiness_index: Optional[float], cognitive_distortions: Optional[List[str]] = None):
+        self.school = school or ClinicalSchool.ROGERIAN
+        self.psychological_readiness_index = float(psychological_readiness_index or 0.5)
+        self.cognitive_distortions = cognitive_distortions or []
+
+    def _clamp(self, value: float) -> float:
+        return round(min(1.0, max(0.0, value)), 2)
+
+    def build(self) -> Dict[str, Any]:
+        readiness = self._clamp(self.psychological_readiness_index)
+        distortion_count = max(0, len(self.cognitive_distortions))
+
+        if self.school == ClinicalSchool.FREUDIAN:
+            interpretation_depth = self._clamp(0.6 + readiness * 0.25 + distortion_count * 0.05)
+            empathy_level = self._clamp(0.5 + readiness * 0.1)
+            homework_structure = self._clamp(0.3 + readiness * 0.2)
+            system_prompt = (
+                "당신은 무의식적 갈등과 반복 패턴을 탐색하는 깊이 있는 정신분석적 상담사입니다. "
+                f"심층 해석 수준은 {interpretation_depth:.2f}로 조정하고, 내담자의 불안과 반복적 관계 패턴을 탐색하세요. "
+                f"공감 수준은 {empathy_level:.2f}로 유지하되, 인지 왜곡보다 감정의 근원을 파악하세요. "
+                f"인지 재구성 과제 구조는 {homework_structure:.2f}로 낮게 유지하되, 자기 성찰을 강화하세요."
+            )
+            return {
+                "weights": {
+                    "interpretation_depth": interpretation_depth,
+                    "empathy_level": empathy_level,
+                    "homework_structure": homework_structure,
+                },
+                "system_prompt": system_prompt,
+            }
+
+        if self.school == ClinicalSchool.BECK_CBT:
+            interpretation_depth = self._clamp(0.4 + readiness * 0.2 + distortion_count * 0.08)
+            empathy_level = self._clamp(0.45 + readiness * 0.1)
+            homework_structure = self._clamp(0.7 + readiness * 0.15 + distortion_count * 0.05)
+            system_prompt = (
+                "당신은 인지왜곡을 정밀하게 분석하고 행동 실험을 설계하는 CBT 상담사입니다. "
+                f"심층 해석 수준은 {interpretation_depth:.2f}로 조정하고, 내담자의 자동적 사고와 왜곡을 분해하세요. "
+                f"공감 수준은 {empathy_level:.2f}로 유지하되, 인지 재구성 중심으로 접근하세요. "
+                f"인지 재구성 과제 구조는 {homework_structure:.2f}로 높게 설정해 실천형 과제를 제안하세요."
+            )
+            return {
+                "weights": {
+                    "interpretation_depth": interpretation_depth,
+                    "empathy_level": empathy_level,
+                    "homework_structure": homework_structure,
+                },
+                "system_prompt": system_prompt,
+            }
+
+        interpretation_depth = self._clamp(0.5 + readiness * 0.15 + distortion_count * 0.03)
+        empathy_level = self._clamp(0.75 + readiness * 0.15)
+        homework_structure = self._clamp(0.4 + readiness * 0.1)
+        system_prompt = (
+            "당신은 내담자의 경험을 공감적으로 수용하고 자기 주도적 성장을 돕는 로저식 상담사입니다. "
+            f"심층 해석 수준은 {interpretation_depth:.2f}로 조정하고, 내담자의 감정과 경험의 의미를 존중하세요. "
+            f"공감 수준은 {empathy_level:.2f}로 높게 유지해 안전하고 수용적인 대화를 유지하세요. "
+            f"인지 재구성 과제 구조는 {homework_structure:.2f}로 낮게 설정해 부드러운 자율적 실천을 권장하세요."
+        )
+        return {
+            "weights": {
+                "interpretation_depth": interpretation_depth,
+                "empathy_level": empathy_level,
+                "homework_structure": homework_structure,
+            },
+            "system_prompt": system_prompt,
+        }
+
+
 class DrawingProjectiveProfile(BaseModel):
     structural_sign: str
     house_interpreted_code: str
@@ -341,7 +411,19 @@ def _build_behavior_metadata(school: ClinicalSchool) -> Dict[str, Any]:
 
 def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards: Optional[List[str]] = None, preferred_school: Optional[ClinicalSchool] = None) -> Dict[str, Any]:
     config = _resolve_plan(plan)
-    system_prompt = build_system_prompt()
+    school = _resolve_clinical_school(preferred_school)
+    behavior_metadata = _build_behavior_metadata(school)
+    readiness_index = _build_psychological_readiness_index(user_story, plan, selected_cards)
+    profile = _build_projective_profile(user_story, drawn_card, readiness_index)
+    archetype_profile = _build_archetype_profile(user_story, selected_cards)
+    distortion_flags = archetype_profile["cognitive_distortion_flags"]
+
+    prompt_binding = PromptContextWeightBindingFactory(
+        school=school,
+        psychological_readiness_index=readiness_index,
+        cognitive_distortions=distortion_flags,
+    ).build()
+    system_prompt = build_system_prompt() + "\n" + prompt_binding["system_prompt"]
     user_prompt = build_user_prompt(user_story, drawn_card)
     actions = [
         "오늘의 감정 1개를 이름 붙이고 기록하기",
@@ -365,11 +447,6 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
         except Exception:
             analysis = _build_fallback_analysis(user_story, drawn_card, plan)
 
-    school = _resolve_clinical_school(preferred_school)
-    behavior_metadata = _build_behavior_metadata(school)
-    readiness_index = _build_psychological_readiness_index(user_story, plan, selected_cards)
-    profile = _build_projective_profile(user_story, drawn_card, readiness_index)
-    archetype_profile = _build_archetype_profile(user_story, selected_cards)
     return {
         "summary": analysis,
         "scope": config["scope"],

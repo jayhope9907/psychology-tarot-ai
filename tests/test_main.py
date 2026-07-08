@@ -1,9 +1,11 @@
 import json
 import os
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-from app.main import ANALYTICS_CACHE, DASHBOARD_CACHE, PSYCHOLOGY_DATABASE, PURGED_USERS, app
+import app.main as main_module
+from app.main import ANALYTICS_CACHE, DASHBOARD_CACHE, PSYCHOLOGY_DATABASE, PURGED_USERS, ClinicalSchool, app
 
 
 client = TestClient(app)
@@ -14,6 +16,61 @@ def setup_function():
     PURGED_USERS.clear()
     DASHBOARD_CACHE.invalidate()
     ANALYTICS_CACHE.invalidate()
+
+
+def test_prompt_binding_factory_adjusts_prompt_variables_per_school():
+    freudian_binding = main_module.PromptContextWeightBindingFactory(
+        school=ClinicalSchool.FREUDIAN,
+        psychological_readiness_index=0.2,
+        cognitive_distortions=["all_or_nothing", "catastrophizing"],
+    ).build()
+    assert freudian_binding["weights"]["interpretation_depth"] >= 0.7
+    assert "심층 해석" in freudian_binding["system_prompt"]
+
+    rogerian_binding = main_module.PromptContextWeightBindingFactory(
+        school=ClinicalSchool.ROGERIAN,
+        psychological_readiness_index=0.3,
+        cognitive_distortions=["rumination"],
+    ).build()
+    assert rogerian_binding["weights"]["empathy_level"] >= 0.7
+    assert "공감 수준" in rogerian_binding["system_prompt"]
+
+    cbt_binding = main_module.PromptContextWeightBindingFactory(
+        school=ClinicalSchool.BECK_CBT,
+        psychological_readiness_index=0.4,
+        cognitive_distortions=["all_or_nothing", "overgeneralization"],
+    ).build()
+    assert cbt_binding["weights"]["homework_structure"] >= 0.7
+    assert "인지 재구성 과제" in cbt_binding["system_prompt"]
+
+
+def test_consultation_pipeline_injects_dynamic_prompt_context(monkeypatch):
+    class FakeCompletions:
+        def create(self, **kwargs):
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="dynamic prompt ok"))])
+
+    class FakeClient:
+        def __init__(self):
+            self.api_key = "test-key"
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+    monkeypatch.setattr(main_module, "client", FakeClient())
+
+    response = client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-prompt-binding",
+            "user_story": "실패를 반복하면 나는 실패자라고 느낍니다.",
+            "drawn_card": "The Tower",
+            "plan": "PREMIUM",
+            "preferred_school": "BECK_CBT",
+            "selected_cards": ["The Tower"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["output"]
+    assert payload["summary"] == "dynamic prompt ok"
 
 
 def test_plan_controls_output_scope():
