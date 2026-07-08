@@ -1,3 +1,4 @@
+import json
 import os
 
 from fastapi.testclient import TestClient
@@ -183,6 +184,77 @@ def test_analytics_endpoint_returns_empty_profile_when_no_history_exists():
     assert body["total_entries"] == 0
     assert body["distribution_profile"] == {}
     assert body["ranked_patterns"] == []
+
+
+def test_custom_exception_handlers_respond_with_frontend_safe_payloads():
+    invalid_user_response = client.get("/api/v1/therapy/dashboard/invalid-user")
+    assert invalid_user_response.status_code == 404
+    invalid_user_body = invalid_user_response.json()
+    assert invalid_user_body["success"] is False
+    assert invalid_user_body["error"]["code"] == "INVALID_USER"
+
+    decrypt_failure_response = client.get("/api/v1/therapy/analytics/decrypt-fail")
+    assert decrypt_failure_response.status_code == 500
+    decrypt_failure_body = decrypt_failure_response.json()
+    assert decrypt_failure_body["success"] is False
+    assert decrypt_failure_body["error"]["code"] == "DECRYPTION_FAILURE"
+
+    invalid_persona_response = client.get("/api/v1/therapy/analytics/bad-persona")
+    assert invalid_persona_response.status_code == 400
+    invalid_persona_body = invalid_persona_response.json()
+    assert invalid_persona_body["success"] is False
+    assert invalid_persona_body["error"]["code"] == "INVALID_PERSONA"
+
+
+def test_streaming_endpoint_emits_clinical_progress_events():
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-stream",
+            "user_story": "최근 관계에서 불안을 느끼고 있습니다.",
+            "drawn_card": "The Lovers",
+            "plan": "PREMIUM",
+            "selected_cards": ["The Lovers"],
+        },
+    )
+
+    with client.stream("GET", "/api/v1/therapy/stream/user-stream") as response:
+        assert response.status_code == 200
+        chunks = []
+        for line in response.iter_lines():
+            if line:
+                chunks.append(line)
+            if len(chunks) >= 3:
+                break
+
+    combined_payload = "\n".join(chunks)
+    assert "psychological_readiness_index" in combined_payload
+    assert "tree_energy_index" in combined_payload
+    assert "cognitive_distortion_analysis" in combined_payload
+
+    parsed_messages = []
+    for line in chunks:
+        if line.startswith("data:"):
+            parsed_messages.append(json.loads(line[5:].strip()))
+    assert parsed_messages
+    assert any(message.get("type") == "progress" for message in parsed_messages)
+
+
+def test_streaming_endpoint_stops_cleanly_when_client_disconnects():
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-stream-disconnect",
+            "user_story": "스트레스와 불안을 관리하려고 합니다.",
+            "drawn_card": "The Hermit",
+            "plan": "PREMIUM",
+        },
+    )
+
+    with client.stream("GET", "/api/v1/therapy/stream/user-stream-disconnect") as response:
+        assert response.status_code == 200
+        first_line = next(response.iter_lines())
+        assert first_line
 
 
 def test_backoffice_samples_and_purge_work():

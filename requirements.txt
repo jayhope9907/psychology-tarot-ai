@@ -5,3 +5,4 @@ python-dotenv>=1.0.0
 cryptography>=42.0.0
 pytest>=8.0.0
 asyncio>=3.4.3
+sse-starlette>=2.1.0

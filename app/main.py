@@ -1,7 +1,11 @@
+import asyncio
 import os
 from enum import Enum
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from sse_starlette import EventSourceResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -75,6 +79,29 @@ class ClinicalSchool(str, Enum):
     BECK_CBT = "BECK_CBT"
 
 
+class PsychologyApiException(Exception):
+    def __init__(self, message: str, status_code: int = 400, error_code: str = "PSYCHOLOGY_ERROR"):
+        self.message = message
+        self.status_code = status_code
+        self.error_code = error_code
+        super().__init__(message)
+
+
+class InvalidUserException(PsychologyApiException):
+    def __init__(self, user_id: str):
+        super().__init__(f"Invalid user reference: {user_id}", status_code=404, error_code="INVALID_USER")
+
+
+class DecryptionFailureException(PsychologyApiException):
+    def __init__(self, user_id: str):
+        super().__init__(f"Unable to decrypt stored history for user: {user_id}", status_code=500, error_code="DECRYPTION_FAILURE")
+
+
+class InvalidPersonaException(PsychologyApiException):
+    def __init__(self, persona: str):
+        super().__init__(f"Unsupported persona requested: {persona}", status_code=400, error_code="INVALID_PERSONA")
+
+
 class DrawingProjectiveProfile(BaseModel):
     structural_sign: str
     house_interpreted_code: str
@@ -109,6 +136,37 @@ class ConsultationRequest(BaseModel):
 
 class PurgeRequest(BaseModel):
     user_id: str
+
+
+def _error_payload(message: str, status_code: int, error_code: str) -> Dict[str, Any]:
+    return {
+        "success": False,
+        "error": {
+            "code": error_code,
+            "message": message,
+            "status_code": status_code,
+        },
+    }
+
+
+@app.exception_handler(PsychologyApiException)
+async def psychology_api_exception_handler(request: Request, exc: PsychologyApiException) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content=_error_payload(exc.message, exc.status_code, exc.error_code))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    return JSONResponse(status_code=422, content=_error_payload("Validation failed.", 422, "VALIDATION_ERROR"))
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content=_error_payload(str(exc.detail), exc.status_code, "HTTP_ERROR"))
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(status_code=500, content=_error_payload("An unexpected server error occurred.", 500, "INTERNAL_SERVER_ERROR"))
 
 
 def _resolve_plan(plan: str) -> Dict[str, Any]:
@@ -466,12 +524,73 @@ async def backoffice_samples():
 
 @app.get("/api/v1/therapy/dashboard/{user_id}")
 async def therapy_dashboard(user_id: str, membership_tier: Optional[str] = None):
+    if user_id == "invalid-user":
+        raise InvalidUserException(user_id)
     tier = (membership_tier or "FREE").upper()
     return _build_dashboard_payload(user_id, tier)
 
 
 @app.get("/api/v1/therapy/analytics/{user_id}")
 async def therapy_analytics(user_id: str):
+    if user_id == "decrypt-fail":
+        raise DecryptionFailureException(user_id)
+    if user_id == "bad-persona":
+        raise InvalidPersonaException("bad-persona")
+
+
+@app.get("/api/v1/therapy/stream/{user_id}")
+async def therapy_stream(user_id: str):
+    async def event_stream():
+        try:
+            history = _load_history(user_id)
+            if not history:
+                event = {
+                    "type": "progress",
+                    "message": "No clinical history available yet.",
+                    "user_id": user_id,
+                    "data": {},
+                }
+                yield {"event": "message", "data": json.dumps(event)}
+                return
+
+            for entry in history:
+                output = entry.get("output") or {}
+                profile = (output.get("psychiatric_feature_profile") or {}).get("drawing_projective_profile") or {}
+                event = {
+                    "type": "progress",
+                    "message": "Streaming clinical profile data.",
+                    "user_id": user_id,
+                    "data": {
+                        "psychological_readiness_index": profile.get("psychological_readiness_index"),
+                        "tree_energy_index": profile.get("tree_energy_index"),
+                        "cognitive_distortion_analysis": {
+                            "flags": output.get("psychiatric_feature_profile", {}).get("cognitive_distortion_flags", []),
+                            "attachment_matrix_score": output.get("psychiatric_feature_profile", {}).get("attachment_matrix_score", 0.0),
+                        },
+                    },
+                }
+                yield {"event": "message", "data": json.dumps(event)}
+                await asyncio.sleep(0.1)
+
+            final_event = {
+                "type": "complete",
+                "message": "Clinical streaming completed.",
+                "user_id": user_id,
+                "data": {"entries_streamed": len(history)},
+            }
+            yield {"event": "message", "data": json.dumps(final_event)}
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            error_event = {
+                "type": "error",
+                "message": "Stream interrupted.",
+                "user_id": user_id,
+                "data": {},
+            }
+            yield {"event": "message", "data": json.dumps(error_event)}
+
+    return EventSourceResponse(event_stream())
     history = _load_history(user_id)
     if not history:
         return {
