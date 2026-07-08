@@ -1,4 +1,6 @@
 import os
+from enum import Enum
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI
@@ -67,6 +69,12 @@ def _decrypt_payload(token: str) -> Dict[str, Any]:
     return json.loads(_get_fernet().decrypt(token.encode("utf-8")).decode("utf-8"))
 
 
+class ClinicalSchool(str, Enum):
+    FREUDIAN = "FREUDIAN"
+    ROGERIAN = "ROGERIAN"
+    BECK_CBT = "BECK_CBT"
+
+
 class DrawingProjectiveProfile(BaseModel):
     structural_sign: str
     house_interpreted_code: str
@@ -96,6 +104,7 @@ class ConsultationRequest(BaseModel):
     drawn_card: str
     plan: str = "FREE"
     selected_cards: Optional[List[str]] = None
+    preferred_school: Optional[ClinicalSchool] = ClinicalSchool.ROGERIAN
 
 
 class PurgeRequest(BaseModel):
@@ -203,7 +212,43 @@ def _build_archetype_profile(user_story: str, selected_cards: Optional[List[str]
     }
 
 
-def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards: Optional[List[str]] = None) -> Dict[str, Any]:
+def _resolve_clinical_school(preferred_school: Optional[ClinicalSchool]) -> ClinicalSchool:
+    return preferred_school or ClinicalSchool.ROGERIAN
+
+
+def _build_behavior_metadata(school: ClinicalSchool) -> Dict[str, Any]:
+    if school == ClinicalSchool.FREUDIAN:
+        return {
+            "clinical_protocol_mode": "FREUDIAN",
+            "assistant_behavior_rules": [
+                "Explore unconscious conflict with gentle curiosity.",
+                "Frame recurring patterns as unresolved emotional themes.",
+                "Encourage reflection on early relational imprints."
+            ],
+            "daily_logotherapy_homework_style": "A reflective journaling exercise on unconscious repetition and emotional conflict.",
+        }
+    if school == ClinicalSchool.BECK_CBT:
+        return {
+            "clinical_protocol_mode": "BECK_CBT",
+            "assistant_behavior_rules": [
+                "Identify cognitive distortions with precision.",
+                "Reframe maladaptive thoughts into balanced alternatives.",
+                "Anchor the plan in measurable behavioral experiments."
+            ],
+            "daily_logotherapy_homework_style": "A thought record exercise focused on evidence, reframe, and behavioral experiment.",
+        }
+    return {
+        "clinical_protocol_mode": "ROGERIAN",
+        "assistant_behavior_rules": [
+            "Offer unconditional positive regard.",
+            "Validate the client's experience without judgment.",
+            "Support self-directed growth through empathic reflection."
+        ],
+        "daily_logotherapy_homework_style": "A gentle reflective homework prompt centered on self-acceptance and emotional safety.",
+    }
+
+
+def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards: Optional[List[str]] = None, preferred_school: Optional[ClinicalSchool] = None) -> Dict[str, Any]:
     config = _resolve_plan(plan)
     system_prompt = build_system_prompt()
     user_prompt = build_user_prompt(user_story, drawn_card)
@@ -229,6 +274,8 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
         except Exception:
             analysis = _build_fallback_analysis(user_story, drawn_card, plan)
 
+    school = _resolve_clinical_school(preferred_school)
+    behavior_metadata = _build_behavior_metadata(school)
     readiness_index = _build_psychological_readiness_index(user_story, plan, selected_cards)
     profile = _build_projective_profile(user_story, drawn_card, readiness_index)
     archetype_profile = _build_archetype_profile(user_story, selected_cards)
@@ -246,6 +293,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
             "attachment_matrix_score": archetype_profile["attachment_matrix_score"],
             "archetype_profiles": archetype_profile["archetype_profiles"],
         },
+        **behavior_metadata,
     }
 
 
@@ -389,7 +437,7 @@ def _build_dashboard_payload(user_id: str, membership_tier: str) -> Dict[str, An
 @app.post("/api/v1/therapy/read")
 async def therapy_read(request: ConsultationRequest):
     try:
-        output = _compose_output(request.user_story, request.drawn_card, request.plan, request.selected_cards)
+        output = _compose_output(request.user_story, request.drawn_card, request.plan, request.selected_cards, request.preferred_school)
         _store_record(request.user_id, request.user_story, request.drawn_card, request.plan, output)
         return {"plan": request.plan.upper(), "output": output, "stored": True}
     except Exception as exc:  # pragma: no cover - defensive fallback
