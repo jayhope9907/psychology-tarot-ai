@@ -547,7 +547,7 @@ def _build_dashboard_payload(user_id: str, membership_tier: str) -> Dict[str, An
             }
         )
 
-    if not series:
+    if not history:
         return {
             "user_id": user_id,
             "membership_tier": membership_tier,
@@ -587,7 +587,7 @@ def _build_dashboard_payload(user_id: str, membership_tier: str) -> Dict[str, An
         return {
             "user_id": user_id,
             "membership_tier": membership_tier.upper(),
-            "history_length": len(series),
+            "history_length": len(history),
             "summary": premium_summary,
             "trend_analysis": trend_analysis,
             "premium_therapeutic_summary": premium_summary,
@@ -596,7 +596,7 @@ def _build_dashboard_payload(user_id: str, membership_tier: str) -> Dict[str, An
     return {
         "user_id": user_id,
         "membership_tier": membership_tier.upper(),
-        "history_length": len(series),
+        "history_length": len(history),
         "summary": "Advanced analytics require a premium subscription.",
         "trend_analysis": trend_analysis,
     }
