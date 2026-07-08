@@ -3,7 +3,7 @@ import os
 
 from fastapi.testclient import TestClient
 
-from app.main import PSYCHOLOGY_DATABASE, PURGED_USERS, app
+from app.main import ANALYTICS_CACHE, DASHBOARD_CACHE, PSYCHOLOGY_DATABASE, PURGED_USERS, app
 
 
 client = TestClient(app)
@@ -12,6 +12,8 @@ client = TestClient(app)
 def setup_function():
     PSYCHOLOGY_DATABASE.clear()
     PURGED_USERS.clear()
+    DASHBOARD_CACHE.invalidate()
+    ANALYTICS_CACHE.invalidate()
 
 
 def test_plan_controls_output_scope():
@@ -256,6 +258,81 @@ def test_streaming_endpoint_stops_cleanly_when_client_disconnects():
         assert response.status_code == 200
         first_line = next(response.iter_lines())
         assert first_line
+
+
+def test_dashboard_and_analytics_use_cache_until_data_changes(monkeypatch):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-cache",
+            "user_story": "최근 업무 스트레스로 불안을 느끼고 있습니다.",
+            "drawn_card": "The Hermit",
+            "plan": "PREMIUM",
+            "selected_cards": ["The Fool"],
+        },
+    )
+
+    first_dashboard = client.get("/api/v1/therapy/dashboard/user-cache", params={"membership_tier": "PREMIUM"})
+    second_dashboard = client.get("/api/v1/therapy/dashboard/user-cache", params={"membership_tier": "PREMIUM"})
+    assert first_dashboard.status_code == 200
+    assert second_dashboard.status_code == 200
+    assert first_dashboard.json() == second_dashboard.json()
+    assert DASHBOARD_CACHE.get("dashboard:user-cache:PREMIUM") is not None
+
+    first_analytics = client.get("/api/v1/therapy/analytics/user-cache")
+    second_analytics = client.get("/api/v1/therapy/analytics/user-cache")
+    assert first_analytics.status_code == 200
+    assert second_analytics.status_code == 200
+    assert first_analytics.json() == second_analytics.json()
+    assert ANALYTICS_CACHE.get("user-cache") is not None
+
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-cache",
+            "user_story": "이제 더 안정감을 찾고 있습니다.",
+            "drawn_card": "The Magician",
+            "plan": "PREMIUM",
+            "selected_cards": ["The Magician"],
+        },
+    )
+
+    invalidated_dashboard = client.get("/api/v1/therapy/dashboard/user-cache", params={"membership_tier": "PREMIUM"})
+    invalidated_analytics = client.get("/api/v1/therapy/analytics/user-cache")
+    assert invalidated_dashboard.status_code == 200
+    assert invalidated_analytics.status_code == 200
+    assert invalidated_dashboard.json()["history_length"] >= 2
+    assert invalidated_analytics.json()["total_entries"] >= 2
+
+
+def test_purge_invalidates_cached_dashboard_and_analytics(monkeypatch):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-cache-purge",
+            "user_story": "삭제 전 캐시를 채워 둡니다.",
+            "drawn_card": "The Tower",
+            "plan": "PREMIUM",
+        },
+    )
+    client.get("/api/v1/therapy/dashboard/user-cache-purge", params={"membership_tier": "PREMIUM"})
+    client.get("/api/v1/therapy/analytics/user-cache-purge")
+
+    assert DASHBOARD_CACHE.get("dashboard:user-cache-purge:PREMIUM") is not None
+    assert ANALYTICS_CACHE.get("user-cache-purge") is not None
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/therapy/purge",
+        json={"user_id": "user-cache-purge"},
+        headers={"X-Audit-Token": "secure-audit-token"},
+    )
+
+    assert response.status_code == 200
+    assert DASHBOARD_CACHE.get("dashboard:user-cache-purge:PREMIUM") is None
+    assert ANALYTICS_CACHE.get("user-cache-purge") is None
 
 
 def test_purge_requires_audit_token_header(monkeypatch):

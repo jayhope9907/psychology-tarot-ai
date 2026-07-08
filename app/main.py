@@ -35,6 +35,38 @@ PLAN_RULES = {
 
 PSYCHOLOGY_DATABASE: Dict[str, Dict[str, Any]] = {}
 PURGED_USERS: set[str] = set()
+CACHE_TTL_SECONDS = int(os.getenv("THERAPY_CACHE_TTL_SECONDS", "30"))
+
+
+class InMemoryTTLCache:
+    def __init__(self, ttl_seconds: int = CACHE_TTL_SECONDS):
+        self.ttl_seconds = ttl_seconds
+        self._entries: Dict[str, Dict[str, Any]] = {}
+
+    def _now(self) -> float:
+        return datetime.now(timezone.utc).timestamp()
+
+    def get(self, key: str) -> Optional[Any]:
+        entry = self._entries.get(key)
+        if not entry:
+            return None
+        if self._now() - entry["timestamp"] > self.ttl_seconds:
+            self._entries.pop(key, None)
+            return None
+        return entry["value"]
+
+    def set(self, key: str, value: Any) -> None:
+        self._entries[key] = {"value": value, "timestamp": self._now()}
+
+    def invalidate(self, key: Optional[str] = None) -> None:
+        if key is None:
+            self._entries.clear()
+        else:
+            self._entries.pop(key, None)
+
+
+DASHBOARD_CACHE = InMemoryTTLCache()
+ANALYTICS_CACHE = InMemoryTTLCache()
 
 TAROT_ARCHETYPE_MAP = {
     "The Fool": {
@@ -493,11 +525,17 @@ def _build_dashboard_payload(user_id: str, membership_tier: str) -> Dict[str, An
     }
 
 
+def _invalidate_user_caches(user_id: str) -> None:
+    DASHBOARD_CACHE.invalidate(user_id)
+    ANALYTICS_CACHE.invalidate(user_id)
+
+
 @app.post("/api/v1/therapy/read")
 async def therapy_read(request: ConsultationRequest):
     try:
         output = _compose_output(request.user_story, request.drawn_card, request.plan, request.selected_cards, request.preferred_school)
         _store_record(request.user_id, request.user_story, request.drawn_card, request.plan, output)
+        _invalidate_user_caches(request.user_id)
         return {"plan": request.plan.upper(), "output": output, "stored": True}
     except Exception as exc:  # pragma: no cover - defensive fallback
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -528,7 +566,13 @@ async def therapy_dashboard(user_id: str, membership_tier: Optional[str] = None)
     if user_id == "invalid-user":
         raise InvalidUserException(user_id)
     tier = (membership_tier or "FREE").upper()
-    return _build_dashboard_payload(user_id, tier)
+    cache_key = f"dashboard:{user_id}:{tier}"
+    cached_value = DASHBOARD_CACHE.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+    payload = _build_dashboard_payload(user_id, tier)
+    DASHBOARD_CACHE.set(cache_key, payload)
+    return payload
 
 
 @app.get("/api/v1/therapy/analytics/{user_id}")
@@ -537,6 +581,53 @@ async def therapy_analytics(user_id: str):
         raise DecryptionFailureException(user_id)
     if user_id == "bad-persona":
         raise InvalidPersonaException("bad-persona")
+
+    cached_value = ANALYTICS_CACHE.get(user_id)
+    if cached_value is not None:
+        return cached_value
+
+    history = _load_history(user_id)
+    if not history:
+        payload = {
+            "user_id": user_id,
+            "total_entries": 0,
+            "distribution_profile": {},
+            "ranked_patterns": [],
+        }
+        ANALYTICS_CACHE.set(user_id, payload)
+        return payload
+
+    counts: Dict[str, int] = {}
+    for entry in history:
+        distortions = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("detected_cognitive_distortions", [])
+        if not isinstance(distortions, list):
+            continue
+        for distortion in distortions:
+            if not isinstance(distortion, str):
+                continue
+            normalized = distortion.strip().lower()
+            if not normalized:
+                continue
+            counts[normalized] = counts.get(normalized, 0) + 1
+
+    total_entries = max(1, len(history))
+    distribution_profile = {
+        key: round(value / total_entries * 100.0, 2)
+        for key, value in sorted(counts.items(), key=lambda item: item[0])
+    }
+    ranked_patterns = [
+        {"pattern": key, "count": counts[key], "percentage": distribution_profile[key]}
+        for key in sorted(counts, key=lambda item: (-counts[item], item))
+    ]
+
+    payload = {
+        "user_id": user_id,
+        "total_entries": len(history),
+        "distribution_profile": distribution_profile,
+        "ranked_patterns": ranked_patterns,
+    }
+    ANALYTICS_CACHE.set(user_id, payload)
+    return payload
 
 
 @app.get("/api/v1/therapy/stream/{user_id}")
@@ -663,6 +754,7 @@ async def therapy_purge(request: Request, user_id: Optional[str] = None):
             if target_user_id in PSYCHOLOGY_DATABASE:
                 del PSYCHOLOGY_DATABASE[target_user_id]
             PURGED_USERS.add(target_user_id)
+            _invalidate_user_caches(target_user_id)
 
         _purge_in_sandbox()
 
