@@ -72,6 +72,7 @@ class DrawingProjectiveProfile(BaseModel):
     house_interpreted_code: str
     tree_energy_index: float
     person_relational_tag: str
+    psychological_readiness_index: Optional[float] = None
 
 
 class ArchetypeProfile(BaseModel):
@@ -114,7 +115,21 @@ def _build_fallback_analysis(user_story: str, drawn_card: str, plan: str) -> str
     )
 
 
-def _build_projective_profile(user_story: str, drawn_card: str) -> Dict[str, Any]:
+def _build_psychological_readiness_index(user_story: str, plan: str, selected_cards: Optional[List[str]] = None) -> float:
+    normalized_story = (user_story or "").lower()
+    base_score = 0.5
+    if any(keyword in normalized_story for keyword in ["불안", "스트레스", "초조", "긴장", "우울", "혼란", "두려움", "상실"]):
+        base_score -= 0.2
+    if any(keyword in normalized_story for keyword in ["안정", "평온", "안정감", "편안", "정리", "회복", "성장", "찾고", "정돈"]):
+        base_score += 0.2
+    if (plan or "FREE").upper() == "PREMIUM":
+        base_score += 0.05
+    if selected_cards:
+        base_score += 0.03
+    return round(min(1.0, max(0.0, base_score)), 2)
+
+
+def _build_projective_profile(user_story: str, drawn_card: str, psychological_readiness_index: Optional[float] = None) -> Dict[str, Any]:
     normalized_story = (user_story or "").lower()
     normalized_card = (drawn_card or "").lower()
 
@@ -147,6 +162,7 @@ def _build_projective_profile(user_story: str, drawn_card: str) -> Dict[str, Any
         "house_interpreted_code": house_code,
         "tree_energy_index": round(tree_energy_index, 2),
         "person_relational_tag": person_relational_tag,
+        "psychological_readiness_index": round(psychological_readiness_index if psychological_readiness_index is not None else 0.5, 2),
     }
 
 
@@ -213,7 +229,8 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
         except Exception:
             analysis = _build_fallback_analysis(user_story, drawn_card, plan)
 
-    profile = _build_projective_profile(user_story, drawn_card)
+    readiness_index = _build_psychological_readiness_index(user_story, plan, selected_cards)
+    profile = _build_projective_profile(user_story, drawn_card, readiness_index)
     archetype_profile = _build_archetype_profile(user_story, selected_cards)
     return {
         "summary": analysis,
@@ -224,6 +241,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
         "safety_note": "위기 상황 시 전문가 또는 응급 지원을 권장합니다.",
         "psychiatric_feature_profile": {
             "drawing_projective_profile": profile,
+            "psychological_readiness_index": readiness_index,
             "cognitive_distortion_flags": archetype_profile["cognitive_distortion_flags"],
             "attachment_matrix_score": archetype_profile["attachment_matrix_score"],
             "archetype_profiles": archetype_profile["archetype_profiles"],
@@ -232,6 +250,15 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
 
 
 def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, output: Dict[str, Any]) -> None:
+    existing_record = PSYCHOLOGY_DATABASE.get(user_id)
+    history: List[Dict[str, Any]] = []
+    if existing_record:
+        try:
+            existing_payload = _decrypt_payload(existing_record["encrypted_payload"])
+            history = existing_payload.get("history") or []
+        except Exception:
+            history = []
+
     payload = {
         "user_id": user_id,
         "user_story": user_story,
@@ -240,10 +267,122 @@ def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, out
         "output": output,
         "anonymous": True,
         "asset_value_krw": 50000,
+        "timestamp": len(history),
+        "history": history + [{
+            "user_id": user_id,
+            "user_story": user_story,
+            "drawn_card": drawn_card,
+            "plan": plan,
+            "output": output,
+            "timestamp": len(history),
+        }],
     }
     PSYCHOLOGY_DATABASE[user_id] = {
         "encrypted_payload": _encrypt_payload(payload),
         "asset_value_krw": 50000,
+    }
+
+
+def _load_history(user_id: str) -> List[Dict[str, Any]]:
+    record = PSYCHOLOGY_DATABASE.get(user_id)
+    if not record:
+        return []
+    try:
+        payload = _decrypt_payload(record["encrypted_payload"])
+    except Exception:
+        return []
+
+    history = payload.get("history")
+    if isinstance(history, list):
+        return history
+
+    if payload.get("output"):
+        return [payload]
+    return []
+
+
+def _build_dashboard_payload(user_id: str, membership_tier: str) -> Dict[str, Any]:
+    history = _load_history(user_id)
+    if not history:
+        return {
+            "user_id": user_id,
+            "membership_tier": membership_tier,
+            "history_length": 0,
+            "summary": "Advanced analytics require a premium subscription.",
+            "trend_analysis": {},
+        }
+
+    series = []
+    for entry in history:
+        profile = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("drawing_projective_profile", {})
+        readiness = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("psychological_readiness_index")
+        if readiness is None:
+            readiness = profile.get("psychological_readiness_index")
+        attachment = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("attachment_matrix_score")
+        tree_energy = profile.get("tree_energy_index")
+        if readiness is None and attachment is None and tree_energy is None:
+            continue
+        series.append(
+            {
+                "timestamp": entry.get("timestamp") or len(series),
+                "psychological_readiness_index": readiness if readiness is not None else 0.5,
+                "attachment_matrix_score": attachment if attachment is not None else 0.5,
+                "tree_energy_index": tree_energy if tree_energy is not None else 0.0,
+            }
+        )
+
+    if not series:
+        return {
+            "user_id": user_id,
+            "membership_tier": membership_tier,
+            "history_length": 0,
+            "summary": "Advanced analytics require a premium subscription.",
+            "trend_analysis": {},
+        }
+
+    readiness_values = [item["psychological_readiness_index"] for item in series]
+    attachment_values = [item["attachment_matrix_score"] for item in series]
+    energy_values = [item["tree_energy_index"] for item in series]
+    trend_analysis = {
+        "psychological_readiness_index": {
+            "start": readiness_values[0],
+            "end": readiness_values[-1],
+            "delta": round(readiness_values[-1] - readiness_values[0], 2),
+        },
+        "attachment_matrix_score": {
+            "start": attachment_values[0],
+            "end": attachment_values[-1],
+            "delta": round(attachment_values[-1] - attachment_values[0], 2),
+        },
+        "tree_energy_index": {
+            "start": energy_values[0],
+            "end": energy_values[-1],
+            "delta": round(energy_values[-1] - energy_values[0], 2),
+        },
+    }
+
+    if membership_tier.upper() == "PREMIUM":
+        premium_summary = (
+            "Premium therapeutic summary: the user's readiness trend shows "
+            f"{trend_analysis['psychological_readiness_index']['delta']:+.2f} change, "
+            f"attachment stability shifted by {trend_analysis['attachment_matrix_score']['delta']:+.2f}, "
+            f"and projective energy moved by {trend_analysis['tree_energy_index']['delta']:+.2f}."
+        )
+        return {
+            "user_id": user_id,
+            "membership_tier": membership_tier.upper(),
+            "history_length": len(series),
+            "summary": premium_summary,
+            "trend_analysis": trend_analysis,
+            "premium_therapeutic_summary": premium_summary,
+        }
+
+    return {
+        "user_id": user_id,
+        "membership_tier": membership_tier.upper(),
+        "history_length": len(series),
+        "summary": "Advanced analytics require a premium subscription.",
+        "trend_analysis": trend_analysis,
     }
 
 
@@ -275,6 +414,12 @@ async def backoffice_samples():
             }
         )
     return {"samples": samples[:10], "total": len(samples)}
+
+
+@app.get("/api/v1/therapy/dashboard/{user_id}")
+async def therapy_dashboard(user_id: str, membership_tier: Optional[str] = None):
+    tier = (membership_tier or "FREE").upper()
+    return _build_dashboard_payload(user_id, tier)
 
 
 @app.delete("/api/v1/therapy/purge")

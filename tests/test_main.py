@@ -53,6 +53,48 @@ def test_archetype_mapping_recalibrates_profile():
     assert profile["archetype_profiles"][0]["card_name"] == "The Fool"
 
 
+def test_dashboard_returns_premium_trend_analysis():
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-dashboard",
+            "user_story": "최근 업무 스트레스로 불안을 느끼고 있습니다.",
+            "drawn_card": "The Hermit",
+            "plan": "PREMIUM",
+            "selected_cards": ["The Fool"],
+        },
+    )
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-dashboard",
+            "user_story": "이제 조금 더 안정감을 찾고 있고 관계를 정리해보려 합니다.",
+            "drawn_card": "The Magician",
+            "plan": "PREMIUM",
+            "selected_cards": ["The Magician"],
+        },
+    )
+
+    response = client.get(
+        "/api/v1/therapy/dashboard/user-dashboard",
+        params={"membership_tier": "PREMIUM"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["membership_tier"] == "PREMIUM"
+    assert body["history_length"] == 2
+    assert body["trend_analysis"]["psychological_readiness_index"]["delta"] != 0.0
+    assert "premium" in body["premium_therapeutic_summary"].lower()
+
+
+def test_dashboard_returns_non_premium_summary_for_empty_history():
+    response = client.get("/api/v1/therapy/dashboard/empty-user")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["history_length"] == 0
+    assert body["summary"] == "Advanced analytics require a premium subscription."
+
+
 def test_backoffice_samples_and_purge_work():
     create_response = client.post(
         "/api/v1/therapy/read",
