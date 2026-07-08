@@ -479,6 +479,50 @@ def test_purge_commits_with_valid_token_and_writes_security_audit_log(monkeypatc
     assert "output" not in audit_entry
 
 
+def test_backoffice_analytics_summary_reports_empty_fallback_profile():
+    response = client.get("/api/v1/backoffice/analytics/summary")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_records"] == 0
+    assert body["preferred_school_distribution"] == {"FREUDIAN": 0.0, "ROGERIAN": 0.0, "BECK_CBT": 0.0}
+    assert body["tree_energy_variance"] == 0.0
+    assert body["ranked_detected_cognitive_distortions"] == []
+
+
+def test_backoffice_analytics_summary_aggregates_virtual_db_metrics():
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-backoffice-summary",
+            "user_story": "관계 문제로 자존감이 흔들립니다.",
+            "drawn_card": "The Lovers",
+            "plan": "PREMIUM",
+            "preferred_school": "FREUDIAN",
+            "selected_cards": ["The Lovers"],
+        },
+    )
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-backoffice-summary-2",
+            "user_story": "실패를 반복하면 나는 실패자라고 느낍니다.",
+            "drawn_card": "The Tower",
+            "plan": "PREMIUM",
+            "preferred_school": "BECK_CBT",
+            "selected_cards": ["The Tower"],
+        },
+    )
+
+    response = client.get("/api/v1/backoffice/analytics/summary")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_records"] >= 2
+    assert body["preferred_school_distribution"]["FREUDIAN"] >= 0.0
+    assert body["preferred_school_distribution"]["BECK_CBT"] >= 0.0
+    assert body["tree_energy_variance"] >= 0.0
+    assert body["ranked_detected_cognitive_distortions"]
+
+
 def test_backoffice_samples_and_purge_work(monkeypatch):
     monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
     create_response = client.post(

@@ -417,6 +417,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
     profile = _build_projective_profile(user_story, drawn_card, readiness_index)
     archetype_profile = _build_archetype_profile(user_story, selected_cards)
     distortion_flags = archetype_profile["cognitive_distortion_flags"]
+    detected_cognitive_distortions = distortion_flags if isinstance(distortion_flags, list) else []
 
     prompt_binding = PromptContextWeightBindingFactory(
         school=school,
@@ -458,6 +459,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
             "drawing_projective_profile": profile,
             "psychological_readiness_index": readiness_index,
             "cognitive_distortion_flags": archetype_profile["cognitive_distortion_flags"],
+            "detected_cognitive_distortions": detected_cognitive_distortions,
             "attachment_matrix_score": archetype_profile["attachment_matrix_score"],
             "archetype_profiles": archetype_profile["archetype_profiles"],
         },
@@ -465,7 +467,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
     }
 
 
-def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, output: Dict[str, Any]) -> None:
+def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, output: Dict[str, Any], preferred_school: Optional[ClinicalSchool] = None) -> None:
     existing_record = PSYCHOLOGY_DATABASE.get(user_id)
     history: List[Dict[str, Any]] = []
     if existing_record:
@@ -481,6 +483,7 @@ def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, out
         "drawn_card": drawn_card,
         "plan": plan,
         "output": output,
+        "preferred_school": (preferred_school.value if isinstance(preferred_school, ClinicalSchool) else None),
         "anonymous": True,
         "asset_value_krw": 50000,
         "timestamp": len(history),
@@ -490,6 +493,7 @@ def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, out
             "drawn_card": drawn_card,
             "plan": plan,
             "output": output,
+            "preferred_school": (preferred_school.value if isinstance(preferred_school, ClinicalSchool) else None),
             "timestamp": len(history),
         }],
     }
@@ -611,7 +615,7 @@ def _invalidate_user_caches(user_id: str) -> None:
 async def therapy_read(request: ConsultationRequest):
     try:
         output = _compose_output(request.user_story, request.drawn_card, request.plan, request.selected_cards, request.preferred_school)
-        _store_record(request.user_id, request.user_story, request.drawn_card, request.plan, output)
+        _store_record(request.user_id, request.user_story, request.drawn_card, request.plan, output, request.preferred_school)
         _invalidate_user_caches(request.user_id)
         return {"plan": request.plan.upper(), "output": output, "stored": True}
     except Exception as exc:  # pragma: no cover - defensive fallback
@@ -636,6 +640,64 @@ async def backoffice_samples():
             }
         )
     return {"samples": samples[:10], "total": len(samples)}
+
+
+@app.get("/api/v1/backoffice/analytics/summary")
+async def backoffice_analytics_summary():
+    school_counts: Dict[str, int] = {"FREUDIAN": 0, "ROGERIAN": 0, "BECK_CBT": 0}
+    tree_energy_values: List[float] = []
+    distortion_counts: Dict[str, int] = {}
+
+    for record in PSYCHOLOGY_DATABASE.values():
+        try:
+            payload = _decrypt_payload(record["encrypted_payload"])
+        except Exception:
+            continue
+
+        school = payload.get("preferred_school")
+        if school in school_counts:
+            school_counts[school] += 1
+
+        history = payload.get("history") or []
+        for entry in history:
+            profile = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("drawing_projective_profile", {})
+            tree_energy = profile.get("tree_energy_index")
+            if isinstance(tree_energy, (int, float)):
+                tree_energy_values.append(float(tree_energy))
+
+            distortions = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("detected_cognitive_distortions", [])
+            if not isinstance(distortions, list):
+                continue
+            for distortion in distortions:
+                if not isinstance(distortion, str):
+                    continue
+                normalized = distortion.strip().lower()
+                if not normalized:
+                    continue
+                distortion_counts[normalized] = distortion_counts.get(normalized, 0) + 1
+
+    total_records = max(1, len(PSYCHOLOGY_DATABASE))
+    preferred_school_distribution = {
+        school: round((count / total_records) * 100.0, 2) for school, count in school_counts.items()
+    }
+
+    if len(tree_energy_values) >= 2:
+        mean = sum(tree_energy_values) / len(tree_energy_values)
+        variance = sum((value - mean) ** 2 for value in tree_energy_values) / len(tree_energy_values)
+    else:
+        variance = 0.0
+
+    ranked_distortions = [
+        {"pattern": pattern, "count": count}
+        for pattern, count in sorted(distortion_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+    return {
+        "total_records": len(PSYCHOLOGY_DATABASE),
+        "preferred_school_distribution": preferred_school_distribution,
+        "tree_energy_variance": round(variance, 4),
+        "ranked_detected_cognitive_distortions": ranked_distortions,
+    }
 
 
 @app.get("/api/v1/therapy/dashboard/{user_id}")
