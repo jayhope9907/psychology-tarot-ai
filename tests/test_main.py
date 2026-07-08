@@ -34,6 +34,25 @@ def test_plan_controls_output_scope():
     assert profile["person_relational_tag"]
 
 
+def test_archetype_mapping_recalibrates_profile():
+    response = client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-archetype",
+            "user_story": "최근 관계에서 상실감을 느끼고, 실수에 대한 두려움이 큽니다.",
+            "drawn_card": "The Fool",
+            "selected_cards": ["The Fool", "The Tower"],
+            "plan": "PREMIUM",
+        },
+    )
+    assert response.status_code == 200
+    profile = response.json()["output"]["psychiatric_feature_profile"]
+    assert profile["cognitive_distortion_flags"]
+    assert profile["attachment_matrix_score"] >= 0.0
+    assert profile["attachment_matrix_score"] <= 1.0
+    assert profile["archetype_profiles"][0]["card_name"] == "The Fool"
+
+
 def test_backoffice_samples_and_purge_work():
     create_response = client.post(
         "/api/v1/therapy/read",
@@ -50,7 +69,8 @@ def test_backoffice_samples_and_purge_work():
     assert samples_response.status_code == 200
     assert len(samples_response.json()["samples"]) >= 1
 
-    purge_response = client.delete(
+    purge_response = client.request(
+        "DELETE",
         "/api/v1/therapy/purge",
         json={"user_id": "user-premium"},
     )

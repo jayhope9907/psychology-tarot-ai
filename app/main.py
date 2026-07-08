@@ -29,6 +29,27 @@ PLAN_RULES = {
 PSYCHOLOGY_DATABASE: Dict[str, Dict[str, Any]] = {}
 PURGED_USERS: set[str] = set()
 
+TAROT_ARCHETYPE_MAP = {
+    "The Fool": {
+        "archetype": "The Innocent",
+        "psychiatric_stress_weight": 0.35,
+        "cognitive_distortion_flag": "catastrophizing",
+        "attachment_matrix_score": 0.42,
+    },
+    "The Tower": {
+        "archetype": "The Destroyer",
+        "psychiatric_stress_weight": 0.81,
+        "cognitive_distortion_flag": "all_or_nothing",
+        "attachment_matrix_score": 0.28,
+    },
+    "The Magician": {
+        "archetype": "The Creator",
+        "psychiatric_stress_weight": 0.47,
+        "cognitive_distortion_flag": "overgeneralization",
+        "attachment_matrix_score": 0.61,
+    },
+}
+
 
 def _get_fernet() -> Fernet:
     key = os.getenv("FERNET_KEY")
@@ -53,8 +74,19 @@ class DrawingProjectiveProfile(BaseModel):
     person_relational_tag: str
 
 
+class ArchetypeProfile(BaseModel):
+    card_name: str
+    archetype: str
+    psychiatric_stress_weight: float
+    cognitive_distortion_flag: str
+    attachment_matrix_score: float
+
+
 class PsychiatricFeatureProfile(BaseModel):
     drawing_projective_profile: DrawingProjectiveProfile
+    cognitive_distortion_flags: List[str] = []
+    attachment_matrix_score: float = 0.0
+    archetype_profiles: List[ArchetypeProfile] = []
 
 
 class ConsultationRequest(BaseModel):
@@ -62,6 +94,7 @@ class ConsultationRequest(BaseModel):
     user_story: str
     drawn_card: str
     plan: str = "FREE"
+    selected_cards: Optional[List[str]] = None
 
 
 class PurgeRequest(BaseModel):
@@ -117,7 +150,44 @@ def _build_projective_profile(user_story: str, drawn_card: str) -> Dict[str, Any
     }
 
 
-def _compose_output(user_story: str, drawn_card: str, plan: str) -> Dict[str, Any]:
+def _build_archetype_profile(user_story: str, selected_cards: Optional[List[str]] = None) -> Dict[str, Any]:
+    selected = selected_cards or []
+    profiles: List[Dict[str, Any]] = []
+    flags: List[str] = []
+    scores: List[float] = []
+
+    for card_name in selected:
+        mapping = TAROT_ARCHETYPE_MAP.get(card_name)
+        if not mapping:
+            continue
+        profiles.append(
+            {
+                "card_name": card_name,
+                "archetype": mapping["archetype"],
+                "psychiatric_stress_weight": mapping["psychiatric_stress_weight"],
+                "cognitive_distortion_flag": mapping["cognitive_distortion_flag"],
+                "attachment_matrix_score": mapping["attachment_matrix_score"],
+            }
+        )
+        flags.append(mapping["cognitive_distortion_flag"])
+        scores.append(mapping["attachment_matrix_score"])
+
+    if not profiles:
+        fallback_flag = "rumination" if any(keyword in (user_story or "").lower() for keyword in ["불안", "스트레스", "혼란", "두려움"]) else "none"
+        return {
+            "cognitive_distortion_flags": [fallback_flag],
+            "attachment_matrix_score": 0.5,
+            "archetype_profiles": [],
+        }
+
+    return {
+        "cognitive_distortion_flags": flags,
+        "attachment_matrix_score": round(sum(scores) / len(scores), 2),
+        "archetype_profiles": profiles,
+    }
+
+
+def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards: Optional[List[str]] = None) -> Dict[str, Any]:
     config = _resolve_plan(plan)
     system_prompt = build_system_prompt()
     user_prompt = build_user_prompt(user_story, drawn_card)
@@ -144,6 +214,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str) -> Dict[str, An
             analysis = _build_fallback_analysis(user_story, drawn_card, plan)
 
     profile = _build_projective_profile(user_story, drawn_card)
+    archetype_profile = _build_archetype_profile(user_story, selected_cards)
     return {
         "summary": analysis,
         "scope": config["scope"],
@@ -153,6 +224,9 @@ def _compose_output(user_story: str, drawn_card: str, plan: str) -> Dict[str, An
         "safety_note": "위기 상황 시 전문가 또는 응급 지원을 권장합니다.",
         "psychiatric_feature_profile": {
             "drawing_projective_profile": profile,
+            "cognitive_distortion_flags": archetype_profile["cognitive_distortion_flags"],
+            "attachment_matrix_score": archetype_profile["attachment_matrix_score"],
+            "archetype_profiles": archetype_profile["archetype_profiles"],
         },
     }
 
@@ -176,7 +250,7 @@ def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, out
 @app.post("/api/v1/therapy/read")
 async def therapy_read(request: ConsultationRequest):
     try:
-        output = _compose_output(request.user_story, request.drawn_card, request.plan)
+        output = _compose_output(request.user_story, request.drawn_card, request.plan, request.selected_cards)
         _store_record(request.user_id, request.user_story, request.drawn_card, request.plan, output)
         return {"plan": request.plan.upper(), "output": output, "stored": True}
     except Exception as exc:  # pragma: no cover - defensive fallback
@@ -204,11 +278,14 @@ async def backoffice_samples():
 
 
 @app.delete("/api/v1/therapy/purge")
-async def therapy_purge(request: PurgeRequest):
+async def therapy_purge(request: Optional[PurgeRequest] = None, user_id: Optional[str] = None):
     try:
-        if request.user_id in PSYCHOLOGY_DATABASE:
-            del PSYCHOLOGY_DATABASE[request.user_id]
-        PURGED_USERS.add(request.user_id)
-        return {"status": "purged", "user_id": request.user_id, "memory_erased": True}
+        target_user_id = user_id or (request.user_id if request else None)
+        if not target_user_id:
+            raise HTTPException(status_code=422, detail="user_id is required")
+        if target_user_id in PSYCHOLOGY_DATABASE:
+            del PSYCHOLOGY_DATABASE[target_user_id]
+        PURGED_USERS.add(target_user_id)
+        return {"status": "purged", "user_id": target_user_id, "memory_erased": True}
     except Exception as exc:  # pragma: no cover - defensive fallback
         raise HTTPException(status_code=500, detail=str(exc)) from exc
