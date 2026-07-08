@@ -46,6 +46,17 @@ def _decrypt_payload(token: str) -> Dict[str, Any]:
     return json.loads(_get_fernet().decrypt(token.encode("utf-8")).decode("utf-8"))
 
 
+class DrawingProjectiveProfile(BaseModel):
+    structural_sign: str
+    house_interpreted_code: str
+    tree_energy_index: float
+    person_relational_tag: str
+
+
+class PsychiatricFeatureProfile(BaseModel):
+    drawing_projective_profile: DrawingProjectiveProfile
+
+
 class ConsultationRequest(BaseModel):
     user_id: str = "anonymous"
     user_story: str
@@ -68,6 +79,42 @@ def _build_fallback_analysis(user_story: str, drawn_card: str, plan: str) -> str
         f"카드 '{drawn_card}'는 현재 불안과 성찰의 시점으로 해석됩니다.\n"
         f"{plan} 등급 기준으로는 짧고 실천 가능한 CBT 중심 접근을 권장합니다."
     )
+
+
+def _build_projective_profile(user_story: str, drawn_card: str) -> Dict[str, Any]:
+    normalized_story = (user_story or "").lower()
+    normalized_card = (drawn_card or "").lower()
+
+    structural_sign = "stable"
+    if any(keyword in normalized_story for keyword in ["불안", "스트레스", "초조", "긴장", "우울", "혼란"]):
+        structural_sign = "tension"
+    elif any(keyword in normalized_story for keyword in ["안정", "평온", "안정감", "편안"]):
+        structural_sign = "calm"
+
+    house_code = "H1"
+    if "관계" in normalized_story or "사랑" in normalized_story:
+        house_code = "H2"
+    elif "직장" in normalized_story or "업무" in normalized_story or "일" in normalized_story:
+        house_code = "H6"
+    elif "가족" in normalized_story or "가정" in normalized_story:
+        house_code = "H4"
+
+    tree_energy_index = min(9.9, max(1.0, 3.0 + len(normalized_story.split()) * 0.18 + (0.4 if "상실" in normalized_story else 0.0)))
+    person_relational_tag = "self-reflective"
+    if any(keyword in normalized_story for keyword in ["관계", "사랑", "연인", "친구"]):
+        person_relational_tag = "interpersonal"
+    elif any(keyword in normalized_story for keyword in ["고립", "혼자", "외로움"]):
+        person_relational_tag = "withdrawn"
+
+    if "hermit" in normalized_card or "은둔" in normalized_story:
+        person_relational_tag = "withdrawn"
+
+    return {
+        "structural_sign": structural_sign,
+        "house_interpreted_code": house_code,
+        "tree_energy_index": round(tree_energy_index, 2),
+        "person_relational_tag": person_relational_tag,
+    }
 
 
 def _compose_output(user_story: str, drawn_card: str, plan: str) -> Dict[str, Any]:
@@ -96,6 +143,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str) -> Dict[str, An
         except Exception:
             analysis = _build_fallback_analysis(user_story, drawn_card, plan)
 
+    profile = _build_projective_profile(user_story, drawn_card)
     return {
         "summary": analysis,
         "scope": config["scope"],
@@ -103,6 +151,9 @@ def _compose_output(user_story: str, drawn_card: str, plan: str) -> Dict[str, An
         "actions": actions,
         "asset_value_krw": 50000,
         "safety_note": "위기 상황 시 전문가 또는 응급 지원을 권장합니다.",
+        "psychiatric_feature_profile": {
+            "drawing_projective_profile": profile,
+        },
     }
 
 

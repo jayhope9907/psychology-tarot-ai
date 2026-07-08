@@ -27,6 +27,11 @@ def test_plan_controls_output_scope():
     assert body["plan"] == "FREE"
     assert len(body["output"]["actions"]) <= 2
     assert body["output"]["scope"] == "brief"
+    profile = body["output"]["psychiatric_feature_profile"]["drawing_projective_profile"]
+    assert profile["structural_sign"]
+    assert profile["house_interpreted_code"]
+    assert isinstance(profile["tree_energy_index"], (int, float))
+    assert profile["person_relational_tag"]
 
 
 def test_backoffice_samples_and_purge_work():
