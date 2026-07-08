@@ -3,7 +3,7 @@ import os
 
 from fastapi.testclient import TestClient
 
-from app.main import PSYCHOLOGY_DATABASE, app
+from app.main import PSYCHOLOGY_DATABASE, PURGED_USERS, app
 
 
 client = TestClient(app)
@@ -11,6 +11,7 @@ client = TestClient(app)
 
 def setup_function():
     PSYCHOLOGY_DATABASE.clear()
+    PURGED_USERS.clear()
 
 
 def test_plan_controls_output_scope():
@@ -257,7 +258,95 @@ def test_streaming_endpoint_stops_cleanly_when_client_disconnects():
         assert first_line
 
 
-def test_backoffice_samples_and_purge_work():
+def test_purge_requires_audit_token_header(monkeypatch):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-purge-protected",
+            "user_story": "보호된 데이터를 삭제하려고 합니다.",
+            "drawn_card": "The Hermit",
+            "plan": "PREMIUM",
+        },
+    )
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/therapy/purge",
+        json={"user_id": "user-purge-protected"},
+    )
+
+    assert response.status_code == 401
+    assert "user-purge-protected" in PSYCHOLOGY_DATABASE
+    assert "user-purge-protected" not in PURGED_USERS
+
+
+def test_purge_rejects_invalid_audit_token(monkeypatch):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-purge-invalid-token",
+            "user_story": "잘못된 토큰으로는 삭제할 수 없어야 합니다.",
+            "drawn_card": "The Magician",
+            "plan": "PREMIUM",
+        },
+    )
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/therapy/purge",
+        json={"user_id": "user-purge-invalid-token"},
+        headers={"X-Audit-Token": "wrong-token"},
+    )
+
+    assert response.status_code == 403
+    assert "user-purge-invalid-token" in PSYCHOLOGY_DATABASE
+    assert "user-purge-invalid-token" not in PURGED_USERS
+
+
+def test_purge_commits_with_valid_token_and_writes_security_audit_log(monkeypatch, tmp_path):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
+    audit_log_path = tmp_path / "purge_audit.jsonl"
+    monkeypatch.setenv("PURGE_AUDIT_LOG_PATH", str(audit_log_path))
+
+    client.post(
+        "/api/v1/therapy/read",
+        json={
+            "user_id": "user-purge-commit",
+            "user_story": "감사 로그가 기록되어야 합니다.",
+            "drawn_card": "The Lovers",
+            "plan": "PREMIUM",
+        },
+    )
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/therapy/purge",
+        json={"user_id": "user-purge-commit"},
+        headers={"X-Audit-Token": "secure-audit-token"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "purged"
+    assert body["user_id"] == "user-purge-commit"
+    assert "user-purge-commit" not in PSYCHOLOGY_DATABASE
+    assert "user-purge-commit" in PURGED_USERS
+
+    assert audit_log_path.exists()
+    audit_lines = audit_log_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(audit_lines) == 1
+    audit_entry = json.loads(audit_lines[0])
+    assert audit_entry["user_id"] == "user-purge-commit"
+    assert audit_entry["action_type"] == "PURGE_COMMITTED"
+    assert "T" in audit_entry["timestamp"]
+    assert "user_story" not in audit_entry
+    assert "output" not in audit_entry
+
+
+def test_backoffice_samples_and_purge_work(monkeypatch):
+    monkeypatch.setenv("PURGE_AUDIT_TOKEN", "secure-audit-token")
     create_response = client.post(
         "/api/v1/therapy/read",
         json={

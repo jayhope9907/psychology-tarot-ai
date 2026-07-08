@@ -1,5 +1,6 @@
 import asyncio
 import os
+from datetime import datetime, timezone
 from enum import Enum
 
 from fastapi import FastAPI, HTTPException, Request
@@ -632,14 +633,53 @@ async def therapy_stream(user_id: str):
 
 
 @app.delete("/api/v1/therapy/purge")
-async def therapy_purge(request: Optional[PurgeRequest] = None, user_id: Optional[str] = None):
+async def therapy_purge(request: Request, user_id: Optional[str] = None):
     try:
-        target_user_id = user_id or (request.user_id if request else None)
+        payload: Optional[Dict[str, Any]] = None
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = None
+
+        if isinstance(payload, dict):
+            target_user_id = user_id or str(payload.get("user_id") or "").strip() or None
+        else:
+            target_user_id = user_id
+
         if not target_user_id:
             raise HTTPException(status_code=422, detail="user_id is required")
-        if target_user_id in PSYCHOLOGY_DATABASE:
-            del PSYCHOLOGY_DATABASE[target_user_id]
-        PURGED_USERS.add(target_user_id)
+
+        audit_token = os.getenv("PURGE_AUDIT_TOKEN", "").strip()
+        provided_token = request.headers.get("x-audit-token")
+
+        if not audit_token:
+            raise HTTPException(status_code=500, detail="Purge audit token is not configured")
+        if not provided_token:
+            raise HTTPException(status_code=401, detail="X-Audit-Token header is required")
+        if provided_token != audit_token:
+            raise HTTPException(status_code=403, detail="Invalid X-Audit-Token")
+
+        def _purge_in_sandbox() -> None:
+            if target_user_id in PSYCHOLOGY_DATABASE:
+                del PSYCHOLOGY_DATABASE[target_user_id]
+            PURGED_USERS.add(target_user_id)
+
+        _purge_in_sandbox()
+
+        audit_log_path = os.getenv("PURGE_AUDIT_LOG_PATH", "purge_audit.jsonl")
+        audit_dir = os.path.dirname(audit_log_path)
+        if audit_dir:
+            os.makedirs(audit_dir, exist_ok=True)
+        audit_entry = {
+            "user_id": target_user_id,
+            "action_type": "PURGE_COMMITTED",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        with open(audit_log_path, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(audit_entry, separators=(",", ":")) + "\n")
+
         return {"status": "purged", "user_id": target_user_id, "memory_erased": True}
+    except HTTPException:
+        raise
     except Exception as exc:  # pragma: no cover - defensive fallback
         raise HTTPException(status_code=500, detail=str(exc)) from exc
