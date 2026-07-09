@@ -47,6 +47,105 @@ def _instrument_label(instrument_id: str) -> str:
     return INSTRUMENT_LABELS.get(instrument_id, "마음 상태")
 
 
+def _last_assistant_message(state: ChatSessionState) -> str:
+    for entry in reversed(state.messages):
+        if entry.get("role") == "assistant":
+            return (entry.get("content") or "").strip()
+    return ""
+
+
+def _is_near_duplicate(candidate: str, previous: str) -> bool:
+    if not candidate or not previous:
+        return False
+    if candidate == previous:
+        return True
+    shorter, longer = (candidate, previous) if len(candidate) <= len(previous) else (previous, candidate)
+    if len(shorter) >= 24 and shorter in longer:
+        return True
+    return False
+
+
+def _is_short_follow_up(user_message: str) -> bool:
+    text = (user_message or "").strip()
+    if len(text) > 28:
+        return False
+    markers = ("네", "맞", "응", "그래", "맞아", "맞아요", "네요", "그렇", "맞습니다")
+    return len(text) <= 14 or any(marker in text for marker in markers)
+
+
+def _workplace_context(state: ChatSessionState, user_message: str) -> bool:
+    blob = f"{user_message} {state.phase_notes.get('chief_complaint', '')}".lower()
+    return any(keyword in blob for keyword in ("직장", "회사", "상사", "동료", "업무", "일"))
+
+
+def _conceptualization_reply(state: ChatSessionState, user_message: str) -> str:
+    chief = (state.phase_notes.get("chief_complaint") or "지금 이야기").strip()
+    notes = state.phase_notes
+
+    if _is_short_follow_up(user_message):
+        if _workplace_context(state, user_message):
+            return (
+                "직장에서 힘드셨군요. 그때 구체적으로 어떤 일이 있었는지, "
+                "가장 마음에 남는 순간 하나만 들려주실 수 있을까요?"
+            )
+        return (
+            "네, 말씀해 주신 마음 이어서 들어볼게요. "
+            "그 상황에서 몸이나 마음에 가장 먼저 올라온 느낌은 어땠나요?"
+        )
+
+    if notes.get("conceptualization_intro_done"):
+        return (
+            "조금 더 구체적으로 함께 짚어볼게요. "
+            "그때 특히 힘들었던 장면이나, "
+            "마음속에 떠오르는 생각이 있다면 편하게 말씀해 주세요."
+        )
+
+    notes["conceptualization_intro_done"] = True
+    return (
+        f"'{chief[:36]}' 이야기를 들으니, "
+        "비슷한 마음이 반복될 수 있겠다는 생각이 들어요. "
+        "그때 가장 크게 느껴지는 감정은 무엇에 가깝나요?"
+    )
+
+
+def _anti_repeat_reply(
+    user_message: str,
+    state: ChatSessionState,
+    decision: Optional[OrchestratorDecision] = None,
+    assessment_response: Optional[Dict[str, Any]] = None,
+    blocked: str = "",
+) -> str:
+    """Generate a fresh reply when the candidate duplicates the previous turn."""
+    if state.counseling_phase == "conceptualization":
+        state.phase_notes["conceptualization_intro_done"] = True
+        return _conceptualization_reply(state, user_message)
+
+    if _workplace_context(state, user_message) or "직장" in user_message:
+        return (
+            "직장에서의 그 마음, 충분히 무겁게 느껴져요. "
+            "오늘 있었던 일 중에서 특히 마음이 무거웠던 순간이 있다면 들려주실 수 있을까요?"
+        )
+
+    if detect_distress(user_message) or session_has_distress(state, user_message):
+        return (
+            "힘드시다는 말씀, 잘 전해졌어요. "
+            "그 마음이 올라올 때 몸에서는 어떻게 느껴지나요? "
+            "편한 만큼만 더 들려주셔도 괜찮아요."
+        )
+
+    if _is_short_follow_up(user_message):
+        return (
+            "네, 이어서 들어볼게요. "
+            "방금 말씀하신 상황에서 가장 먼저 떠오르는 감정이나 생각이 있다면 무엇인가요?"
+        )
+
+    return (
+        "말씀해 주셔서 고마워요. "
+        "방금 이야기를 조금만 더 구체적으로 들려주시면, "
+        "지금 마음을 더 잘 이해하는 데 큰 도움이 될 것 같아요."
+    )
+
+
 def fallback_reply(
     user_message: str,
     state: ChatSessionState,
@@ -69,11 +168,7 @@ def fallback_reply(
         )
 
     if state.counseling_phase == "conceptualization" and state.phase_notes.get("chief_complaint"):
-        return (
-            f"지금까지 이야기해 주신 '{state.phase_notes['chief_complaint'][:40]}' 부분을 "
-            "돌아보면, 비슷한 패턴이 반복되는 것 같아요. "
-            "그때 가장 크게 느껴지는 감정이나 생각이 있다면 함께 짚어볼까요?"
-        )
+        return _conceptualization_reply(state, user_message)
 
     if state.counseling_phase == "intervention" and state.phase_notes.get("goals"):
         goal = state.phase_notes["goals"][0]
@@ -201,7 +296,12 @@ def enrich_assistant_reply(
     if (detect_distress(user_message) or session_has_distress(state, user_message)) and user_message.strip() in cleaned:
         return fallback
 
-    return cleaned
+    result = cleaned if cleaned else fallback
+    last = _last_assistant_message(state)
+    if _is_near_duplicate(result, last):
+        return _anti_repeat_reply(user_message, state, decision, assessment_response, blocked=result)
+
+    return result
 
 
 async def _yield_text_with_pacing(text: str, delay: float = 0.028) -> AsyncIterator[str]:
@@ -279,6 +379,15 @@ def build_chat_messages(
     messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
     messages.extend(state.messages[-14:])
     messages.append({"role": "user", "content": user_message})
+
+    last_assistant = _last_assistant_message(state)
+    if last_assistant:
+        system_prompt += (
+            "\n\n직전 턴과 **같은 문장·같은 질문을 반복하지 마세요**. "
+            "내담자의 새 메시지에 맞춰 한 단계 더 깊이 반응하세요."
+        )
+        messages[0]["content"] = system_prompt
+
     return messages
 
 

@@ -168,10 +168,12 @@ def _advance_phase(state: ChatSessionState, user_message: str) -> None:
 
     if current == PHASE_ASSESSMENT:
         completion = _battery_completion(state)
-        if (
-            state.assessments_completed >= 2
-            or completion >= 0.22
-            or (state.assessments_completed >= 1 and state.turn_count >= 5)
+        if state.assessments_completed >= 2 and state.turn_count >= 5:
+            state.counseling_phase = PHASE_CONCEPTUALIZATION
+        elif (
+            completion >= 0.22
+            and state.assessments_completed >= 1
+            and state.turn_count >= 7
         ):
             state.counseling_phase = PHASE_CONCEPTUALIZATION
         return

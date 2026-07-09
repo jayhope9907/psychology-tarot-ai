@@ -4,7 +4,7 @@ import pytest
 
 from app.services.assessment_package import complete_checkout
 from app.services.chat_session import ChatSessionState, clear_sessions
-from app.services.chat_stream import fallback_reply, run_chat_turn
+from app.services.chat_stream import enrich_assistant_reply, fallback_reply, run_chat_turn
 from app.services.orchestrator import decide_turn
 
 
@@ -139,3 +139,51 @@ def test_full_conversation_simulation():
         if evt == "done" and msg == "검사가능한가요?"
     )
     assert "가능" in first_reply
+
+
+def test_conceptualization_short_follow_up_not_repeat():
+    state = ChatSessionState(user_id="work-repeat")
+    state.counseling_phase = "conceptualization"
+    state.phase_notes = {
+        "chief_complaint": "오늘 직장에서 힘들었어요",
+        "conceptualization_intro_done": True,
+    }
+    state.messages = [
+        {"role": "user", "content": "힘들어요"},
+        {"role": "assistant", "content": "오늘 직장에서 힘드셨군요."},
+        {"role": "user", "content": "오늘 직장에서 힘들었어요"},
+        {
+            "role": "assistant",
+            "content": (
+                "지금까지 이야기해 주신 '오늘 직장에서 힘들었어요' 부분을 "
+                "돌아보면, 비슷한 패턴이 반복되는 것 같아요. "
+                "그때 가장 크게 느껴지는 감정이나 생각이 있다면 함께 짚어볼까요?"
+            ),
+        },
+    ]
+
+    reply = fallback_reply("네 맞아요 직장에서", state)
+
+    assert "비슷한 패턴" not in reply
+    assert "직장" in reply
+    assert "어떤 일" in reply or "구체적" in reply
+
+
+def test_enrich_assistant_reply_replaces_duplicate():
+    state = ChatSessionState(user_id="dup-enrich")
+    state.counseling_phase = "conceptualization"
+    state.phase_notes = {
+        "chief_complaint": "오늘 직장에서 힘들었어요",
+        "conceptualization_intro_done": True,
+    }
+    duplicate = (
+        "지금까지 이야기해 주신 '오늘 직장에서 힘들었어요' 부분을 "
+        "돌아보면, 비슷한 패턴이 반복되는 것 같아요. "
+        "그때 가장 크게 느껴지는 감정이나 생각이 있다면 함께 짚어볼까요?"
+    )
+    state.messages = [{"role": "assistant", "content": duplicate}]
+
+    reply = enrich_assistant_reply(duplicate, "네 맞아요 직장에서", state)
+
+    assert reply != duplicate
+    assert "비슷한 패턴" not in reply
