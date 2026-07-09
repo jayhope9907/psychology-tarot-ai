@@ -8,6 +8,7 @@ __pycache__
 *.pyo
 *.pyd
 *.log
+*.jsonl
 *.sqlite3
 .env
 .env.*
@@ -20,6 +21,7 @@ build
 dist
 node_modules
 *.egg-info
-Dockerfile*
-README*
 docs/
+tests/
+purge_audit.jsonl
+security_audit.jsonl

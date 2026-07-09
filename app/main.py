@@ -1,36 +1,30 @@
 import asyncio
+import json
 import os
 from datetime import datetime, timezone
-from enum import Enum
-
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+from cryptography.fernet import Fernet
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sse_starlette import EventSourceResponse
-from pydantic import BaseModel
 from openai import OpenAI
-from dotenv import load_dotenv
+from pydantic import BaseModel
+from sse_starlette import EventSourceResponse
 
-from app.prompt_config import build_system_prompt, build_user_prompt
+from app.assessments import ALL_INSTRUMENTS, ASSESSMENT_DOMAINS, INSTRUMENT_PROFILES
 from app.models.clinical import ClinicalSchool
+from app.prompt_config import build_system_prompt, build_user_prompt
+from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
 from app.services.chat_session import CHAT_SESSIONS, get_or_create_session
 from app.services.chat_stream import format_sse, run_chat_turn
-from app.services.persona_router import PERSONA_CATALOG, detect_cognitive_distortions, route_clinical_persona
-from app.services.prompt_binding import PromptContextWeightBindingFactory
-from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
 from app.services.orchestrator import record_assessment_answer
-from app.assessments import ASSESSMENT_DOMAINS, INSTRUMENT_PROFILES, ALL_INSTRUMENTS
-from app.services.vault import (
-    audit_log_path,
-    get_fernet,
-    rotate_audit_log_if_needed,
-    seal_payload,
-    unseal_payload,
-    write_audit_event,
-)
+from app.services.persona_router import PERSONA_CATALOG, detect_cognitive_distortions
+from app.services.prompt_binding import PromptContextWeightBindingFactory
+from app.services.vault import get_fernet, seal_payload, unseal_payload, write_audit_event
 
 # 환경 변수 로드 및 AI 클라이언트 초기화
 load_dotenv()
@@ -41,13 +35,6 @@ app = FastAPI(title="Psychology Tarot AI System")
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-import base64
-import json
-import shutil
-from typing import Any, Dict, List, Optional
-
-from cryptography.fernet import Fernet
 
 PLAN_RULES = {
     "FREE": {"scope": "brief", "max_actions": 2, "max_tokens": 180, "detail_level": "low"},
@@ -134,10 +121,6 @@ def _encrypt_payload(user_id: str, payload: Dict[str, Any]) -> str:
 
 def _decrypt_payload(user_id: str, token: str) -> Dict[str, Any]:
     return unseal_payload(user_id, token)
-
-
-def _rotate_audit_log_if_needed(path: str) -> None:
-    rotate_audit_log_if_needed(path)
 
 
 class PsychologyApiException(Exception):
