@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2e28" />
+  <meta name="description" content="마음쉼터 — AI 상담과 함께하는 조용한 마음 돌봄 공간" />
+  <title>마음쉼터 · 이서연 상담사</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #0f1714;
+      --bg: #141f1b;
+      --surface: rgba(255, 252, 247, 0.06);
+      --surface-solid: #faf8f4;
+      --surface-elevated: rgba(255, 255, 255, 0.92);
+      --glass: rgba(255, 253, 248, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.45);
+      --text: #1c2420;
+      --text-on-dark: #f4f1eb;
+      --text-soft: #6b756f;
+      --text-muted: #9aa39d;
+      --accent: #3d6b5a;
+      --accent-light: #5a8f78;
+      --accent-glow: rgba(90, 143, 120, 0.35);
+      --accent-soft: #e8f2ec;
+      --gold: #c4a574;
+      --gold-soft: rgba(196, 165, 116, 0.18);
+      --user-bubble: linear-gradient(135deg, #dce8f0 0%, #cddfe9 100%);
+      --shadow-sm: 0 2px 12px rgba(15, 23, 20, 0.06);
+      --shadow-md: 0 8px 32px rgba(15, 23, 20, 0.1);
+      --shadow-lg: 0 24px 64px rgba(15, 23, 20, 0.14);
+      --radius: 20px;
+      --radius-lg: 28px;
+      --sidebar-w: 300px;
+      --font-display: "Cormorant Garamond", "Noto Serif KR", serif;
+      --font-body: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      color: var(--text);
+      background: var(--bg-deep);
+      overflow: hidden;
+    }
+
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 0%, rgba(90, 143, 120, 0.22), transparent 55%),
+        radial-gradient(ellipse 60% 50% at 95% 100%, rgba(196, 165, 116, 0.14), transparent 50%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(61, 107, 90, 0.08), transparent 70%),
+        linear-gradient(165deg, #0f1714 0%, #1a2822 45%, #141f1b 100%);
+    }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .app {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      height: 100vh;
+      height: 100dvh;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .brand {
+      padding: 20px 18px 16px;
+      border-radius: var(--radius-lg);
+      background: var(--glass);
+      backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, var(--accent-light), var(--accent));
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .brand-name {
+      font-family: var(--font-display);
+      font-size: 1.55rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .brand-tagline {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--text-soft);
+      line-height: 1.5;
+    }
+
+    .counselor-card {
+      flex: 1;
+      min-height: 0;
+      padding: 22px 18px;
+      border-radius: var(--radius-lg);
+      background: var(--glass);
+      backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .avatar-ring {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      margin-bottom: 14px;
+    }
+
+    .avatar-ring svg.ring {
+      position: absolute;
+      inset: 0;
+      transform: rotate(-90deg);
+    }
+
+    .avatar-ring svg.ring circle.track {
+      fill: none;
+      stroke: var(--accent-soft);
+      stroke-width: 3;
+    }
+
+    .avatar-ring svg.ring circle.progress {
+      fill: none;
+      stroke: url(#ringGrad);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 251.2;
+      stroke-dashoffset: 251.2;
+      transition: stroke-dashoffset 0.8s var(--ease);
+    }
+
+    .avatar {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, var(--accent-light), var(--accent));
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 600;
+      font-size: 1.35rem;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px var(--accent-glow);
+    }
+
+    .counselor-card h2 {
+      margin: 0 0 4px;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .counselor-card .role {
+      margin: 0 0 14px;
+      font-size: 0.8rem;
+      color: var(--text-soft);
+      line-height: 1.45;
+    }
+
+    .session-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.74rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+
+    .session-chip::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      box-shadow: 0 0 0 3px rgba(90, 143, 120, 0.25);
+      animation: pulse 2.4s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.92); }
+    }
+
+    .stats {
+      width: 100%;
+      display: grid;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .stat-item {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.6);
+      text-align: left;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .pace-bar {
+      height: 4px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .pace-fill {
+      height: 100%;
+      width: 18%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent-light), var(--accent));
+      transition: width 0.5s var(--ease);
+    }
+
+    .persona-panel {
+      padding: 14px;
+      border-radius: var(--radius-lg);
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .persona-panel h3 {
+      margin: 0 0 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .persona-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .persona-btn {
+      border: 1px solid rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.45);
+      color: var(--text-soft);
+      border-radius: 12px;
+      padding: 9px 8px;
+      font: inherit;
+      font-size: 0.74rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+    }
+
+    .persona-btn:hover {
+      background: white;
+      color: var(--accent);
+      border-color: var(--accent-soft);
+    }
+
+    .persona-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    #personaStatus {
+      margin: 8px 0 0;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── Main chat ── */
+    .main {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 0;
+      border-radius: var(--radius-lg);
+      background: var(--surface-elevated);
+      border: 1px solid rgba(255,255,255,0.8);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+
+    .mobile-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(12px);
+    }
+
+    .mobile-header h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .mobile-toggle {
+      border: none;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .chat-scroll {
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-behavior: smooth;
+    }
+
+    #messages {
+      padding: 28px 24px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-height: 100%;
+    }
+
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--text-soft);
+      animation: fadeUp 0.6s var(--ease);
+    }
+
+    .empty-state .emoji {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+      filter: grayscale(0.2);
+    }
+
+    .empty-state h2 {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+
+    .empty-state p {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      max-width: 320px;
+    }
+
+    .message-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      animation: fadeUp 0.4s var(--ease);
+    }
+
+    .message-row.user { justify-content: flex-end; }
+
+    .mini-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, var(--accent-light), var(--accent));
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+
+    .message-stack {
+      max-width: min(76%, 520px);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .message-row.user .message-stack { align-items: flex-end; }
+
+    .sender {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 0 6px;
+      font-weight: 500;
+    }
+
+    .bubble {
+      padding: 14px 18px;
+      border-radius: 20px;
+      line-height: 1.72;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.94rem;
+    }
+
+    .bubble.assistant {
+      background: white;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-bottom-left-radius: 6px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .bubble.user {
+      background: var(--user-bubble);
+      color: #1e3344;
+      border-bottom-right-radius: 6px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .assessment-wrap {
+      max-width: min(84%, 540px);
+      animation: fadeUp 0.45s var(--ease);
+    }
+
+    .assessment-card {
+      background: linear-gradient(160deg, #fffef9 0%, #f5f0e8 100%);
+      border: 1px solid rgba(196, 165, 116, 0.25);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .assessment-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-light), var(--gold));
+    }
+
+    .assessment-head {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .assessment-head strong {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .assessment-head span {
+      display: block;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      margin-top: 2px;
+    }
+
+    .assessment-framing {
+      margin: 0 0 10px;
+      color: var(--text-soft);
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    .assessment-prompt {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .assessment-note {
+      margin: 0 0 16px;
+      color: var(--gold);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button.option,
+    button.secondary {
+      border: 1px solid rgba(0,0,0,0.08);
+      background: white;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.84rem;
+      font-weight: 500;
+      transition: all 0.18s var(--ease);
+    }
+
+    button.option:hover,
+    button.secondary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    button.secondary {
+      color: var(--text-muted);
+      background: transparent;
+    }
+
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+    .typing {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      padding: 4px 2px;
+      animation: fadeUp 0.3s var(--ease);
+    }
+
+    .typing-dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .typing-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+    /* ── Composer ── */
+    .composer-wrap {
+      padding: 16px 20px 18px;
+      border-top: 1px solid rgba(0,0,0,0.05);
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(16px);
+    }
+
+    .composer {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      padding: 6px 6px 6px 18px;
+      border-radius: 18px;
+      background: white;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .composer:focus-within {
+      border-color: var(--accent-light);
+      box-shadow: 0 0 0 4px var(--accent-glow), var(--shadow-sm);
+    }
+
+    textarea {
+      flex: 1;
+      min-height: 24px;
+      max-height: 140px;
+      resize: none;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 0.94rem;
+      color: var(--text);
+      outline: none;
+      line-height: 1.55;
+      padding: 10px 0;
+    }
+
+    textarea::placeholder { color: var(--text-muted); }
+
+    .send {
+      border: none;
+      background: linear-gradient(145deg, var(--accent-light), var(--accent));
+      color: white;
+      border-radius: 14px;
+      padding: 12px 20px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      min-width: 72px;
+      transition: transform 0.15s var(--ease), box-shadow 0.15s;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .send:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .composer-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      padding: 0 4px;
+      gap: 12px;
+    }
+
+    .composer-hint {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    .safety {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      text-align: right;
+      line-height: 1.4;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 20, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 90;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    @media (max-width: 860px) {
+      .app {
+        grid-template-columns: 1fr;
+        padding: 0;
+        gap: 0;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(320px, 88vw);
+        z-index: 100;
+        padding: 12px;
+        background: var(--bg);
+        transform: translateX(-105%);
+        transition: transform 0.35s var(--ease);
+        overflow-y: auto;
+      }
+
+      .sidebar.open { transform: translateX(0); }
+
+      .sidebar-overlay.visible { display: block; }
+
+      .main {
+        border-radius: 0;
+        border: none;
+        height: 100vh;
+        height: 100dvh;
+      }
+
+      .mobile-header { display: flex; }
+
+      #messages { padding: 18px 16px 24px; }
+      .message-stack, .assessment-wrap { max-width: 90%; }
+
+      .composer-meta { flex-direction: column; align-items: flex-start; }
+      .safety { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <div class="brand-icon" aria-hidden="true">🌿</div>
+          <h1 class="brand-name">마음쉼터</h1>
+        </div>
+        <p class="brand-tagline">조용히, 천천히 — 당신의 마음을 함께 살펴봅니다</p>
+      </div>
+
+      <div class="counselor-card">
+        <div class="avatar-ring">
+          <svg class="ring" viewBox="0 0 88 88" aria-hidden="true">
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#5a8f78"/>
+                <stop offset="100%" stop-color="#c4a574"/>
+              </linearGradient>
+            </defs>
+            <circle class="track" cx="44" cy="44" r="40"/>
+            <circle class="progress" id="batteryRing" cx="44" cy="44" r="40"/>
+          </svg>
+          <div class="avatar" aria-hidden="true">서연</div>
+        </div>
+        <h2>이서연 상담사</h2>
+        <p class="role">상담심리 전문가<br/>대화 속 마음 돌봄</p>
+        <span class="session-chip" id="sessionChip">상담 준비 중</span>
+
+        <div class="stats">
+          <div class="stat-item">
+            <div class="stat-label">상담 페이스</div>
+            <div class="stat-value" id="paceLabel">여유롭게</div>
+            <div class="pace-bar" aria-hidden="true"><div class="pace-fill" id="paceFill"></div></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">심리 조사</div>
+            <div class="stat-value" id="batteryChip">준비 중</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="persona-panel">
+        <h3>상담 스타일</h3>
+        <div class="persona-options" id="personaOptions">
+          <button type="button" class="persona-btn active" data-school="">자동</button>
+          <button type="button" class="persona-btn" data-school="ROGERIAN">수용</button>
+          <button type="button" class="persona-btn" data-school="BECK_CBT">인지</button>
+          <button type="button" class="persona-btn" data-school="FREUDIAN">통찰</button>
+        </div>
+        <p id="personaStatus">자동 맞춤 상담</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="mobile-header">
+        <h1>마음쉼터</h1>
+        <button type="button" class="mobile-toggle" id="sidebarToggle">메뉴</button>
+      </header>
+
+      <div class="chat-scroll" id="chatScroll">
+        <div id="messages">
+          <div class="empty-state" id="emptyState">
+            <div class="emoji" aria-hidden="true">☁️</div>
+            <h2>오늘, 어떤 마음이신가요?</h2>
+            <p>짧은 이야기도 괜찮아요.<br/>편한 속도로 함께 나눠요.</p>
+          </div>
+        </div>
+      </div>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="chatForm">
+          <textarea
+            id="messageInput"
+            rows="1"
+            placeholder="지금 떠오르는 마음을 적어주세요…"
+            aria-label="상담 메시지 입력"
+            required
+          ></textarea>
+          <button class="send" id="sendButton" type="submit">보내기</button>
+        </form>
+        <div class="composer-meta">
+          <p class="composer-hint">Enter · 전송 &nbsp;·&nbsp; Shift+Enter · 줄바꿈</p>
+          <p class="safety">위기 시 1393 · 119 · 전문 상담기관</p>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const COUNSELOR_NAME = "이서연";
+    const WELCOME_KEY = "psychology_ai_welcomed";
+    const RING_CIRC = 251.2;
+
+    const userId = localStorage.getItem("psychology_ai_user_id") || `user-${crypto.randomUUID().slice(0, 8)}`;
+    localStorage.setItem("psychology_ai_user_id", userId);
+
+    let sessionId = localStorage.getItem("psychology_ai_session_id") || null;
+    let pendingAssessment = null;
+    let streaming = false;
+    let typingEl = null;
+    let preferredSchool = localStorage.getItem("psychology_ai_preferred_school") || "";
+
+    const messagesEl = document.getElementById("messages");
+    const emptyState = document.getElementById("emptyState");
+    const chatScroll = document.getElementById("chatScroll");
+    const chatForm = document.getElementById("chatForm");
+    const messageInput = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+    const sessionChip = document.getElementById("sessionChip");
+    const paceLabel = document.getElementById("paceLabel");
+    const paceFill = document.getElementById("paceFill");
+    const batteryChip = document.getElementById("batteryChip");
+    const batteryRing = document.getElementById("batteryRing");
+    const personaOptions = document.getElementById("personaOptions");
+    const personaStatus = document.getElementById("personaStatus");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarOverlay = document.getElementById("sidebarOverlay");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+
+    function hideEmptyState() {
+      if (emptyState) emptyState.remove();
+    }
+
+    function syncPersonaButtons() {
+      personaOptions.querySelectorAll(".persona-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.school === preferredSchool);
+      });
+      const labels = {
+        "": "자동 맞춤 상담",
+        ROGERIAN: "인간중심 수용 모드",
+        BECK_CBT: "인지 왜곡 교정 모드",
+        FREUDIAN: "무의식 직면 모드",
+      };
+      personaStatus.textContent = labels[preferredSchool] || "자동 맞춤 상담";
+    }
+
+    personaOptions.addEventListener("click", (event) => {
+      const button = event.target.closest(".persona-btn");
+      if (!button) return;
+      preferredSchool = button.dataset.school || "";
+      localStorage.setItem("psychology_ai_preferred_school", preferredSchool);
+      syncPersonaButtons();
+    });
+    syncPersonaButtons();
+
+    function toggleSidebar(open) {
+      sidebar.classList.toggle("open", open);
+      sidebarOverlay.classList.toggle("visible", open);
+    }
+
+    sidebarToggle?.addEventListener("click", () => toggleSidebar(!sidebar.classList.contains("open")));
+    sidebarOverlay?.addEventListener("click", () => toggleSidebar(false));
+
+    function nowTime() {
+      return new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function scrollToBottom() {
+      chatScroll.scrollTop = chatScroll.scrollHeight;
+    }
+
+    function autoResize() {
+      messageInput.style.height = "auto";
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 140)}px`;
+    }
+
+    function createAssistantRow() {
+      hideEmptyState();
+      const row = document.createElement("div");
+      row.className = "message-row assistant";
+      row.innerHTML = `
+        <div class="mini-avatar" aria-hidden="true">서</div>
+        <div class="message-stack">
+          <span class="sender">${COUNSELOR_NAME} · ${nowTime()}</span>
+          <div class="bubble assistant"></div>
+        </div>
+      `;
+      messagesEl.appendChild(row);
+      scrollToBottom();
+      return row.querySelector(".bubble");
+    }
+
+    function appendUserMessage(text) {
+      hideEmptyState();
+      const row = document.createElement("div");
+      row.className = "message-row user";
+      row.innerHTML = `
+        <div class="message-stack">
+          <span class="sender">나 · ${nowTime()}</span>
+          <div class="bubble user"></div>
+        </div>
+      `;
+      row.querySelector(".bubble").textContent = text;
+      messagesEl.appendChild(row);
+      scrollToBottom();
+    }
+
+    function showTyping() {
+      hideTyping();
+      hideEmptyState();
+      typingEl = document.createElement("div");
+      typingEl.className = "typing";
+      typingEl.innerHTML = `
+        <div class="mini-avatar" aria-hidden="true">서</div>
+        <span>${COUNSELOR_NAME} 상담사가 답을 준비하고 있어요</span>
+        <span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+      `;
+      messagesEl.appendChild(typingEl);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      if (typingEl) {
+        typingEl.remove();
+        typingEl = null;
+      }
+    }
+
+    function updatePace(fatigue) {
+      if (!fatigue) return;
+      const score = Math.round((fatigue.fatigue_score || 0) * 100);
+      paceFill.style.width = `${Math.max(8, score)}%`;
+      if (score < 35) paceLabel.textContent = "여유롭게";
+      else if (score < 65) paceLabel.textContent = "천천히 이어가요";
+      else paceLabel.textContent = "잠시 쉬어가도 OK";
+    }
+
+    function setBatteryProgress(pct) {
+      const offset = RING_CIRC - (RING_CIRC * Math.min(100, Math.max(0, pct))) / 100;
+      batteryRing.style.strokeDashoffset = String(offset);
+    }
+
+    async function refreshBatteryStatus(activeSessionId) {
+      if (!activeSessionId) return;
+      try {
+        const response = await fetch(`/api/v1/assessments/battery/${activeSessionId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const pct = Math.round((data.overall_completion_rate || 0) * 100);
+        const touched = data.instruments_touched || 0;
+        const total = data.instruments_total || 0;
+        batteryChip.textContent = `${pct}% · ${touched}/${total} 검사`;
+        setBatteryProgress(pct);
+      } catch (_) {}
+    }
+
+    function renderAssessmentCard(assessment) {
+      hideEmptyState();
+      pendingAssessment = assessment;
+      const wrap = document.createElement("div");
+      wrap.className = "assessment-wrap";
+      wrap.innerHTML = `
+        <div class="assessment-card">
+          <div class="assessment-head">
+            <div class="mini-avatar" aria-hidden="true">서</div>
+            <div>
+              <strong>${COUNSELOR_NAME} 상담사</strong>
+              <span>가볍게 여쭤볼게요</span>
+            </div>
+          </div>
+          <p class="assessment-framing"></p>
+          <p class="assessment-prompt"></p>
+          <p class="assessment-note"></p>
+          <div class="options"></div>
+        </div>
+      `;
+
+      wrap.querySelector(".assessment-framing").textContent = assessment.framing || "";
+      wrap.querySelector(".assessment-prompt").textContent = assessment.prompt || "";
+      const note = assessment.selection?.rationale
+        ? `${assessment.counselor_note || ""} · ${assessment.selection.rationale}`
+        : (assessment.counselor_note || "편한 만큼만 답해 주셔도 괜찮아요.");
+      wrap.querySelector(".assessment-note").textContent = note;
+
+      const optionsEl = wrap.querySelector(".options");
+      assessment.options.forEach((option) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "option";
+        button.textContent = option.label;
+        button.addEventListener("click", () => submitAssessmentAnswer(option.value, option.label));
+        optionsEl.appendChild(button);
+      });
+
+      const skip = document.createElement("button");
+      skip.type = "button";
+      skip.className = "secondary";
+      skip.textContent = "지금은 넘어갈게요";
+      skip.addEventListener("click", () => submitAssessmentAnswer(null, null, true));
+      optionsEl.appendChild(skip);
+
+      messagesEl.appendChild(wrap);
+      scrollToBottom();
+    }
+
+    function parseSseChunk(buffer) {
+      const normalized = buffer.replace(/\r\n/g, "\n");
+      const events = [];
+      const parts = normalized.split("\n\n");
+      const remainder = parts.pop();
+      parts.forEach((part) => {
+        const lines = part.split("\n");
+        let eventName = "message";
+        let data = "";
+        lines.forEach((line) => {
+          if (line.startsWith("event:")) eventName = line.slice(6).trim();
+          if (line.startsWith("data:")) data += line.slice(5).trim();
+        });
+        if (data) {
+          try { events.push({ event: eventName, data: JSON.parse(data) }); } catch (_) {}
+        }
+      });
+      return { events, remainder: remainder || "" };
+    }
+
+    async function streamChat(payload) {
+      streaming = true;
+      sendButton.disabled = true;
+      showTyping();
+
+      const response = await fetch("/api/v1/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok || !response.body) {
+        hideTyping();
+        throw new Error("상담 연결에 잠시 문제가 생겼어요. 잠시 후 다시 시도해 주세요.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantBubble = null;
+      let gotToken = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parsed = parseSseChunk(buffer);
+        buffer = parsed.remainder;
+
+        parsed.events.forEach(({ event, data }) => {
+          if (event === "orchestrator") {
+            updatePace(data.fatigue);
+            if (data.persona?.persona_label) {
+              personaStatus.textContent = data.persona.persona_label;
+            }
+          }
+          if (event === "assessment") renderAssessmentCard(data);
+          if (event === "token") {
+            if (!gotToken) {
+              hideTyping();
+              assistantBubble = createAssistantRow();
+              gotToken = true;
+            }
+            assistantBubble.textContent += data.content || "";
+            scrollToBottom();
+          }
+          if (event === "done") {
+            hideTyping();
+            sessionId = data.session_id;
+            localStorage.setItem("psychology_ai_session_id", sessionId);
+            sessionChip.textContent = `상담 중 · ${sessionId.slice(0, 8)}`;
+            updatePace(data.profile_delta?.fatigue);
+            refreshBatteryStatus(sessionId);
+            toggleSidebar(false);
+          }
+          if (event === "error") {
+            hideTyping();
+            const bubble = assistantBubble || createAssistantRow();
+            bubble.textContent = data.message || "잠시 연결이 불안정해요. 다시 말씀해 주실 수 있을까요?";
+          }
+        });
+      }
+
+      if (!gotToken) hideTyping();
+    }
+
+    function naturalAssessmentMessage(label, skipped) {
+      if (skipped) return "지금은 이 질문은 넘어갈게요.";
+      const softMap = {
+        "전혀 없음": "전혀 없었어요", "전혀 없어요": "전혀 없었어요",
+        "며칠": "며칠 정도 그랬어요", "조금": "조금 그랬어요", "보통": "보통 정도예요",
+        "절반 이상": "절반 이상의 날 그랬어요", "거의 매일": "거의 매일 그랬어요",
+        "꽤 무거워요": "마음이 꽤 무거워요", "매우 힘들어요": "지금 매우 힘들어요",
+      };
+      return softMap[label] || `${label} 정도였어요`;
+    }
+
+    async function submitMessage(message, assessmentResponse = null) {
+      if (!assessmentResponse) appendUserMessage(message);
+      await streamChat({
+        user_id: userId,
+        session_id: sessionId,
+        message,
+        plan: "BASIC",
+        assessment_response: assessmentResponse,
+        preferred_school: preferredSchool || null,
+      });
+    }
+
+    async function submitAssessmentAnswer(value, label, skipped = false) {
+      if (!pendingAssessment) return;
+      const assessment = pendingAssessment;
+      pendingAssessment = null;
+
+      const card = messagesEl.querySelector(".assessment-wrap:last-of-type");
+      if (card) {
+        card.style.opacity = "0.65";
+        card.querySelectorAll("button").forEach((btn) => { btn.disabled = true; });
+      }
+
+      const message = naturalAssessmentMessage(label, skipped);
+      appendUserMessage(message);
+      await submitMessage(message, {
+        instrument: assessment.instrument,
+        item_id: assessment.item_id,
+        value,
+        skipped,
+      });
+    }
+
+    function showWelcomeIfNeeded() {
+      if (sessionId || localStorage.getItem(WELCOME_KEY) === "1") return;
+      localStorage.setItem(WELCOME_KEY, "1");
+      hideEmptyState();
+      const bubble = createAssistantRow();
+      bubble.textContent =
+        "안녕하세요, 이서연 상담사예요.\n\n" +
+        "오늘 이 자리에 오신 것만으로도 큰 용기예요. " +
+        "편한 속도로, 편한 만큼만 이야기해 주셔도 괜찮아요.\n\n" +
+        "지금 가장 먼저 나누고 싶은 마음이 있다면 들려주세요.";
+      sessionChip.textContent = "새 상담 시작";
+    }
+
+    chatForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (streaming) return;
+      const message = messageInput.value.trim();
+      if (!message) return;
+      messageInput.value = "";
+      autoResize();
+      try {
+        await submitMessage(message);
+      } catch (error) {
+        const bubble = createAssistantRow();
+        bubble.textContent = error.message || "전송 중 문제가 생겼어요.";
+      } finally {
+        streaming = false;
+        sendButton.disabled = false;
+        messageInput.focus();
+      }
+    });
+
+    messageInput.addEventListener("input", autoResize);
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        chatForm.requestSubmit();
+      }
+    });
+
+    showWelcomeIfNeeded();
+    autoResize();
+    messageInput.focus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Render.com Blueprint — https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: psychology-tarot-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FERNET_KEY
+        generateValue: true
+      - key: PURGE_AUDIT_TOKEN
+        generateValue: true
+      - key: PORT
+        value: "8000"

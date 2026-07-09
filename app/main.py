@@ -3,21 +3,44 @@ import os
 from datetime import datetime, timezone
 from enum import Enum
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sse_starlette import EventSourceResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
 
 from app.prompt_config import build_system_prompt, build_user_prompt
+from app.models.clinical import ClinicalSchool
+from app.services.chat_session import CHAT_SESSIONS, get_or_create_session
+from app.services.chat_stream import format_sse, run_chat_turn
+from app.services.persona_router import PERSONA_CATALOG, detect_cognitive_distortions, route_clinical_persona
+from app.services.prompt_binding import PromptContextWeightBindingFactory
+from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
+from app.services.orchestrator import record_assessment_answer
+from app.assessments import ASSESSMENT_DOMAINS, INSTRUMENT_PROFILES, ALL_INSTRUMENTS
+from app.services.vault import (
+    audit_log_path,
+    get_fernet,
+    rotate_audit_log_if_needed,
+    seal_payload,
+    unseal_payload,
+    write_audit_event,
+)
 
 # 환경 변수 로드 및 AI 클라이언트 초기화
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI(title="Psychology Tarot AI System")
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 import base64
 import json
@@ -102,62 +125,19 @@ TAROT_ARCHETYPE_MAP = {
 
 
 def _get_fernet() -> Fernet:
-    key = os.getenv("FERNET_KEY")
-    if not key:
-        key = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8")
-        os.environ["FERNET_KEY"] = key
-    return Fernet(key.encode("utf-8"))
+    return get_fernet()
 
 
-def _encrypt_payload(payload: Dict[str, Any]) -> str:
-    return _get_fernet().encrypt(json.dumps(payload).encode("utf-8")).decode("utf-8")
+def _encrypt_payload(user_id: str, payload: Dict[str, Any]) -> str:
+    return seal_payload(user_id, payload)
 
 
-def _decrypt_payload(token: str) -> Dict[str, Any]:
-    return json.loads(_get_fernet().decrypt(token.encode("utf-8")).decode("utf-8"))
+def _decrypt_payload(user_id: str, token: str) -> Dict[str, Any]:
+    return unseal_payload(user_id, token)
 
 
-def _rotate_audit_log_if_needed(audit_log_path: str) -> None:
-    if not audit_log_path:
-        return
-
-    if not os.path.exists(audit_log_path):
-        directory = os.path.dirname(audit_log_path)
-        if directory:
-            os.makedirs(directory, exist_ok=True)
-        return
-
-    try:
-        current_size = os.path.getsize(audit_log_path)
-    except OSError:
-        current_size = 0
-
-    max_bytes = int(os.getenv("PURGE_AUDIT_MAX_BYTES", "1048576").strip() or "1048576")
-    interval_seconds = int(os.getenv("PURGE_AUDIT_ROTATION_INTERVAL_SECONDS", "0").strip() or "0")
-
-    should_rotate_by_size = max_bytes > 0 and current_size >= max_bytes
-    should_rotate_by_interval = False
-    if interval_seconds > 0:
-        try:
-            modified_at = datetime.fromtimestamp(os.path.getmtime(audit_log_path), tz=timezone.utc)
-            should_rotate_by_interval = (datetime.now(timezone.utc) - modified_at).total_seconds() >= interval_seconds
-        except OSError:
-            should_rotate_by_interval = False
-
-    if not should_rotate_by_size and not should_rotate_by_interval:
-        return
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    backup_path = f"{audit_log_path}.{timestamp}"
-    shutil.copy2(audit_log_path, backup_path)
-    with open(audit_log_path, "w", encoding="utf-8"):
-        pass
-
-
-class ClinicalSchool(str, Enum):
-    FREUDIAN = "FREUDIAN"
-    ROGERIAN = "ROGERIAN"
-    BECK_CBT = "BECK_CBT"
+def _rotate_audit_log_if_needed(path: str) -> None:
+    rotate_audit_log_if_needed(path)
 
 
 class PsychologyApiException(Exception):
@@ -181,76 +161,6 @@ class DecryptionFailureException(PsychologyApiException):
 class InvalidPersonaException(PsychologyApiException):
     def __init__(self, persona: str):
         super().__init__(f"Unsupported persona requested: {persona}", status_code=400, error_code="INVALID_PERSONA")
-
-
-class PromptContextWeightBindingFactory:
-    def __init__(self, school: ClinicalSchool, psychological_readiness_index: Optional[float], cognitive_distortions: Optional[List[str]] = None):
-        self.school = school or ClinicalSchool.ROGERIAN
-        self.psychological_readiness_index = float(psychological_readiness_index or 0.5)
-        self.cognitive_distortions = cognitive_distortions or []
-
-    def _clamp(self, value: float) -> float:
-        return round(min(1.0, max(0.0, value)), 2)
-
-    def build(self) -> Dict[str, Any]:
-        readiness = self._clamp(self.psychological_readiness_index)
-        distortion_count = max(0, len(self.cognitive_distortions))
-
-        if self.school == ClinicalSchool.FREUDIAN:
-            interpretation_depth = self._clamp(0.6 + readiness * 0.25 + distortion_count * 0.05)
-            empathy_level = self._clamp(0.5 + readiness * 0.1)
-            homework_structure = self._clamp(0.3 + readiness * 0.2)
-            system_prompt = (
-                "당신은 무의식적 갈등과 반복 패턴을 탐색하는 깊이 있는 정신분석적 상담사입니다. "
-                f"심층 해석 수준은 {interpretation_depth:.2f}로 조정하고, 내담자의 불안과 반복적 관계 패턴을 탐색하세요. "
-                f"공감 수준은 {empathy_level:.2f}로 유지하되, 인지 왜곡보다 감정의 근원을 파악하세요. "
-                f"인지 재구성 과제 구조는 {homework_structure:.2f}로 낮게 유지하되, 자기 성찰을 강화하세요."
-            )
-            return {
-                "weights": {
-                    "interpretation_depth": interpretation_depth,
-                    "empathy_level": empathy_level,
-                    "homework_structure": homework_structure,
-                },
-                "system_prompt": system_prompt,
-            }
-
-        if self.school == ClinicalSchool.BECK_CBT:
-            interpretation_depth = self._clamp(0.4 + readiness * 0.2 + distortion_count * 0.08)
-            empathy_level = self._clamp(0.45 + readiness * 0.1)
-            homework_structure = self._clamp(0.7 + readiness * 0.15 + distortion_count * 0.05)
-            system_prompt = (
-                "당신은 인지왜곡을 정밀하게 분석하고 행동 실험을 설계하는 CBT 상담사입니다. "
-                f"심층 해석 수준은 {interpretation_depth:.2f}로 조정하고, 내담자의 자동적 사고와 왜곡을 분해하세요. "
-                f"공감 수준은 {empathy_level:.2f}로 유지하되, 인지 재구성 중심으로 접근하세요. "
-                f"인지 재구성 과제 구조는 {homework_structure:.2f}로 높게 설정해 실천형 과제를 제안하세요."
-            )
-            return {
-                "weights": {
-                    "interpretation_depth": interpretation_depth,
-                    "empathy_level": empathy_level,
-                    "homework_structure": homework_structure,
-                },
-                "system_prompt": system_prompt,
-            }
-
-        interpretation_depth = self._clamp(0.5 + readiness * 0.15 + distortion_count * 0.03)
-        empathy_level = self._clamp(0.75 + readiness * 0.15)
-        homework_structure = self._clamp(0.4 + readiness * 0.1)
-        system_prompt = (
-            "당신은 내담자의 경험을 공감적으로 수용하고 자기 주도적 성장을 돕는 로저식 상담사입니다. "
-            f"심층 해석 수준은 {interpretation_depth:.2f}로 조정하고, 내담자의 감정과 경험의 의미를 존중하세요. "
-            f"공감 수준은 {empathy_level:.2f}로 높게 유지해 안전하고 수용적인 대화를 유지하세요. "
-            f"인지 재구성 과제 구조는 {homework_structure:.2f}로 낮게 설정해 부드러운 자율적 실천을 권장하세요."
-        )
-        return {
-            "weights": {
-                "interpretation_depth": interpretation_depth,
-                "empathy_level": empathy_level,
-                "homework_structure": homework_structure,
-            },
-            "system_prompt": system_prompt,
-        }
 
 
 class DrawingProjectiveProfile(BaseModel):
@@ -287,6 +197,24 @@ class ConsultationRequest(BaseModel):
 
 class PurgeRequest(BaseModel):
     user_id: str
+
+
+class ChatStreamRequest(BaseModel):
+    user_id: str = "anonymous"
+    message: str
+    session_id: Optional[str] = None
+    plan: str = "FREE"
+    assessment_response: Optional[Dict[str, Any]] = None
+    preferred_school: Optional[ClinicalSchool] = None
+
+
+class AssessmentSubmitRequest(BaseModel):
+    user_id: str
+    session_id: str
+    instrument: str
+    item_id: str
+    value: Optional[int] = None
+    skipped: bool = False
 
 
 def _error_payload(message: str, status_code: int, error_code: str) -> Dict[str, Any]:
@@ -384,13 +312,23 @@ def _build_projective_profile(user_story: str, drawn_card: str, psychological_re
     }
 
 
-def _build_archetype_profile(user_story: str, selected_cards: Optional[List[str]] = None) -> Dict[str, Any]:
-    selected = selected_cards or []
+def _build_archetype_profile(
+    user_story: str,
+    selected_cards: Optional[List[str]] = None,
+    drawn_card: Optional[str] = None,
+) -> Dict[str, Any]:
+    cards: List[str] = []
+    if drawn_card:
+        cards.append(drawn_card)
+    for card_name in selected_cards or []:
+        if card_name not in cards:
+            cards.append(card_name)
+
     profiles: List[Dict[str, Any]] = []
     flags: List[str] = []
     scores: List[float] = []
 
-    for card_name in selected:
+    for card_name in cards:
         mapping = TAROT_ARCHETYPE_MAP.get(card_name)
         if not mapping:
             continue
@@ -403,13 +341,21 @@ def _build_archetype_profile(user_story: str, selected_cards: Optional[List[str]
                 "attachment_matrix_score": mapping["attachment_matrix_score"],
             }
         )
-        flags.append(mapping["cognitive_distortion_flag"])
+        if mapping["cognitive_distortion_flag"] not in flags:
+            flags.append(mapping["cognitive_distortion_flag"])
         scores.append(mapping["attachment_matrix_score"])
 
-    if not profiles:
+    for distortion in detect_cognitive_distortions(user_story):
+        if distortion not in flags:
+            flags.append(distortion)
+
+    if not flags:
         fallback_flag = "rumination" if any(keyword in (user_story or "").lower() for keyword in ["불안", "스트레스", "혼란", "두려움"]) else "none"
+        flags = [fallback_flag]
+
+    if not profiles:
         return {
-            "cognitive_distortion_flags": [fallback_flag],
+            "cognitive_distortion_flags": flags,
             "attachment_matrix_score": 0.5,
             "archetype_profiles": [],
         }
@@ -434,7 +380,7 @@ def _build_behavior_metadata(school: ClinicalSchool) -> Dict[str, Any]:
                 "Frame recurring patterns as unresolved emotional themes.",
                 "Encourage reflection on early relational imprints."
             ],
-            "daily_logotherapy_homework_style": "A reflective journaling exercise on unconscious repetition and emotional conflict.",
+            "daily_logotherapy_homework_style": "A reflection journaling exercise on unconscious repetition and emotional conflict.",
         }
     if school == ClinicalSchool.BECK_CBT:
         return {
@@ -463,16 +409,28 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
     behavior_metadata = _build_behavior_metadata(school)
     readiness_index = _build_psychological_readiness_index(user_story, plan, selected_cards)
     profile = _build_projective_profile(user_story, drawn_card, readiness_index)
-    archetype_profile = _build_archetype_profile(user_story, selected_cards)
+    archetype_profile = _build_archetype_profile(user_story, selected_cards, drawn_card)
     distortion_flags = archetype_profile["cognitive_distortion_flags"]
-    detected_cognitive_distortions = distortion_flags if isinstance(distortion_flags, list) else []
+    detected_cognitive_distortions = [
+        flag for flag in (distortion_flags if isinstance(distortion_flags, list) else [])
+        if isinstance(flag, str) and flag.strip().lower() not in {"", "none"}
+    ]
 
     prompt_binding = PromptContextWeightBindingFactory(
         school=school,
         psychological_readiness_index=readiness_index,
         cognitive_distortions=distortion_flags,
+        attachment_matrix_score=archetype_profile["attachment_matrix_score"],
+        tree_energy_index=profile["tree_energy_index"],
+        psychiatric_stress_weight=(
+            sum(item["psychiatric_stress_weight"] for item in archetype_profile["archetype_profiles"])
+            / len(archetype_profile["archetype_profiles"])
+            if archetype_profile["archetype_profiles"]
+            else 0.5
+        ),
+        structural_sign=profile["structural_sign"],
     ).build()
-    system_prompt = build_system_prompt() + "\n" + prompt_binding["system_prompt"]
+    system_prompt = build_system_prompt() + "\n" + prompt_binding["system_prompt"] + "\n" + prompt_binding["context_block"]
     user_prompt = build_user_prompt(user_story, drawn_card)
     actions = [
         "오늘의 감정 1개를 이름 붙이고 기록하기",
@@ -520,7 +478,7 @@ def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, out
     history: List[Dict[str, Any]] = []
     if existing_record:
         try:
-            existing_payload = _decrypt_payload(existing_record["encrypted_payload"])
+            existing_payload = _decrypt_payload(user_id, existing_record["encrypted_payload"])
             history = existing_payload.get("history") or []
         except Exception:
             history = []
@@ -546,7 +504,7 @@ def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, out
         }],
     }
     PSYCHOLOGY_DATABASE[user_id] = {
-        "encrypted_payload": _encrypt_payload(payload),
+        "encrypted_payload": _encrypt_payload(user_id, payload),
         "asset_value_krw": 50000,
     }
 
@@ -556,7 +514,7 @@ def _load_history(user_id: str) -> List[Dict[str, Any]]:
     if not record:
         return []
     try:
-        payload = _decrypt_payload(record["encrypted_payload"])
+        payload = _decrypt_payload(user_id, record["encrypted_payload"])
     except Exception:
         return []
 
@@ -659,6 +617,181 @@ def _invalidate_user_caches(user_id: str) -> None:
     ANALYTICS_CACHE.invalidate(user_id)
 
 
+def _purge_chat_sessions(user_id: str) -> None:
+    session_ids = [session_id for session_id, state in CHAT_SESSIONS.items() if state.user_id == user_id]
+    for session_id in session_ids:
+        CHAT_SESSIONS.pop(session_id, None)
+
+
+def _store_chat_profile(user_id: str, profile_delta: Dict[str, Any], plan: str) -> None:
+    persona = profile_delta.get("persona_routing") or {}
+    quant = profile_delta.get("quant_features") or {}
+    battery = profile_delta.get("battery_coverage") or {}
+    formal_scores = profile_delta.get("formal_scores") or {}
+    school_value = persona.get("school")
+    preferred_school = ClinicalSchool(school_value) if school_value in {item.value for item in ClinicalSchool} else ClinicalSchool.ROGERIAN
+    distortions = persona.get("detected_distortions") or []
+
+    output = {
+        "summary": "Chat session profile update",
+        "scope": "chat",
+        "detail_level": "session",
+        "actions": [],
+        "asset_value_krw": 50000,
+        "psychiatric_feature_profile": {
+            "drawing_projective_profile": {
+                "psychological_readiness_index": quant.get("psychological_readiness_index", 0.5),
+                "tree_energy_index": quant.get("tree_energy_index", 0.0),
+                "structural_sign": quant.get("structural_sign", "chat"),
+                "house_interpreted_code": "H0",
+                "person_relational_tag": "conversational",
+            },
+            "psychological_readiness_index": quant.get("psychological_readiness_index", 0.5),
+            "cognitive_distortion_flags": distortions,
+            "detected_cognitive_distortions": distortions,
+            "attachment_matrix_score": quant.get("attachment_matrix_score", 0.5),
+            "archetype_profiles": [],
+            "formal_scores": formal_scores,
+            "battery_coverage": battery,
+            "chat_profile_delta": profile_delta,
+        },
+    }
+    _store_record(user_id, "chat session", "conversation", plan, output, preferred_school)
+
+
+@app.get("/")
+async def chat_ui():
+    index_path = STATIC_DIR / "chat.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return {"message": "Psychology Tarot AI backend is running."}
+
+
+@app.get("/api/v1/chat/sessions/{session_id}")
+async def chat_session_state(session_id: str):
+    session = CHAT_SESSIONS.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session.to_dict()
+
+
+@app.get("/api/v1/chat/personas")
+async def chat_personas():
+    return {
+        "personas": [
+            {
+                "school": school.value,
+                "label": meta["label"],
+                "subtitle": meta["subtitle"],
+                "counselor_tone": meta["counselor_tone"],
+            }
+            for school, meta in PERSONA_CATALOG.items()
+        ]
+    }
+
+
+@app.get("/api/v1/assessments/catalog")
+async def assessments_catalog():
+    instruments = []
+    for instrument_id, instrument in ALL_INSTRUMENTS.items():
+        profile = INSTRUMENT_PROFILES.get(instrument_id, {})
+        domain = ASSESSMENT_DOMAINS.get(profile.get("domain", ""), {})
+        instruments.append(
+            {
+                "instrument_id": instrument_id,
+                "display_name": profile.get("display_name", instrument.display_name),
+                "domain_id": profile.get("domain"),
+                "domain_label": domain.get("label"),
+                "school": domain.get("school"),
+                "focus": profile.get("focus"),
+                "item_count": len(instrument.items()),
+            }
+        )
+    return {
+        "domains": [
+            {
+                "domain_id": domain_id,
+                "label": meta["label"],
+                "school": meta["school"],
+                "instruments": meta["instruments"],
+            }
+            for domain_id, meta in ASSESSMENT_DOMAINS.items()
+        ],
+        "instruments": instruments,
+        "total_instruments": len(instruments),
+        "total_domains": len(ASSESSMENT_DOMAINS),
+    }
+
+
+@app.get("/api/v1/assessments/battery/{session_id}")
+async def assessments_battery(session_id: str):
+    session = CHAT_SESSIONS.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    status = build_battery_status(session)
+    status["recommendations"] = next_recommended_instruments(session)
+    return status
+
+
+@app.post("/api/v1/assessments/submit")
+async def assessments_submit(request: AssessmentSubmitRequest):
+    session = CHAT_SESSIONS.get(request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != request.user_id:
+        raise HTTPException(status_code=403, detail="Session user mismatch")
+
+    recorded = record_assessment_answer(
+        session,
+        {
+            "instrument": request.instrument,
+            "item_id": request.item_id,
+            "value": request.value,
+            "skipped": request.skipped,
+        },
+    )
+    battery = sync_session_battery(session)
+    return {
+        "recorded": recorded,
+        "battery_coverage": battery,
+        "formal_scores": {
+            instrument_id: ALL_INSTRUMENTS[instrument_id].score_partial(answers)
+            for instrument_id, answers in session.formal_answers.items()
+            if instrument_id in ALL_INSTRUMENTS and answers
+        },
+    }
+
+
+@app.post("/api/v1/chat/stream")
+async def chat_stream(request: ChatStreamRequest):
+    session = get_or_create_session(request.user_id, request.session_id, request.plan)
+    if request.preferred_school:
+        session.preferred_school = request.preferred_school.value
+    config = _resolve_plan(request.plan)
+
+    async def event_generator():
+        try:
+            async for event in run_chat_turn(
+                session,
+                request.message,
+                client,
+                max_tokens=config["max_tokens"],
+                assessment_response=request.assessment_response,
+                preferred_school=request.preferred_school,
+            ):
+                if event["event"] == "done":
+                    profile_delta = event["data"].get("profile_delta") or {}
+                    _store_chat_profile(request.user_id, profile_delta, request.plan)
+                    _invalidate_user_caches(request.user_id)
+                yield format_sse(event)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            yield format_sse({"event": "error", "data": {"message": str(exc)}})
+
+    return EventSourceResponse(event_generator())
+
+
 @app.post("/api/v1/therapy/read")
 async def therapy_read(request: ConsultationRequest):
     try:
@@ -675,19 +808,63 @@ async def backoffice_samples():
     samples: List[Dict[str, Any]] = []
     for user_id, record in PSYCHOLOGY_DATABASE.items():
         try:
-            payload = _decrypt_payload(record["encrypted_payload"])
+            payload = _decrypt_payload(user_id, record["encrypted_payload"])
         except Exception:
             continue
+        profile = payload.get("output", {}).get("psychiatric_feature_profile", {})
         samples.append(
             {
                 "user_id": user_id,
                 "plan": payload.get("plan", "FREE"),
+                "preferred_school": payload.get("preferred_school"),
                 "summary": payload.get("output", {}).get("summary", ""),
                 "scope": payload.get("output", {}).get("scope", "brief"),
-                "asset_value_krw": 50000,
+                "asset_value_krw": payload.get("asset_value_krw", 50000),
+                "formal_scores": profile.get("formal_scores", {}),
+                "battery_coverage": profile.get("battery_coverage", {}),
+                "detected_cognitive_distortions": profile.get("detected_cognitive_distortions", []),
             }
         )
     return {"samples": samples[:10], "total": len(samples)}
+
+
+@app.get("/api/v1/backoffice/export")
+async def backoffice_b2b_export(request: Request):
+    audit_token = os.getenv("PURGE_AUDIT_TOKEN", "").strip()
+    provided_token = request.headers.get("x-audit-token")
+    if not audit_token:
+        raise HTTPException(status_code=500, detail="Export audit token is not configured")
+    if not provided_token or provided_token != audit_token:
+        raise HTTPException(status_code=401, detail="Valid X-Audit-Token header is required")
+
+    write_audit_event("B2B_EXPORT", "backoffice", {"record_count": len(PSYCHOLOGY_DATABASE)})
+
+    aggregates: List[Dict[str, Any]] = []
+    for user_id, record in PSYCHOLOGY_DATABASE.items():
+        try:
+            payload = _decrypt_payload(user_id, record["encrypted_payload"])
+        except Exception:
+            continue
+        profile = payload.get("output", {}).get("psychiatric_feature_profile", {})
+        aggregates.append(
+            {
+                "anonymous_user_ref": user_id[:8] + "***",
+                "plan": payload.get("plan", "FREE"),
+                "preferred_school": payload.get("preferred_school"),
+                "readiness_index": profile.get("psychological_readiness_index"),
+                "attachment_matrix_score": profile.get("attachment_matrix_score"),
+                "detected_cognitive_distortions": profile.get("detected_cognitive_distortions", []),
+                "formal_scores": profile.get("formal_scores", {}),
+                "battery_coverage": profile.get("battery_coverage", {}),
+                "entry_count": len(payload.get("history") or []),
+            }
+        )
+
+    return {
+        "export_type": "b2b_aggregate",
+        "record_count": len(aggregates),
+        "aggregates": aggregates,
+    }
 
 
 @app.get("/api/v1/backoffice/analytics/summary")
@@ -696,9 +873,9 @@ async def backoffice_analytics_summary():
     tree_energy_values: List[float] = []
     distortion_counts: Dict[str, int] = {}
 
-    for record in PSYCHOLOGY_DATABASE.values():
+    for user_id, record in PSYCHOLOGY_DATABASE.items():
         try:
-            payload = _decrypt_payload(record["encrypted_payload"])
+            payload = _decrypt_payload(user_id, record["encrypted_payload"])
         except Exception:
             continue
 
@@ -740,11 +917,31 @@ async def backoffice_analytics_summary():
         for pattern, count in sorted(distortion_counts.items(), key=lambda item: (-item[1], item[0]))
     ]
 
+    battery_completion_rates: List[float] = []
+    for user_id, record in PSYCHOLOGY_DATABASE.items():
+        try:
+            payload = _decrypt_payload(user_id, record["encrypted_payload"])
+        except Exception:
+            continue
+        for entry in payload.get("history") or []:
+            battery = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("battery_coverage", {})
+            rate = battery.get("overall_completion_rate")
+            if isinstance(rate, (int, float)):
+                battery_completion_rates.append(float(rate))
+
+    avg_battery_completion = (
+        round(sum(battery_completion_rates) / len(battery_completion_rates), 2)
+        if battery_completion_rates
+        else 0.0
+    )
+
     return {
         "total_records": len(PSYCHOLOGY_DATABASE),
         "preferred_school_distribution": preferred_school_distribution,
         "tree_energy_variance": round(variance, 4),
         "ranked_detected_cognitive_distortions": ranked_distortions,
+        "avg_battery_completion_rate": avg_battery_completion,
+        "battery_sessions_tracked": len(battery_completion_rates),
     }
 
 
@@ -752,6 +949,7 @@ async def backoffice_analytics_summary():
 async def therapy_dashboard(user_id: str, membership_tier: Optional[str] = None):
     if user_id == "invalid-user":
         raise InvalidUserException(user_id)
+    write_audit_event("DASHBOARD_READ", user_id, {"membership_tier": membership_tier or "FREE"})
     tier = (membership_tier or "FREE").upper()
     cache_key = f"dashboard:{user_id}:{tier}"
     cached_value = DASHBOARD_CACHE.get(cache_key)
@@ -768,6 +966,8 @@ async def therapy_analytics(user_id: str):
         raise DecryptionFailureException(user_id)
     if user_id == "bad-persona":
         raise InvalidPersonaException("bad-persona")
+
+    write_audit_event("ANALYTICS_READ", user_id)
 
     cached_value = ANALYTICS_CACHE.get(user_id)
     if cached_value is not None:
@@ -870,44 +1070,6 @@ async def therapy_stream(user_id: str):
             yield {"event": "message", "data": json.dumps(error_event)}
 
     return EventSourceResponse(event_stream())
-    history = _load_history(user_id)
-    if not history:
-        return {
-            "user_id": user_id,
-            "total_entries": 0,
-            "distribution_profile": {},
-            "ranked_patterns": [],
-        }
-
-    counts: Dict[str, int] = {}
-    for entry in history:
-        distortions = entry.get("output", {}).get("psychiatric_feature_profile", {}).get("detected_cognitive_distortions", [])
-        if not isinstance(distortions, list):
-            continue
-        for distortion in distortions:
-            if not isinstance(distortion, str):
-                continue
-            normalized = distortion.strip().lower()
-            if not normalized:
-                continue
-            counts[normalized] = counts.get(normalized, 0) + 1
-
-    total_entries = max(1, len(history))
-    distribution_profile = {
-        key: round(value / total_entries * 100.0, 2)
-        for key, value in sorted(counts.items(), key=lambda item: item[0])
-    }
-    ranked_patterns = [
-        {"pattern": key, "count": counts[key], "percentage": distribution_profile[key]}
-        for key in sorted(counts, key=lambda item: (-counts[item], item))
-    ]
-
-    return {
-        "user_id": user_id,
-        "total_entries": len(history),
-        "distribution_profile": distribution_profile,
-        "ranked_patterns": ranked_patterns,
-    }
 
 
 @app.delete("/api/v1/therapy/purge")
@@ -941,27 +1103,19 @@ async def therapy_purge(request: Request, user_id: Optional[str] = None):
             if target_user_id in PSYCHOLOGY_DATABASE:
                 del PSYCHOLOGY_DATABASE[target_user_id]
             PURGED_USERS.add(target_user_id)
+            _purge_chat_sessions(target_user_id)
             _invalidate_user_caches(target_user_id)
 
         _purge_in_sandbox()
 
-        audit_log_path = os.getenv("PURGE_AUDIT_LOG_PATH", "purge_audit.jsonl")
-        audit_dir = os.path.dirname(audit_log_path)
-        if audit_dir:
-            os.makedirs(audit_dir, exist_ok=True)
+        write_audit_event(
+            "PURGE_COMMITTED",
+            target_user_id,
+            {"memory_erased": True},
+            actor=provided_token[:8] + "***" if provided_token else "system",
+        )
 
-        _rotate_audit_log_if_needed(audit_log_path)
-
-        audit_entry = {
-            "user_id": target_user_id,
-            "action_type": "PURGE_COMMITTED",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        encrypted_entry = _get_fernet().encrypt(json.dumps(audit_entry, separators=(",", ":")).encode("utf-8")).decode("utf-8")
-        with open(audit_log_path, "a", encoding="utf-8") as handle:
-            handle.write(encrypted_entry + "\n")
-
-        return {"status": "purged", "user_id": target_user_id, "memory_erased": True}
+        return {"status": "purged", "user_id": target_user_id, "memory_erased": True, "vault_sealed": True}
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover - defensive fallback
