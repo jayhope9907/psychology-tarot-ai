@@ -19,6 +19,8 @@ from app.assessments import ALL_INSTRUMENTS, ASSESSMENT_DOMAINS, INSTRUMENT_PROF
 from app.models.clinical import ClinicalSchool
 from app.prompt_config import build_system_prompt, build_user_prompt
 from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
+from app.services.assessment_package import PACKAGE_TIERS, build_assessment_package, complete_checkout, mark_package_presented
+from app.services.clinical_insight import build_clinical_insight, sync_session_insight
 from app.services.chat_session import CHAT_SESSIONS, get_or_create_session
 from app.services.chat_stream import format_sse, run_chat_turn
 from app.services.orchestrator import record_assessment_answer
@@ -198,6 +200,12 @@ class AssessmentSubmitRequest(BaseModel):
     item_id: str
     value: Optional[int] = None
     skipped: bool = False
+
+
+class CheckoutRequest(BaseModel):
+    user_id: str
+    session_id: str
+    tier_id: Optional[str] = None
 
 
 def _error_payload(message: str, status_code: int, error_code: str) -> Dict[str, Any]:
@@ -611,6 +619,7 @@ def _store_chat_profile(user_id: str, profile_delta: Dict[str, Any], plan: str) 
     quant = profile_delta.get("quant_features") or {}
     battery = profile_delta.get("battery_coverage") or {}
     formal_scores = profile_delta.get("formal_scores") or {}
+    clinical_insight = profile_delta.get("clinical_insight") or {}
     school_value = persona.get("school")
     preferred_school = ClinicalSchool(school_value) if school_value in {item.value for item in ClinicalSchool} else ClinicalSchool.ROGERIAN
     distortions = persona.get("detected_distortions") or []
@@ -636,6 +645,7 @@ def _store_chat_profile(user_id: str, profile_delta: Dict[str, Any], plan: str) 
             "archetype_profiles": [],
             "formal_scores": formal_scores,
             "battery_coverage": battery,
+            "clinical_insight": clinical_insight,
             "chat_profile_delta": profile_delta,
         },
     }
@@ -716,6 +726,71 @@ async def assessments_battery(session_id: str):
     return status
 
 
+@app.get("/api/v1/insights/{session_id}")
+async def clinical_insights(session_id: str):
+    session = CHAT_SESSIONS.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return build_clinical_insight(session)
+
+
+@app.get("/api/v1/sessions/{session_id}/assessment-package")
+async def get_assessment_package(session_id: str):
+    session = CHAT_SESSIONS.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.assessment_package:
+        package = dict(session.assessment_package)
+        package["payment_required"] = not session.assessment_paid
+        return package
+    package = build_assessment_package(session)
+    mark_package_presented(session, package)
+    return package
+
+
+@app.get("/api/v1/assessments/packages/catalog")
+async def assessment_package_catalog():
+    return {"tiers": PACKAGE_TIERS}
+
+
+@app.post("/api/v1/sessions/{session_id}/checkout")
+async def checkout_assessment_package(session_id: str, request: CheckoutRequest):
+    session = CHAT_SESSIONS.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != request.user_id:
+        raise HTTPException(status_code=403, detail="Session user mismatch")
+    if session.assessment_paid:
+        return {
+            "success": True,
+            "already_paid": True,
+            "payment_id": session.payment_id,
+            "message": "이미 결제가 완료된 세션입니다.",
+        }
+
+    if request.tier_id and request.tier_id not in PACKAGE_TIERS:
+        raise HTTPException(status_code=400, detail="Invalid package tier")
+
+    if not session.assessment_package_ready:
+        package = build_assessment_package(session)
+        mark_package_presented(session, package)
+
+    result = complete_checkout(session, request.tier_id)
+    write_audit_event(
+        "ASSESSMENT_CHECKOUT",
+        request.user_id,
+        {
+            "session_id": session_id,
+            "payment_id": result["payment_id"],
+            "amount_krw": result["amount_krw"],
+            "tier_label": result["tier_label"],
+        },
+    )
+    result["counseling_phase"] = session.counseling_phase
+    result["assessment_package"] = session.assessment_package
+    return result
+
+
 @app.post("/api/v1/assessments/submit")
 async def assessments_submit(request: AssessmentSubmitRequest):
     session = CHAT_SESSIONS.get(request.session_id)
@@ -734,9 +809,11 @@ async def assessments_submit(request: AssessmentSubmitRequest):
         },
     )
     battery = sync_session_battery(session)
+    insight = sync_session_insight(session)
     return {
         "recorded": recorded,
         "battery_coverage": battery,
+        "clinical_insight": insight,
         "formal_scores": {
             instrument_id: ALL_INSTRUMENTS[instrument_id].score_partial(answers)
             for instrument_id, answers in session.formal_answers.items()

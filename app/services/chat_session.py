@@ -24,6 +24,14 @@ class ChatSessionState:
     persona_routing: Optional[Dict[str, Any]] = None
     quant_features: Dict[str, Any] = field(default_factory=dict)
     battery_coverage: Dict[str, Any] = field(default_factory=dict)
+    clinical_insight: Dict[str, Any] = field(default_factory=dict)
+    counseling_phase: str = "rapport"
+    phase_history: List[str] = field(default_factory=list)
+    phase_notes: Dict[str, Any] = field(default_factory=dict)
+    assessment_package: Optional[Dict[str, Any]] = None
+    assessment_package_ready: bool = False
+    assessment_paid: bool = False
+    payment_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -43,6 +51,13 @@ class ChatSessionState:
             "persona_routing": self.persona_routing,
             "quant_features": self.quant_features,
             "battery_coverage": self.battery_coverage,
+            "clinical_insight": self.clinical_insight,
+            "counseling_phase": self.counseling_phase,
+            "phase_history": self.phase_history,
+            "phase_notes": self.phase_notes,
+            "assessment_package_ready": self.assessment_package_ready,
+            "assessment_paid": self.assessment_paid,
+            "payment_id": self.payment_id,
             "message_count": len(self.messages),
         }
 

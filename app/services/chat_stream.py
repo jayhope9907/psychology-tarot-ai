@@ -8,7 +8,23 @@ from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 from app.models.clinical import ClinicalSchool
 from app.prompt_config import COUNSELOR_NAME, build_chat_system_prompt
 from app.services.chat_session import ChatSessionState
+from app.services.assessment_package import build_assessment_package, mark_package_presented
+from app.services.counseling_phase import (
+    PHASE_ASSESSMENT_BRIEFING,
+    build_phase_prompt,
+    is_rapport_complete,
+    phase_snapshot,
+    rapport_readiness,
+    sync_counseling_phase,
+)
+from app.services.fatigue_manager import (
+    detect_assessment_request,
+    detect_distress,
+    session_has_assessment_intent,
+    session_has_distress,
+)
 from app.services.orchestrator import (
+    OrchestratorDecision,
     build_profile_delta,
     decide_turn,
     record_assessment_answer,
@@ -17,44 +33,175 @@ from app.services.orchestrator import (
 from app.services.persona_router import build_persona_directive, route_clinical_persona
 from app.services.prompt_binding import PromptContextWeightBindingFactory, extract_chat_quant_features
 
-DISTRESS_PATTERNS = ("불안", "우울", "스트레스", "초조", "무기력", "상실", "두려움", "긴장", "외로움", "잠")
+INSTRUMENT_LABELS = {
+    "phq9": "우울 척도(PHQ-9)",
+    "gad7": "불안 척도(GAD-7)",
+    "attachment_ecr": "관계·애착",
+    "isi": "수면",
+    "pss": "스트레스",
+    "micro_emotion": "감정 온도",
+}
 
 
-def _reflect_emotion(user_message: str) -> str:
-    normalized = user_message.strip()
-    for keyword in DISTRESS_PATTERNS:
-        if keyword in normalized:
-            return keyword
-    return ""
+def _instrument_label(instrument_id: str) -> str:
+    return INSTRUMENT_LABELS.get(instrument_id, "마음 상태")
 
 
-def fallback_reply(user_message: str, assessment_response: Optional[Dict[str, Any]] = None) -> str:
+def fallback_reply(
+    user_message: str,
+    state: ChatSessionState,
+    decision: Optional[OrchestratorDecision] = None,
+    assessment_response: Optional[Dict[str, Any]] = None,
+) -> str:
+    if state.counseling_phase == "rapport" and not detect_distress(user_message) and not detect_assessment_request(user_message):
+        return (
+            "안녕하세요, 편하게 오신 것만으로도 큰 용기예요. "
+            "이곳은 비밀이 보장되고, 편한 속도로 이야기할 수 있는 공간이에요. "
+            "지금 가장 먼저 나누고 싶은 마음이 있다면 들려주세요."
+        )
+
+    if state.counseling_phase == "termination":
+        return (
+            "그동안 나눠 주신 이야기와 마음, 정말 소중했어요. "
+            "오늘 함께 살펴본 변화를 마음에 간직하시고, "
+            "힘들 때는 1393·전문 상담기관에도 언제든 연락하셔도 괜찮아요. "
+            "스스로를 돌보는 작은 한 걸음, 오늘도 응원해요."
+        )
+
+    if state.counseling_phase == "conceptualization" and state.phase_notes.get("chief_complaint"):
+        return (
+            f"지금까지 이야기해 주신 '{state.phase_notes['chief_complaint'][:40]}' 부분을 "
+            "돌아보면, 비슷한 패턴이 반복되는 것 같아요. "
+            "그때 가장 크게 느껴지는 감정이나 생각이 있다면 함께 짚어볼까요?"
+        )
+
+    if state.counseling_phase == "intervention" and state.phase_notes.get("goals"):
+        goal = state.phase_notes["goals"][0]
+        return (
+            f"함께 정한 방향인 '{goal}'을 위해, "
+            "오늘 당장 시도해 볼 수 있는 아주 작은 한 걸음을 생각해 볼까요? "
+            "예를 들어 5분 산책, 감정을 한 줄 적기처럼 부담 없는 것도 좋아요."
+        )
+
+    if state.counseling_phase == "rapport" and not is_rapport_complete(state, user_message):
+        readiness = rapport_readiness(state, user_message)
+        missing = readiness["missing"][0] if readiness["missing"] else "지금 마음"
+        return (
+            "천천히 들려주셔서 고마워요. 아직은 검사보다, "
+            f"{missing.replace('고객의 구체적 이야기를 2회 이상 더 들어주세요', '이야기')}에 "
+            "조금 더 귀 기울이고 싶어요. 편한 만큼만 더 들려주실 수 있을까요?"
+        )
+
+    if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING:
+        return (
+            "지금까지 이야기를 바탕으로 고객 케이스를 초기 분류했어요. "
+            "아래 카드에서 어떤 유형에 가깝게 보이는지, 참고 확률, "
+            "검사 후 그릴 수 있는 미래와 함께 지켜낼 수 있는 것까지 확인하실 수 있어요. "
+            "편히 검토하신 뒤 결제하시면 정밀 스크리닝을 시작합니다."
+        )
+
     if assessment_response and assessment_response.get("skipped"):
         return (
-            "괜찮아요. 지금은 편한 만큼만 나눠도 충분해요. "
-            "방금 이야기해 주신 마음이 더 궁금한데, 어떤 순간이 가장 힘드셨나요?"
+            "네, 지금은 넘어가도 괜찮아요. "
+            "말씀해 주신 마음은 충분히 중요해요. "
+            "우울한 기분이 가장 크게 느껴지는 순간이 언제인지, 편하실 때 조금만 더 들려주실 수 있을까요?"
         )
 
     if assessment_response and assessment_response.get("value") is not None:
         return (
-            "솔직하게 답해 주셔서 고마워요. 그 답변을 들으니 지금 상태가 조금 더 그려져요. "
-            "그 감정이 올라올 때, 보통 어떤 생각이 함께 드시나요?"
+            "답해 주셔서 고마워요. 방금 답변을 바탕으로 지금 상태를 조금씩 그려가고 있어요. "
+            "검사가 쌓일수록 정상 범주인지, 전문 상담이 도움이 될지 더 정확히 안내해 드릴 수 있어요. "
+            "그때 가장 먼저 떠오르는 생각이나 감정이 있다면 함께 나눠 주세요."
         )
 
-    emotion = _reflect_emotion(user_message)
-    snippet = user_message.strip()[:60] + ("…" if len(user_message.strip()) > 60 else "")
-
-    if emotion:
+    if decision and decision.action == "inject_assessment" and decision.selection:
+        instrument_id = decision.selection.get("instrument_id", "")
+        label = _instrument_label(instrument_id)
+        if detect_assessment_request(user_message) or session_has_assessment_intent(state, user_message):
+            return (
+                f"네, 검사 가능해요. 지금 말씀해 주신 마음을 더 잘 이해하려고 "
+                f"{label}에서 가볍게 한 가지만 여쭤볼게요. "
+                "아래에서 편한 만큼만 골라 주시면, 대화가 이어지는 동안 결과도 차곡차곡 쌓여요. "
+                "진단이 아니라 참고용 스크리닝이에요."
+            )
+        if session_has_distress(state, user_message) or detect_distress(user_message):
+            return (
+                f"말씀해 주신 우울한 마음, 충분히 느껴졌어요. "
+                f"감정만으로 단정하기 어려워서, {label}으로 지금 상태를 가볍게 확인해 보려고 해요. "
+                "아래 질문 하나만 편하게 답해 주셔도 돼요."
+            )
         return (
-            f"말씀해 주신 내용, 충분히 와닿았어요. {emotion}이(가) 크게 느껴지는 시기인 것 같아요. "
-            f"특히 \"{snippet}\"라고 하신 부분이 마음에 남았어요. "
-            "그때 몸에서는 어떤 느낌이 드셨는지, 조금만 더 들려주실 수 있을까요?"
+            f"대화를 이어가면서 {label} 질문 하나 드릴게요. "
+            "편한 만큼만 선택해 주시면, 정상 범주인지 전문 상담이 필요한지도 함께 살펴볼 수 있어요."
+        )
+
+    if detect_assessment_request(user_message):
+        return (
+            "네, 검사·상태 확인은 가능해요. "
+            "대화 속에서 PHQ·GAD 같은 표준 도구를 짧게 진행하고, "
+            "정상 범주인지 전문 상담·병원 평가가 필요한지 확률로 안내해 드릴게요. "
+            "지금 가장 불편한 마음부터 조금만 더 들려주실 수 있을까요?"
+        )
+
+    if detect_distress(user_message):
+        if "우울" in user_message:
+            return (
+                "우울하다고 말씀해 주신 것만으로도 큰 용기예요. "
+                "그 마음이 언제부터, 어떤 상황에서 특히 크게 느껴지는지 들려주실 수 있을까요? "
+                "원하시면 대화 중에 우울 척도도 가볍게 함께 확인해 드릴 수 있어요."
+            )
+        if "답답" in user_message:
+            return (
+                "답답한 마음이 느껴져요. 가슴이 조이거나 숨이 얕아지는 느낌처럼, "
+                "몸에서는 어떻게 느껴지는지도 궁금해요. "
+                "그 답답함이 가장 크게 올라올 때가 있다면 언제인가요?"
+            )
+        return (
+            "지금 많이 힘드신 것 같아요. 그 감정을 느끼게 된 계기나 "
+            "하루 중 가장 버거운 순간이 있다면 편하게 말씀해 주세요."
+        )
+
+    if "관계" in user_message or "대인" in user_message:
+        return (
+            "관계 이야기군요. 사람과의 연결에서 오는 기분은 마음 전체에 큰 영향을 주죠. "
+            "요즘 관계에서 가장 마음에 걸리는 부분이 무엇인지 들려주실 수 있을까요?"
         )
 
     return (
-        f"천천히 이야기해 주셔서 고마워요. \"{snippet}\" 부분에서 많은 마음이 느껴졌어요. "
-        "지금 이 순간, 가장 먼저 다뤄보고 싶은 이야기가 있다면 무엇인가요?"
+        "천천히 들려주셔서 고마워요. "
+        "지금 이 순간, 가장 먼저 풀고 싶은 마음이나 궁금한 점이 있다면 무엇인가요?"
     )
+
+
+def enrich_assistant_reply(
+    text: str,
+    user_message: str,
+    state: ChatSessionState,
+    decision: Optional[OrchestratorDecision] = None,
+    assessment_response: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Replace thin or off-topic model output with contextual fallback."""
+    cleaned = (text or "").strip()
+    fallback = fallback_reply(user_message, state, decision, assessment_response)
+
+    if not cleaned:
+        return fallback
+
+    if detect_assessment_request(user_message):
+        if "가능" not in cleaned and "검사" not in cleaned:
+            return fallback
+
+    if decision and decision.action == "inject_assessment":
+        label = _instrument_label((decision.selection or {}).get("instrument_id", ""))
+        if len(cleaned) < 35 or "가장 먼저" in cleaned or user_message.strip() in cleaned:
+            return fallback
+        if label.split("(")[0] not in cleaned and "검사" not in cleaned and "질문" not in cleaned:
+            return fallback
+
+    if (detect_distress(user_message) or session_has_distress(state, user_message)) and user_message.strip() in cleaned:
+        return fallback
+
+    return cleaned
 
 
 async def _yield_text_with_pacing(text: str, delay: float = 0.028) -> AsyncIterator[str]:
@@ -69,6 +216,7 @@ def build_chat_messages(
     user_message: str,
     assessment_response: Optional[Dict[str, Any]] = None,
     preferred_school: Optional[ClinicalSchool] = None,
+    decision: Optional[OrchestratorDecision] = None,
 ) -> List[Dict[str, str]]:
     school = ClinicalSchool(state.preferred_school or ClinicalSchool.ROGERIAN.value)
     distortions = (state.persona_routing or {}).get("detected_distortions") or []
@@ -94,8 +242,30 @@ def build_chat_messages(
         + binding["context_block"]
     )
 
-    if state.turn_count <= 1:
-        system_prompt += "\n\n이번 턴은 첫 인사에 가깝습니다. 따뜻하게 환영하고, 부담 없이 한 문장만 더 물어보세요."
+    if state.counseling_phase == "rapport" and state.turn_count <= 2:
+        system_prompt += "\n\n이번 턴은 관계 형성·첫 인사에 가깝습니다. 따뜻하게 환영하고, 부담 없이 한 문장만 더 물어보세요."
+
+    system_prompt += "\n\n" + build_phase_prompt(state, user_message)
+
+    if detect_assessment_request(user_message):
+        system_prompt += (
+            "\n\n내담자가 검사·상태 확인을 요청했습니다. "
+            "'가능하다'고 명확히 답하고, 곧 이어질 짧은 심리검사(스크리닝)를 자연스럽게 안내하세요. "
+            "질문을 그대로 반복하거나 '가장 먼저 다루고 싶은 이야기'만 되묻지 마세요."
+        )
+
+    if session_has_distress(state, user_message) and not detect_assessment_request(user_message):
+        system_prompt += (
+            "\n\n내담자가 우울·답답함 등 고통 신호를 보였습니다. "
+            "감정을 먼저 반영하고, 필요하면 검사·상담 안내도 자연스럽게 언급하세요."
+        )
+
+    if decision and decision.action == "inject_assessment":
+        instrument_id = (decision.selection or {}).get("instrument_id", "")
+        system_prompt += (
+            f"\n\n이번 턴에 {instrument_id} 관련 짧은 검사 카드가 함께 표시됩니다. "
+            "상담 멘트에서 검사를 소개하고, 아래 카드에서 답하도록 부드럽게 안내하세요."
+        )
 
     if assessment_response:
         if assessment_response.get("skipped"):
@@ -116,11 +286,15 @@ async def stream_chat_completion(
     messages: List[Dict[str, str]],
     max_tokens: int,
     client: Any,
+    state: ChatSessionState,
+    decision: Optional[OrchestratorDecision] = None,
     assessment_response: Optional[Dict[str, Any]] = None,
 ) -> AsyncIterator[str]:
     user_message = messages[-1]["content"] if messages else ""
     if not client or not getattr(client, "api_key", None):
-        async for chunk in _yield_text_with_pacing(fallback_reply(user_message, assessment_response)):
+        async for chunk in _yield_text_with_pacing(
+            fallback_reply(user_message, state, decision, assessment_response)
+        ):
             yield chunk
         return
 
@@ -137,7 +311,9 @@ async def stream_chat_completion(
             if delta:
                 yield delta
     except Exception:
-        async for chunk in _yield_text_with_pacing(fallback_reply(user_message, assessment_response)):
+        async for chunk in _yield_text_with_pacing(
+            fallback_reply(user_message, state, decision, assessment_response)
+        ):
             yield chunk
 
 
@@ -169,6 +345,16 @@ async def run_chat_turn(
     if assessment_response:
         recorded = record_assessment_answer(state, assessment_response)
         yield {"event": "assessment_recorded", "data": recorded}
+    elif state.pending_assessment:
+        # 새 메시지를 보냈지만 이전 검사에 답하지 않음 → 흐름이 끊기지 않게 해제
+        state.pending_assessment = None
+
+    phase_info = sync_counseling_phase(state, user_message)
+
+    if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING and not state.assessment_package_ready:
+        package = build_assessment_package(state, user_message)
+        mark_package_presented(state, package)
+        yield {"event": "assessment_package", "data": package}
 
     decision = decide_turn(state, user_message, assessment_response=assessment_response, client=client)
     yield {
@@ -180,6 +366,7 @@ async def run_chat_turn(
             "counselor_name": COUNSELOR_NAME,
             "selection": decision.selection,
             "persona": state.persona_routing,
+            "counseling_phase": phase_info,
         },
     }
 
@@ -187,14 +374,30 @@ async def run_chat_turn(
         record_assessment_offer(state, decision.assessment)
         yield {"event": "assessment", "data": decision.assessment}
 
-    messages = build_chat_messages(state, user_message, assessment_response, preferred_school)
+    messages = build_chat_messages(
+        state, user_message, assessment_response, preferred_school, decision
+    )
     streamer = stream_fn or stream_chat_completion
     assistant_chunks: List[str] = []
-    async for token in streamer(messages, max_tokens, client, assessment_response):
-        assistant_chunks.append(token)
-        yield {"event": "token", "data": {"content": token}}
 
-    assistant_text = "".join(assistant_chunks).strip()
+    if stream_fn:
+        async for token in streamer(messages, max_tokens, client, assessment_response):
+            assistant_chunks.append(token)
+            yield {"event": "token", "data": {"content": token}}
+    else:
+        async for token in streamer(
+            messages, max_tokens, client, state, decision, assessment_response
+        ):
+            assistant_chunks.append(token)
+            yield {"event": "token", "data": {"content": token}}
+
+    assistant_text = enrich_assistant_reply(
+        "".join(assistant_chunks).strip(),
+        user_message,
+        state,
+        decision,
+        assessment_response,
+    )
     state.messages.append({"role": "user", "content": user_message})
     state.messages.append({"role": "assistant", "content": assistant_text})
 
@@ -209,6 +412,7 @@ async def run_chat_turn(
             "counselor_name": COUNSELOR_NAME,
             "persona": state.persona_routing,
             "profile_delta": profile_delta,
+            "counseling_phase": phase_snapshot(state),
         },
     }
 

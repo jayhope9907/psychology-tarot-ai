@@ -42,6 +42,8 @@ def test_selector_continues_in_progress_instrument():
 def test_orchestrator_offers_assessment_on_counseling_request():
     state = ChatSessionState(user_id="user-counseling")
     state.turn_count = 3
+    state.counseling_phase = "assessment"
+    state.assessment_paid = True
 
     decision = decide_turn(state, "요즘 너무 힘들어서 상담 받고 싶어요.")
 

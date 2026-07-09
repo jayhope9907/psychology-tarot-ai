@@ -50,6 +50,8 @@ def test_fatigue_blocks_assessments_after_warmup_and_pending():
 def test_orchestrator_injects_matched_assessment_after_distress_and_warmup():
     state = ChatSessionState(user_id="user-orchestrator")
     state.turn_count = 4
+    state.counseling_phase = "assessment"
+    state.assessment_paid = True
 
     decision = decide_turn(state, "요즘 우울하고 무기력해서 잠도 잘 못 자요.")
 
@@ -63,7 +65,7 @@ def test_orchestrator_respects_warmup_period():
     state = ChatSessionState(user_id="user-warmup")
     state.turn_count = 1
 
-    decision = decide_turn(state, "요즘 스트레스가 심해요.")
+    decision = decide_turn(state, "안녕하세요, 처음 왔어요.")
 
     assert decision.action == "chat_only"
     assert decision.reason == "warmup"
@@ -101,6 +103,8 @@ def test_chat_stream_emits_orchestrator_assessment_and_done_events():
     async def collect_events():
         state = get_or_create_session("user-stream", plan="BASIC")
         state.turn_count = 4
+        state.counseling_phase = "assessment"
+        state.assessment_paid = True
         events = []
         async for event in run_chat_turn(
             state,

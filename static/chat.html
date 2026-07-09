@@ -237,6 +237,58 @@
       50% { opacity: 0.7; transform: scale(0.92); }
     }
 
+    .phase-progress {
+      width: 100%;
+      margin-bottom: 16px;
+      padding: 12px 12px 10px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+    }
+
+    .phase-progress-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .phase-current {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .phase-desc {
+      font-size: 0.72rem;
+      color: var(--text-soft);
+      line-height: 1.45;
+      margin-bottom: 10px;
+      min-height: 2.2em;
+    }
+
+    .phase-steps {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+
+    .phase-step {
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(61, 107, 90, 0.14);
+      transition: background 0.35s var(--ease), transform 0.35s var(--ease);
+    }
+
+    .phase-step.done { background: rgba(90, 143, 120, 0.55); }
+    .phase-step.active {
+      background: linear-gradient(90deg, var(--accent-light), var(--gold));
+      transform: scaleY(1.35);
+    }
+
     .stats {
       width: 100%;
       display: grid;
@@ -265,6 +317,70 @@
       font-weight: 500;
       color: var(--text);
       line-height: 1.4;
+    }
+
+    .insight-card {
+      width: 100%;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.65);
+      text-align: left;
+      margin-bottom: 12px;
+    }
+
+    .insight-zone {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .insight-zone.normal { background: #e8f2ec; color: #2d5a45; }
+    .insight-zone.mild { background: #f5eed8; color: #7a6230; }
+    .insight-zone.concern { background: #fde8e4; color: #8b3a32; }
+    .insight-zone.insufficient { background: #eef0f2; color: #5c6670; }
+
+    .insight-prob-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-soft);
+      margin-bottom: 4px;
+    }
+
+    .insight-prob-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .insight-prob-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent-light), #c4a574);
+      transition: width 0.6s var(--ease);
+    }
+
+    .insight-summary {
+      margin: 0;
+      font-size: 0.76rem;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .insight-rec {
+      margin: 8px 0 0;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent);
     }
 
     .pace-bar {
@@ -592,6 +708,334 @@
 
     button:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
 
+    .package-wrap {
+      max-width: min(92%, 580px);
+      animation: fadeUp 0.5s var(--ease);
+    }
+
+    .package-card {
+      background: linear-gradient(165deg, #fffef9 0%, #f0ebe3 100%);
+      border: 1px solid rgba(90, 143, 120, 0.22);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .package-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent-light), var(--gold), var(--accent));
+    }
+
+    .package-head {
+      margin-bottom: 16px;
+    }
+
+    .package-head h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .package-head p {
+      margin: 0;
+      font-size: 0.84rem;
+      color: var(--text-soft);
+      line-height: 1.55;
+    }
+
+    .package-price-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      border-radius: 16px;
+      background: rgba(90, 143, 120, 0.1);
+      border: 1px solid rgba(90, 143, 120, 0.18);
+    }
+
+    .package-price-row strong {
+      font-size: 1.35rem;
+      color: var(--accent);
+    }
+
+    .package-price-row span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .timeline-title,
+    .instruments-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 10px;
+    }
+
+    .process-timeline {
+      display: grid;
+      gap: 0;
+      margin-bottom: 18px;
+      position: relative;
+      padding-left: 18px;
+    }
+
+    .process-timeline::before {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: linear-gradient(180deg, var(--accent-light), rgba(196,165,116,0.35));
+    }
+
+    .timeline-step {
+      position: relative;
+      padding: 0 0 14px 14px;
+    }
+
+    .timeline-step:last-child { padding-bottom: 0; }
+
+    .timeline-step::before {
+      content: "";
+      position: absolute;
+      left: -16px;
+      top: 5px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d8e4de;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #d8e4de;
+    }
+
+    .timeline-step.done::before {
+      background: var(--accent-light);
+      box-shadow: 0 0 0 2px rgba(90,143,120,0.25);
+    }
+
+    .timeline-step.current::before {
+      background: var(--gold);
+      box-shadow: 0 0 0 3px rgba(196,165,116,0.35);
+      animation: pulse 2s ease infinite;
+    }
+
+    .timeline-step strong {
+      display: block;
+      font-size: 0.86rem;
+      margin-bottom: 2px;
+    }
+
+    .timeline-step p {
+      margin: 0;
+      font-size: 0.76rem;
+      color: var(--text-soft);
+      line-height: 1.45;
+    }
+
+    .instrument-flow {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .instrument-step {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .instrument-step .order {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(145deg, var(--accent-light), var(--accent));
+    }
+
+    .instrument-step .meta strong {
+      display: block;
+      font-size: 0.82rem;
+    }
+
+    .instrument-step .meta span {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .instrument-step .time {
+      font-size: 0.72rem;
+      color: var(--gold);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .package-disclaimer {
+      margin: 0 0 16px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .package-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button.pay-btn {
+      flex: 1;
+      min-width: 160px;
+      border: none;
+      border-radius: 999px;
+      padding: 13px 20px;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: white;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent-light), var(--accent));
+      box-shadow: 0 8px 24px var(--accent-glow);
+      transition: transform 0.18s var(--ease), box-shadow 0.18s;
+    }
+
+    button.pay-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px var(--accent-glow);
+    }
+
+    .package-paid-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(90,143,120,0.15);
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .case-preview-block {
+      margin-bottom: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(90,143,120,0.16);
+    }
+
+    .case-badge {
+      display: inline-block;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(90,143,120,0.18), rgba(196,165,116,0.2));
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .case-summary {
+      margin: 0 0 12px;
+      font-size: 0.86rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .hypothesis-list {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .hypothesis-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .hypothesis-row .label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .hypothesis-row .note {
+      grid-column: 1 / -1;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .hypothesis-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.06);
+      overflow: hidden;
+      grid-column: 1 / -1;
+    }
+
+    .hypothesis-bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent-light), var(--gold));
+    }
+
+    .hypothesis-pct {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .value-block {
+      margin-bottom: 14px;
+    }
+
+    .value-block h4 {
+      margin: 0 0 4px;
+      font-size: 0.88rem;
+      color: var(--accent);
+    }
+
+    .value-block p.sub {
+      margin: 0 0 8px;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+
+    .value-block ul {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--text-soft);
+    }
+
+    .value-block.defense h4 { color: #8a6b3a; }
+
     .typing {
       display: inline-flex;
       align-items: center;
@@ -804,6 +1248,32 @@
         <p class="role">상담심리 전문가<br/>대화 속 마음 돌봄</p>
         <span class="session-chip" id="sessionChip">상담 준비 중</span>
 
+        <div class="phase-progress" id="phaseProgress" aria-live="polite">
+          <div class="phase-progress-label">상담 진행 단계</div>
+          <div class="phase-current" id="phaseCurrent">관계 형성</div>
+          <p class="phase-desc" id="phaseDesc">신뢰·안전감을 만들고 상담의 틀을 안내합니다.</p>
+          <div class="phase-steps" id="phaseSteps" aria-hidden="true">
+            <span class="phase-step active" data-phase="0"></span>
+            <span class="phase-step" data-phase="1"></span>
+            <span class="phase-step" data-phase="2"></span>
+            <span class="phase-step" data-phase="3"></span>
+            <span class="phase-step" data-phase="4"></span>
+          </div>
+        </div>
+
+        <div class="insight-card" id="insightCard">
+          <div class="insight-zone insufficient" id="insightZone">분석 준비 중</div>
+          <div class="insight-prob-row">
+            <span>전문 상담·검사 권장 가능성</span>
+            <span id="insightProbText">—</span>
+          </div>
+          <div class="insight-prob-bar" aria-hidden="true">
+            <div class="insight-prob-fill" id="insightProbFill"></div>
+          </div>
+          <p class="insight-summary" id="insightSummary">대화와 검사를 진행하면 정상 범주인지, 병원·상담이 필요한지 확률로 안내해 드려요.</p>
+          <p class="insight-rec" id="insightRec"></p>
+        </div>
+
         <div class="stats">
           <div class="stat-item">
             <div class="stat-label">상담 페이스</div>
@@ -874,6 +1344,8 @@
 
     let sessionId = localStorage.getItem("psychology_ai_session_id") || null;
     let pendingAssessment = null;
+    let pendingPackage = null;
+    let assessmentPaid = false;
     let streaming = false;
     let typingEl = null;
     let preferredSchool = localStorage.getItem("psychology_ai_preferred_school") || "";
@@ -885,10 +1357,18 @@
     const messageInput = document.getElementById("messageInput");
     const sendButton = document.getElementById("sendButton");
     const sessionChip = document.getElementById("sessionChip");
+    const phaseCurrent = document.getElementById("phaseCurrent");
+    const phaseDesc = document.getElementById("phaseDesc");
+    const phaseSteps = document.getElementById("phaseSteps");
     const paceLabel = document.getElementById("paceLabel");
     const paceFill = document.getElementById("paceFill");
     const batteryChip = document.getElementById("batteryChip");
     const batteryRing = document.getElementById("batteryRing");
+    const insightZone = document.getElementById("insightZone");
+    const insightProbText = document.getElementById("insightProbText");
+    const insightProbFill = document.getElementById("insightProbFill");
+    const insightSummary = document.getElementById("insightSummary");
+    const insightRec = document.getElementById("insightRec");
     const personaOptions = document.getElementById("personaOptions");
     const personaStatus = document.getElementById("personaStatus");
     const sidebar = document.getElementById("sidebar");
@@ -994,6 +1474,24 @@
       }
     }
 
+    function updateCounselingPhase(phaseInfo) {
+      if (!phaseInfo) return;
+      const index = Number.isFinite(phaseInfo.phase_index) ? phaseInfo.phase_index : 0;
+      phaseCurrent.textContent = phaseInfo.phase_label || "관계 형성";
+      let desc = phaseInfo.phase_description || "";
+      if (phaseInfo.rapport_readiness && phaseInfo.phase === "rapport") {
+        const pct = Math.round((phaseInfo.rapport_readiness.score || 0) * 100);
+        const missing = (phaseInfo.rapport_readiness.missing || []).slice(0, 2).join(" · ");
+        desc = `고객 파악 ${pct}% · ${missing || "충분히 들은 뒤 검사 안내"}`;
+      }
+      phaseDesc.textContent = desc;
+      phaseSteps.querySelectorAll(".phase-step").forEach((step, idx) => {
+        step.classList.remove("active", "done");
+        if (idx < index) step.classList.add("done");
+        if (idx === index) step.classList.add("active");
+      });
+    }
+
     function updatePace(fatigue) {
       if (!fatigue) return;
       const score = Math.round((fatigue.fatigue_score || 0) * 100);
@@ -1008,6 +1506,27 @@
       batteryRing.style.strokeDashoffset = String(offset);
     }
 
+    function updateClinicalInsight(insight) {
+      if (!insight) return;
+      const zone = insight.overall_zone || "insufficient_data";
+      const zoneClass = {
+        normal: "normal",
+        mild_elevation: "mild",
+        clinical_concern: "concern",
+        insufficient_data: "insufficient",
+      }[zone] || "insufficient";
+
+      insightZone.className = `insight-zone ${zoneClass}`;
+      insightZone.textContent = insight.overall_zone_label || "분석 중";
+
+      const prob = Math.round((insight.professional_care_probability || 0) * 100);
+      insightProbText.textContent = `${prob}% · 신뢰 ${Math.round((insight.confidence || 0) * 100)}%`;
+      insightProbFill.style.width = `${prob}%`;
+
+      if (insight.summary_ko) insightSummary.textContent = insight.summary_ko;
+      insightRec.textContent = insight.recommendation_label ? `→ ${insight.recommendation_label}` : "";
+    }
+
     async function refreshBatteryStatus(activeSessionId) {
       if (!activeSessionId) return;
       try {
@@ -1019,7 +1538,144 @@
         const total = data.instruments_total || 0;
         batteryChip.textContent = `${pct}% · ${touched}/${total} 검사`;
         setBatteryProgress(pct);
+
+        const insightRes = await fetch(`/api/v1/insights/${activeSessionId}`);
+        if (insightRes.ok) updateClinicalInsight(await insightRes.json());
       } catch (_) {}
+    }
+
+    function renderAssessmentPackageCard(pkg) {
+      hideEmptyState();
+      pendingPackage = pkg;
+      const preview = pkg.case_preview || {};
+      const wrap = document.createElement("div");
+      wrap.className = "package-wrap";
+
+      const hypothesesHtml = (preview.hypotheses || []).map((row, index) => `
+        <div class="hypothesis-row">
+          <div class="label">${index === 0 ? "★ " : ""}${row.case_type || row.label}</div>
+          <div class="hypothesis-pct">${row.probability_label || ""}</div>
+          <div class="note">${row.screening_note || ""} · ${row.confidence_band || ""}</div>
+          <div class="hypothesis-bar"><span style="width:${row.probability || 0}%"></span></div>
+        </div>
+      `).join("");
+
+      const futureHtml = (preview.future_vision || []).map((item) => `<li>${item}</li>`).join("");
+      const defenseHtml = (preview.defense_points || []).map((item) => `<li>${item}</li>`).join("");
+
+      const timelineHtml = (pkg.process_timeline || []).map((step) => `
+        <div class="timeline-step ${step.status || ""}">
+          <strong>${step.title}</strong>
+          <p>${step.description}</p>
+        </div>
+      `).join("");
+
+      const instrumentsHtml = (pkg.instrument_steps || []).map((step) => `
+        <div class="instrument-step">
+          <div class="order">${step.order}</div>
+          <div class="meta">
+            <strong>${step.title}</strong>
+            <span>${step.subtitle}${step.focus ? ` · ${step.focus}` : ""}</span>
+          </div>
+          <div class="time">~${step.estimated_minutes}분</div>
+        </div>
+      `).join("");
+
+      const vp = preview.value_proposition || {};
+
+      wrap.innerHTML = `
+        <div class="package-card" id="assessmentPackageCard">
+          <div class="package-head">
+            <h3>맞춤 심리검사 패키지 · ${pkg.tier_label || ""}</h3>
+            <p>주호소: ${pkg.chief_complaint || "지금까지 나눈 마음"} · 예상 ${pkg.estimated_duration_minutes || 15}분 · ${pkg.total_instruments || 0}개 검사</p>
+          </div>
+
+          <div class="case-preview-block">
+            <span class="case-badge">케이스 초기 분류 · 라포 형성 이후</span>
+            <p class="case-summary">${preview.classification_summary || "대화를 바탕으로 케이스 유형을 분류했습니다."}</p>
+            <div class="hypothesis-list">${hypothesesHtml}</div>
+            ${preview.comorbidity_note ? `<p class="case-summary" style="font-size:0.78rem;color:var(--text-muted)">${preview.comorbidity_note}</p>` : ""}
+            <p class="package-disclaimer" style="margin:0">${preview.disclaimer || ""}</p>
+          </div>
+
+          <div class="value-block">
+            <h4>${vp.headline || "이 검사로 그릴 수 있는 미래"}</h4>
+            <p class="sub">${vp.subheadline || ""}</p>
+            <ul>${futureHtml}</ul>
+          </div>
+
+          <div class="value-block defense">
+            <h4>${vp.prevention_headline || "함께 지켜낼 수 있는 것"}</h4>
+            <p class="sub">${vp.prevention_subheadline || ""}</p>
+            <ul>${defenseHtml}</ul>
+          </div>
+
+          <div class="package-price-row">
+            <strong>${pkg.price_label || ""}</strong>
+            <span>${pkg.tier_description || ""}</span>
+          </div>
+          <p class="timeline-title">진행 과정</p>
+          <div class="process-timeline">${timelineHtml}</div>
+          <p class="instruments-title">포함 검사 순서</p>
+          <div class="instrument-flow">${instrumentsHtml}</div>
+          <p class="package-disclaimer">${pkg.disclaimer || ""}</p>
+          <div class="package-actions">
+            <button type="button" class="pay-btn" id="packagePayBtn">결제하고 정밀 스크리닝 시작</button>
+            <button type="button" class="secondary" id="packageLaterBtn">조금 더 이야기 후 결정</button>
+          </div>
+        </div>
+      `;
+
+      messagesEl.appendChild(wrap);
+      scrollToBottom();
+
+      wrap.querySelector("#packagePayBtn")?.addEventListener("click", () => checkoutPackage(pkg.tier_id));
+      wrap.querySelector("#packageLaterBtn")?.addEventListener("click", () => {
+        wrap.style.opacity = "0.7";
+        wrap.querySelectorAll("button").forEach((btn) => { btn.disabled = true; });
+      });
+    }
+
+    function markPackagePaid() {
+      assessmentPaid = true;
+      const card = document.getElementById("assessmentPackageCard");
+      if (!card) return;
+      card.querySelector(".package-actions").innerHTML =
+        '<span class="package-paid-badge">✓ 결제 완료 · 검사를 시작합니다</span>';
+      card.style.borderColor = "rgba(90,143,120,0.45)";
+    }
+
+    async function checkoutPackage(tierId) {
+      if (!sessionId || streaming) return;
+      const payBtn = document.getElementById("packagePayBtn");
+      if (payBtn) {
+        payBtn.disabled = true;
+        payBtn.textContent = "결제 처리 중…";
+      }
+      try {
+        const response = await fetch(`/api/v1/sessions/${sessionId}/checkout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, session_id: sessionId, tier_id: tierId || null }),
+        });
+        if (!response.ok) throw new Error("결제 처리에 문제가 생겼어요.");
+        const result = await response.json();
+        markPackagePaid();
+        updateCounselingPhase({
+          phase: "assessment",
+          phase_label: "문제 평가·탐색",
+          phase_description: "짧은 심리검사로 객관적 단서를 모읍니다.",
+          phase_index: 1,
+        });
+        await submitMessage("결제했어요. 검사 시작해 주세요.");
+      } catch (error) {
+        if (payBtn) {
+          payBtn.disabled = false;
+          payBtn.textContent = "결제하고 검사 시작하기";
+        }
+        const bubble = createAssistantRow();
+        bubble.textContent = error.message || "결제 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.";
+      }
     }
 
     function renderAssessmentCard(assessment) {
@@ -1123,10 +1779,12 @@
         parsed.events.forEach(({ event, data }) => {
           if (event === "orchestrator") {
             updatePace(data.fatigue);
+            updateCounselingPhase(data.counseling_phase);
             if (data.persona?.persona_label) {
               personaStatus.textContent = data.persona.persona_label;
             }
           }
+          if (event === "assessment_package") renderAssessmentPackageCard(data);
           if (event === "assessment") renderAssessmentCard(data);
           if (event === "token") {
             if (!gotToken) {
@@ -1143,6 +1801,8 @@
             localStorage.setItem("psychology_ai_session_id", sessionId);
             sessionChip.textContent = `상담 중 · ${sessionId.slice(0, 8)}`;
             updatePace(data.profile_delta?.fatigue);
+            updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
+            updateClinicalInsight(data.profile_delta?.clinical_insight);
             refreshBatteryStatus(sessionId);
             toggleSidebar(false);
           }
@@ -1210,8 +1870,14 @@
         "안녕하세요, 이서연 상담사예요.\n\n" +
         "오늘 이 자리에 오신 것만으로도 큰 용기예요. " +
         "편한 속도로, 편한 만큼만 이야기해 주셔도 괜찮아요.\n\n" +
-        "지금 가장 먼저 나누고 싶은 마음이 있다면 들려주세요.";
+        "상담은 관계 형성 → 마음 탐색 → 이해 정리 → 작은 변화 → 마무리 순으로 " +
+        "천천히 이어집니다. 지금 가장 먼저 나누고 싶은 마음이 있다면 들려주세요.";
       sessionChip.textContent = "새 상담 시작";
+      updateCounselingPhase({
+        phase_index: 0,
+        phase_label: "관계 형성",
+        phase_description: "신뢰·안전감을 만들고 상담의 틀을 안내합니다.",
+      });
     }
 
     chatForm.addEventListener("submit", async (event) => {

@@ -118,7 +118,7 @@ INSTRUMENT_PROFILES: Dict[str, Dict[str, Any]] = {
         "display_name": "애착 ECR",
         "domain": "wellbeing_attachment",
         "focus": "애착 불안·회피",
-        "keywords": ("관계", "버림", "거리", "친밀", "외로", "집착", "회피"),
+        "keywords": ("관계", "버림", "거리", "친밀", "외로", "집착", "회피", "대인"),
         "counseling_fit": ("관계", "사랑", "버릴까", "친해지"),
     },
     "cbt_thought": {
