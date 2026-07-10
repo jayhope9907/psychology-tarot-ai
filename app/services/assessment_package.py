@@ -176,7 +176,9 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
     chief = state.phase_notes.get("chief_complaint") or "지금까지 나눈 마음"
     case_preview = build_case_preview(state, user_message, ranked_instruments=ranked)
 
-    return {
+    from app.services.mood_assistant import enrich_package_with_mood, resolve_mood_context
+
+    package = {
         "package_id": str(uuid4()),
         "tier_id": tier_id,
         "tier_label": tier["label"],
@@ -196,6 +198,35 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
         ),
         "payment_required": not state.assessment_paid,
     }
+    ctx = resolve_mood_context(state.user_id)
+    if ctx.has_checkin and ctx.score <= 2:
+        tier_id = "essential"
+        tier = PACKAGE_TIERS[tier_id]
+        selected = top_scores[: tier["max_instruments"]]
+        total_minutes = sum(item["estimated_minutes"] for item in selected)
+        package["tier_id"] = tier_id
+        package["tier_label"] = tier["label"]
+        package["tier_description"] = tier["description"]
+        package["price_krw"] = tier["price_krw"]
+        package["price_label"] = tier["price_label"]
+        package["recommended_instruments"] = selected
+        package["instrument_steps"] = [
+            {
+                "order": index,
+                "instrument_id": item["instrument_id"],
+                "title": item["display_name"],
+                "subtitle": item["domain_label"],
+                "focus": item["focus"],
+                "estimated_minutes": item["estimated_minutes"],
+                "delivery": "대화 중 1문항씩 · 부담 없이 건너뛰기 가능",
+            }
+            for index, item in enumerate(selected, start=1)
+        ]
+        package["total_instruments"] = len(selected)
+        package["estimated_duration_minutes"] = total_minutes
+
+    package = enrich_package_with_mood(package, ctx, state)
+    return package
 
 
 def mark_package_presented(state: ChatSessionState, package: Dict[str, Any]) -> None:

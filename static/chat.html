@@ -307,6 +307,53 @@
       animation: pulse 2.4s ease infinite;
     }
 
+    .mood-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.35);
+      color: var(--text-soft);
+    }
+
+    .mood-chip.has-checkin { background: rgba(90, 143, 120, 0.12); color: var(--accent); }
+    .mood-chip.low { background: rgba(196, 165, 116, 0.18); color: #8a6d3b; }
+    .mood-chip.high { background: rgba(90, 143, 120, 0.2); color: #3d6b55; }
+
+    .package-mood-intro {
+      margin: 0 0 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(90, 143, 120, 0.1);
+      border: 1px solid rgba(90, 143, 120, 0.22);
+      font-size: 0.84rem;
+      line-height: 1.55;
+      color: var(--text-soft);
+    }
+
+    .package-mood-pay {
+      margin: 0 0 12px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    .mood-tier-tip {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(196, 165, 116, 0.12);
+      border: 1px dashed rgba(196, 165, 116, 0.45);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: #7a6340;
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.7; transform: scale(0.92); }
@@ -1431,6 +1478,7 @@
         <h2>이서연 상담사</h2>
         <p class="role">상담심리 전문가<br/>대화 속 마음 돌봄</p>
         <span class="session-chip" id="sessionChip">상담 준비 중</span>
+        <span class="mood-chip" id="moodChip" hidden>오늘 기분</span>
 
         <div class="phase-progress" id="phaseProgress" aria-live="polite">
           <div class="phase-progress-label">상담 진행 단계</div>
@@ -1587,6 +1635,7 @@
     const messageInput = document.getElementById("messageInput");
     const sendButton = document.getElementById("sendButton");
     const sessionChip = document.getElementById("sessionChip");
+    const moodChip = document.getElementById("moodChip");
     const phaseCurrent = document.getElementById("phaseCurrent");
     const phaseDesc = document.getElementById("phaseDesc");
     const phaseSteps = document.getElementById("phaseSteps");
@@ -1891,12 +1940,39 @@
       } catch (_) {}
     }
 
+    function updateMoodChip(mood) {
+      if (!moodChip || !mood) return;
+      if (!mood.has_checkin) {
+        moodChip.hidden = true;
+        return;
+      }
+      moodChip.hidden = false;
+      moodChip.className = "mood-chip has-checkin";
+      if (mood.score <= 2) moodChip.classList.add("low");
+      else if (mood.score >= 4) moodChip.classList.add("high");
+      moodChip.textContent = `오늘 기분 · ${mood.label} (${mood.score}/5)`;
+    }
+
     function renderAssessmentPackageCard(pkg) {
       hideEmptyState();
       pendingPackage = pkg;
       const preview = pkg.case_preview || {};
       const wrap = document.createElement("div");
       wrap.className = "package-wrap";
+
+      const moodIntro = pkg.mood_intro
+        ? `<p class="package-mood-intro">${pkg.mood_intro}</p>`
+        : "";
+      const moodPay = pkg.mood_payment_copy
+        ? `<p class="package-mood-pay">${pkg.mood_payment_copy}</p>`
+        : "";
+      const tierTip = pkg.mood_tier_suggestion
+        ? `<div class="mood-tier-tip"><strong>${pkg.mood_tier_suggestion.tier_label} · ${pkg.mood_tier_suggestion.price_label}</strong><br/>${pkg.mood_tier_suggestion.reason}</div>`
+        : "";
+
+      const payLabel = (pkg.mood_context?.score || 5) <= 2
+        ? "부담 없이 핵심 검사 시작"
+        : "결제하고 정밀 스크리닝 시작";
 
       const hypothesesHtml = (preview.hypotheses || []).map((row, index) => `
         <div class="hypothesis-row">
@@ -1936,6 +2012,8 @@
             <h3>맞춤 심리검사 패키지 · ${pkg.tier_label || ""}</h3>
             <p>주호소: ${pkg.chief_complaint || "지금까지 나눈 마음"} · 예상 ${pkg.estimated_duration_minutes || 15}분 · ${pkg.total_instruments || 0}개 검사</p>
           </div>
+          ${moodIntro}
+          ${tierTip}
 
           <div class="case-preview-block">
             <span class="case-badge">케이스 초기 분류 · 라포 형성 이후</span>
@@ -1961,13 +2039,14 @@
             <strong>${pkg.price_label || ""}</strong>
             <span>${pkg.tier_description || ""}</span>
           </div>
+          ${moodPay}
           <p class="timeline-title">진행 과정</p>
           <div class="process-timeline">${timelineHtml}</div>
           <p class="instruments-title">포함 검사 순서</p>
           <div class="instrument-flow">${instrumentsHtml}</div>
           <p class="package-disclaimer">${pkg.disclaimer || ""}</p>
           <div class="package-actions">
-            <button type="button" class="pay-btn" id="packagePayBtn">결제하고 정밀 스크리닝 시작</button>
+            <button type="button" class="pay-btn" id="packagePayBtn">${payLabel}</button>
             <button type="button" class="secondary" id="packageLaterBtn">조금 더 이야기 후 결정</button>
           </div>
         </div>
@@ -2248,6 +2327,16 @@
             }
           }
           if (event === "assessment_package") renderAssessmentPackageCard(data);
+          if (event === "mood_briefing") {
+            if (data.mood) updateMoodChip(data.mood);
+            if (data.message && !gotToken) {
+              hideTyping();
+              assistantBubble = createAssistantRow();
+              assistantBubble.textContent = data.message;
+              gotToken = true;
+              scrollToBottom();
+            }
+          }
           if (event === "assessment") renderAssessmentCard(data);
           if (event === "homework") renderHomeworkCard(data);
           if (event === "token") {
@@ -2264,6 +2353,13 @@
             sessionId = data.session_id;
             localStorage.setItem("psychology_ai_session_id", sessionId);
             sessionChip.textContent = `상담 중 · ${sessionId.slice(0, 8)}`;
+            if (data.today_mood) updateMoodChip(data.today_mood);
+            if (data.assistant_message && assistantBubble) {
+              assistantBubble.textContent = data.assistant_message;
+            } else if (data.assistant_message && !gotToken) {
+              assistantBubble = createAssistantRow();
+              assistantBubble.textContent = data.assistant_message;
+            }
             updatePace(data.profile_delta?.fatigue);
             updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
             updateClinicalInsight(data.profile_delta?.clinical_insight);
@@ -2327,6 +2423,29 @@
       });
     }
 
+    async function loadMoodWelcome() {
+      if (sessionId) return;
+      try {
+        const res = await fetch(`/api/v1/chat/mood-context/${encodeURIComponent(userId)}`);
+        if (!res.ok) return showWelcomeIfNeeded();
+        const data = await res.json();
+        if (data.mood) updateMoodChip(data.mood);
+        if (localStorage.getItem(WELCOME_KEY) === "1") return;
+        localStorage.setItem(WELCOME_KEY, "1");
+        hideEmptyState();
+        const bubble = createAssistantRow();
+        bubble.textContent = data.welcome_message || "";
+        sessionChip.textContent = data.mood?.has_checkin ? "오늘 기분 맞춤 상담" : "새 상담 시작";
+        updateCounselingPhase({
+          phase_index: 0,
+          phase_label: "관계 형성",
+          phase_description: "신뢰·안전감을 만들고 상담의 틀을 안내합니다.",
+        });
+      } catch (_) {
+        showWelcomeIfNeeded();
+      }
+    }
+
     function showWelcomeIfNeeded() {
       if (sessionId || localStorage.getItem(WELCOME_KEY) === "1") return;
       localStorage.setItem(WELCOME_KEY, "1");
@@ -2373,7 +2492,7 @@
       }
     });
 
-    showWelcomeIfNeeded();
+    loadMoodWelcome();
     processTarotHandoff();
     autoResize();
     messageInput.focus();

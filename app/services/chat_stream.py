@@ -154,6 +154,17 @@ def fallback_reply(
     decision: Optional[OrchestratorDecision] = None,
     assessment_response: Optional[Dict[str, Any]] = None,
 ) -> str:
+    from app.services.mood_assistant import (
+        build_assessment_briefing_reply,
+        mood_priority_reply,
+        resolve_mood_context,
+    )
+
+    ctx = resolve_mood_context(state.user_id)
+    mood_reply = mood_priority_reply(ctx, state, user_message, decision, assessment_response)
+    if mood_reply:
+        return mood_reply
+
     if state.counseling_phase == "rapport" and not detect_distress(user_message) and not detect_assessment_request(user_message):
         return (
             "안녕하세요, 편하게 오신 것만으로도 큰 용기예요. "
@@ -190,11 +201,12 @@ def fallback_reply(
         )
 
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING:
+        package = state.assessment_package or {}
+        if package:
+            return build_assessment_briefing_reply(ctx, package)
         return (
-            "지금까지 이야기를 바탕으로 고객 케이스를 초기 분류했어요. "
-            "아래 카드에서 어떤 유형에 가깝게 보이는지, 참고 확률, "
-            "검사 후 그릴 수 있는 미래와 함께 지켜낼 수 있는 것까지 확인하실 수 있어요. "
-            "편히 검토하신 뒤 결제하시면 정밀 스크리닝을 시작합니다."
+            "지금까지 이야기를 바탕으로 맞춤 검사 패키지를 준비했어요. "
+            "아래 카드에서 구성을 확인하시고, 준비되시면 이어서 진행하실 수 있어요."
         )
 
     if assessment_response and assessment_response.get("skipped"):
@@ -303,6 +315,10 @@ def enrich_assistant_reply(
     if _is_near_duplicate(result, last):
         return _anti_repeat_reply(user_message, state, decision, assessment_response, blocked=result)
 
+    from app.services.mood_assistant import maybe_append_natural_nudge, resolve_mood_context
+
+    ctx = resolve_mood_context(state.user_id)
+    result = maybe_append_natural_nudge(result, state, ctx)
     return result
 
 
@@ -353,6 +369,10 @@ def build_chat_messages(
     system_prompt += build_homework_chat_context(state)
 
     from app.services.daily_routine import build_daily_context_block
+    from app.services.mood_assistant import build_mood_mandatory_system_block, resolve_mood_context
+
+    ctx = resolve_mood_context(state.user_id)
+    system_prompt += "\n\n" + build_mood_mandatory_system_block(ctx, state)
 
     daily_block = build_daily_context_block(state.user_id)
     if daily_block:
@@ -499,10 +519,22 @@ async def run_chat_turn(
 
     phase_info = sync_counseling_phase(state, user_message)
 
+    from app.services.mood_assistant import (
+        build_assessment_briefing_reply,
+        enrich_package_with_mood,
+        resolve_mood_context,
+    )
+
+    ctx = resolve_mood_context(state.user_id)
+    state.phase_notes["today_mood"] = ctx.to_dict()
+
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING and not state.assessment_package_ready:
         package = build_assessment_package(state, user_message)
+        package = enrich_package_with_mood(package, ctx, state)
         mark_package_presented(state, package)
         yield {"event": "assessment_package", "data": package}
+        briefing = build_assessment_briefing_reply(ctx, package)
+        yield {"event": "mood_briefing", "data": {"message": briefing, "mood": ctx.to_dict()}}
 
     homework_package = maybe_assign_homework(state, user_message)
     if homework_package:
@@ -532,7 +564,19 @@ async def run_chat_turn(
     streamer = stream_fn or stream_chat_completion
     assistant_chunks: List[str] = []
 
-    if stream_fn:
+    skip_llm_briefing = (
+        state.counseling_phase == PHASE_ASSESSMENT_BRIEFING
+        and state.assessment_package
+        and not state.phase_notes.get("assessment_briefing_spoken")
+    )
+
+    if skip_llm_briefing:
+        briefing = build_assessment_briefing_reply(ctx, state.assessment_package)
+        state.phase_notes["assessment_briefing_spoken"] = True
+        async for token in _yield_text_with_pacing(briefing):
+            assistant_chunks.append(token)
+            yield {"event": "token", "data": {"content": token}}
+    elif stream_fn:
         async for token in streamer(messages, max_tokens, client, assessment_response):
             assistant_chunks.append(token)
             yield {"event": "token", "data": {"content": token}}
@@ -568,6 +612,7 @@ async def run_chat_turn(
             "suggest_tarot": should_suggest_tarot(state),
             "tarot_blended": state.tarot_blended,
             "homework": homework_package or None,
+            "today_mood": ctx.to_dict(),
         },
     }
 

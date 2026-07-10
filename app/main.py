@@ -815,6 +815,18 @@ async def user_dashboard(user_id: str):
     return build_dashboard(user_id)
 
 
+@app.get("/api/v1/chat/mood-context/{user_id}")
+async def chat_mood_context(user_id: str):
+    from app.services.mood_assistant import get_mood_welcome_message, resolve_mood_context
+
+    ctx = resolve_mood_context(user_id)
+    return {
+        "user_id": user_id,
+        "mood": ctx.to_dict(),
+        "welcome_message": get_mood_welcome_message(ctx),
+    }
+
+
 @app.post("/api/v1/checkin")
 async def mood_checkin(request: CheckinRequest):
     if request.mood_score < 1 or request.mood_score > 5:
