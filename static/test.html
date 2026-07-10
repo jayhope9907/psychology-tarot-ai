@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#3182F6" />
+  <meta name="robots" content="noindex" />
+  <title>마음쉼터 · 테스트 허브</title>
+  <link rel="stylesheet" href="/static/css/toss-ui.css" />
+  <style>
+    body.toss-ui.test-hub {
+      min-height: 100vh;
+      padding: 16px 16px 100px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .test-header {
+      margin-bottom: 20px;
+    }
+
+    .test-header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .test-header p {
+      margin: 6px 0 0;
+      font-size: 0.88rem;
+      color: var(--t-text-secondary);
+      line-height: 1.5;
+    }
+
+    .test-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: var(--t-blue-soft);
+      color: var(--t-blue-dark);
+    }
+
+    .test-badge.ok { background: #ecfdf5; color: #047857; }
+    .test-badge.fail { background: #fef2f2; color: #b91c1c; }
+    .test-badge.pending { background: var(--t-bg); color: var(--t-text-tertiary); }
+
+    .test-section {
+      background: var(--t-surface);
+      border: 1px solid var(--t-border);
+      border-radius: var(--t-radius-lg);
+      padding: 18px;
+      margin-bottom: 12px;
+      box-shadow: var(--t-shadow);
+    }
+
+    .test-section h2 {
+      margin: 0 0 4px;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .test-section .desc {
+      margin: 0 0 14px;
+      font-size: 0.8rem;
+      color: var(--t-text-secondary);
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    @media (max-width: 480px) {
+      .test-grid { grid-template-columns: 1fr; }
+    }
+
+    .test-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--t-bg);
+      border: 1px solid var(--t-border);
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--t-text);
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: transform 0.12s ease;
+    }
+
+    .test-link:hover { transform: translateY(-1px); background: var(--t-blue-soft); }
+    .test-link span { font-size: 0.75rem; font-weight: 500; color: var(--t-text-tertiary); }
+
+    .test-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--t-border);
+      border-radius: 12px;
+      background: var(--t-surface);
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--t-text);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .test-btn:hover { background: var(--t-blue-soft); border-color: #c9e2ff; }
+    .test-btn.primary { background: var(--t-blue); color: white; border: none; text-align: center; }
+    .test-btn.danger { color: #b91c1c; }
+
+    .test-info {
+      font-size: 0.78rem;
+      color: var(--t-text-secondary);
+      background: var(--t-bg);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .test-log {
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #0f1419;
+      color: #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .check-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .check-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--t-border);
+      font-size: 0.85rem;
+    }
+
+    .check-list li:last-child { border-bottom: none; }
+
+    .check-icon {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 0.7rem;
+      font-weight: 800;
+      background: var(--t-bg);
+      color: var(--t-text-tertiary);
+    }
+
+    .check-list li.pass .check-icon { background: #d1fae5; color: #047857; }
+    .check-list li.fail .check-icon { background: #fee2e2; color: #b91c1c; }
+  </style>
+</head>
+<body class="toss-ui test-hub">
+  <header class="test-header">
+    <h1>🧪 테스트 허브</h1>
+    <p>상담 · 타로 · API를 한 화면에서 빠르게 확인하세요.</p>
+    <span class="test-badge pending" id="healthBadge">서버 확인 중…</span>
+  </header>
+
+  <section class="test-section">
+    <h2>바로가기</h2>
+    <p class="desc">실제 사용자 화면으로 이동</p>
+    <div class="test-grid">
+      <a class="test-link" href="/">상담 채팅 <span>→</span></a>
+      <a class="test-link" href="/tarot">3D 타로 <span>→</span></a>
+      <a class="test-link" href="/health" target="_blank" rel="noopener">Health JSON <span>↗</span></a>
+      <a class="test-link" href="https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai" target="_blank" rel="noopener">Render 배포 <span>↗</span></a>
+    </div>
+  </section>
+
+  <section class="test-section">
+    <h2>세션 정보</h2>
+    <p class="desc">브라우저에 저장된 테스트 데이터</p>
+    <div class="test-info" id="sessionInfo">불러오는 중…</div>
+    <div class="test-grid">
+      <button type="button" class="test-btn" id="btnNewSession">새 상담 세션</button>
+      <button type="button" class="test-btn danger" id="btnClearStorage">저장 데이터 초기화</button>
+    </div>
+  </section>
+
+  <section class="test-section">
+    <h2>API 스모크 테스트</h2>
+    <p class="desc">버튼을 눌러 응답을 확인하세요</p>
+    <div class="test-grid" style="margin-bottom:10px">
+      <button type="button" class="test-btn" data-api="health">GET /health</button>
+      <button type="button" class="test-btn" data-api="deck">GET /tarot/deck</button>
+      <button type="button" class="test-btn" data-api="draw">POST /tarot/draw</button>
+      <button type="button" class="test-btn" data-api="personas">GET /personas</button>
+      <button type="button" class="test-btn" data-api="catalog">GET /assessments</button>
+      <button type="button" class="test-btn primary" data-api="all">전체 자동 실행</button>
+    </div>
+    <pre class="test-log" id="testLog">테스트 로그가 여기 표시됩니다.</pre>
+  </section>
+
+  <section class="test-section">
+    <h2>체크리스트</h2>
+    <p class="desc">페이지 로드 시 자동 점검</p>
+    <ul class="check-list" id="checkList">
+      <li data-check="health"><span class="check-icon">·</span><span>서버 /health 응답</span></li>
+      <li data-check="chat"><span class="check-icon">·</span><span>상담 페이지 로드</span></li>
+      <li data-check="tarot"><span class="check-icon">·</span><span>타로 페이지 로드</span></li>
+      <li data-check="css"><span class="check-icon">·</span><span>토스 UI 스타일시트</span></li>
+      <li data-check="deck"><span class="check-icon">·</span><span>타로 덱 API (22장)</span></li>
+    </ul>
+  </section>
+
+  <nav class="t-bottom-nav" aria-label="하단 메뉴">
+    <a href="/test" class="t-nav-item active">
+      <span class="t-nav-icon">🧪</span>
+      테스트
+    </a>
+    <a href="/" class="t-nav-item">
+      <span class="t-nav-icon">💬</span>
+      상담
+    </a>
+    <a href="/tarot" class="t-nav-item">
+      <span class="t-nav-icon">✦</span>
+      타로
+    </a>
+  </nav>
+
+  <script>
+    const logEl = document.getElementById("testLog");
+    const healthBadge = document.getElementById("healthBadge");
+    const sessionInfo = document.getElementById("sessionInfo");
+
+    function log(msg) {
+      const time = new Date().toLocaleTimeString("ko-KR");
+      logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
+    }
+
+    function setCheck(name, pass) {
+      const li = document.querySelector(`[data-check="${name}"]`);
+      if (!li) return;
+      li.classList.remove("pass", "fail");
+      li.classList.add(pass ? "pass" : "fail");
+      li.querySelector(".check-icon").textContent = pass ? "✓" : "✗";
+    }
+
+    function refreshSessionInfo() {
+      const userId = localStorage.getItem("psychology_ai_user_id") || "(없음)";
+      const sessionId = localStorage.getItem("psychology_ai_session_id") || "(없음)";
+      const school = localStorage.getItem("psychology_ai_preferred_school") || "자동";
+      const tarot = localStorage.getItem("psychology_ai_tarot_handoff") ? "있음" : "없음";
+      sessionInfo.innerHTML = `
+        <strong>user_id</strong> ${userId}<br/>
+        <strong>session_id</strong> ${sessionId}<br/>
+        <strong>상담 스타일</strong> ${school}<br/>
+        <strong>타로 handoff</strong> ${tarot}
+      `;
+    }
+
+    async function apiHealth() {
+      const res = await fetch("/health");
+      const data = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(data));
+      healthBadge.textContent = `서버 정상 · ${data.service}`;
+      healthBadge.className = "test-badge ok";
+      return data;
+    }
+
+    const apiTests = {
+      async health() {
+        const d = await apiHealth();
+        log(`✓ health → ${d.status}`);
+        setCheck("health", true);
+        return d;
+      },
+      async deck() {
+        const res = await fetch("/api/v1/tarot/deck");
+        const d = await res.json();
+        log(`✓ deck → ${d.cards?.length || 0}장`);
+        setCheck("deck", d.cards?.length === 22);
+        return d;
+      },
+      async draw() {
+        const res = await fetch("/api/v1/tarot/draw", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spread: "three_card", count: 3, seed: 42 }),
+        });
+        const d = await res.json();
+        const names = (d.cards || []).map((c) => c.name_ko).join(", ");
+        log(`✓ draw → ${names}`);
+        return d;
+      },
+      async personas() {
+        const res = await fetch("/api/v1/chat/personas");
+        const d = await res.json();
+        log(`✓ personas → ${d.personas?.length || 0}개`);
+        return d;
+      },
+      async catalog() {
+        const res = await fetch("/api/v1/assessments/catalog");
+        const d = await res.json();
+        log(`✓ catalog → ${(d.instruments || d.domains || []).length || "OK"}`);
+        return d;
+      },
+      async all() {
+        for (const key of ["health", "deck", "draw", "personas", "catalog"]) {
+          try { await apiTests[key](); } catch (e) { log(`✗ ${key} → ${e.message}`); }
+        }
+      },
+    };
+
+    document.querySelectorAll("[data-api]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const key = btn.dataset.api;
+        btn.disabled = true;
+        try {
+          await apiTests[key]();
+        } catch (e) {
+          log(`✗ ${key} → ${e.message}`);
+          if (key === "health") {
+            healthBadge.textContent = "서버 오류";
+            healthBadge.className = "test-badge fail";
+            setCheck("health", false);
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    document.getElementById("btnNewSession").addEventListener("click", () => {
+      localStorage.removeItem("psychology_ai_session_id");
+      localStorage.removeItem("psychology_ai_welcomed");
+      log("새 세션 준비 완료 (session_id 삭제)");
+      refreshSessionInfo();
+    });
+
+    document.getElementById("btnClearStorage").addEventListener("click", () => {
+      if (!confirm("저장된 user_id, session, 타로 handoff를 모두 지울까요?")) return;
+      ["psychology_ai_user_id", "psychology_ai_session_id", "psychology_ai_welcomed",
+       "psychology_ai_preferred_school", "psychology_ai_tarot_handoff"].forEach((k) => localStorage.removeItem(k));
+      log("localStorage 초기화 완료");
+      refreshSessionInfo();
+    });
+
+    async function runPageChecks() {
+      try {
+        const css = await fetch("/static/css/toss-ui.css");
+        setCheck("css", css.ok);
+      } catch { setCheck("css", false); }
+
+      try {
+        const chat = await fetch("/");
+        setCheck("chat", chat.ok && (await chat.text()).includes("마음쉼터"));
+      } catch { setCheck("chat", false); }
+
+      try {
+        const tarot = await fetch("/tarot");
+        setCheck("tarot", tarot.ok && (await tarot.text()).includes("타로"));
+      } catch { setCheck("tarot", false); }
+
+      try {
+        await apiTests.health();
+        await apiTests.deck();
+      } catch (e) {
+        healthBadge.textContent = "서버 연결 실패";
+        healthBadge.className = "test-badge fail";
+        log(`✗ 초기 점검 → ${e.message}`);
+      }
+    }
+
+    refreshSessionInfo();
+    runPageChecks();
+  </script>
+</body>
+</html>

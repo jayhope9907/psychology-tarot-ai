@@ -688,6 +688,7 @@ async def health_check():
         "urls": {
             "chat": f"{public_base}/" if public_base else "/",
             "tarot": f"{public_base}/tarot" if public_base else "/tarot",
+            "test": f"{public_base}/test" if public_base else "/test",
             "tarot_deck_api": f"{public_base}/api/v1/tarot/deck" if public_base else "/api/v1/tarot/deck",
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
@@ -700,6 +701,14 @@ async def tarot_ui():
     if tarot_path.exists():
         return FileResponse(str(tarot_path))
     raise HTTPException(status_code=404, detail="Tarot UI not found")
+
+
+@app.get("/test")
+async def test_hub():
+    test_path = STATIC_DIR / "test.html"
+    if test_path.exists():
+        return FileResponse(str(test_path))
+    raise HTTPException(status_code=404, detail="Test hub not found")
 
 
 @app.get("/api/v1/tarot/deck")

@@ -11,4 +11,5 @@ def test_health_endpoint():
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["urls"]["tarot"] == "/tarot"
+    assert payload["urls"]["test"] == "/test"
     assert "render.com/deploy" in payload["deploy_hint"]
