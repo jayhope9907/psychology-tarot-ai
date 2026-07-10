@@ -91,26 +91,7 @@ class InMemoryTTLCache:
 DASHBOARD_CACHE = InMemoryTTLCache()
 ANALYTICS_CACHE = InMemoryTTLCache()
 
-TAROT_ARCHETYPE_MAP = {
-    "The Fool": {
-        "archetype": "The Innocent",
-        "psychiatric_stress_weight": 0.35,
-        "cognitive_distortion_flag": "catastrophizing",
-        "attachment_matrix_score": 0.42,
-    },
-    "The Tower": {
-        "archetype": "The Destroyer",
-        "psychiatric_stress_weight": 0.81,
-        "cognitive_distortion_flag": "all_or_nothing",
-        "attachment_matrix_score": 0.28,
-    },
-    "The Magician": {
-        "archetype": "The Creator",
-        "psychiatric_stress_weight": 0.47,
-        "cognitive_distortion_flag": "overgeneralization",
-        "attachment_matrix_score": 0.61,
-    },
-}
+from app.services.tarot import TAROT_ARCHETYPE_MAP, build_local_reading, draw_cards, list_deck_catalog, merge_reading_with_output
 
 
 def _get_fernet() -> Fernet:
@@ -206,6 +187,22 @@ class CheckoutRequest(BaseModel):
     user_id: str
     session_id: str
     tier_id: Optional[str] = None
+
+
+class TarotDrawRequest(BaseModel):
+    count: int = 3
+    spread: str = "three_card"
+    seed: Optional[int] = None
+
+
+class TarotReadingRequest(BaseModel):
+    user_id: str = "anonymous"
+    user_story: str = ""
+    spread: str = "three_card"
+    count: int = 3
+    cards: Optional[List[Dict[str, Any]]] = None
+    plan: str = "FREE"
+    preferred_school: Optional[ClinicalSchool] = ClinicalSchool.ROGERIAN
 
 
 def _error_payload(message: str, status_code: int, error_code: str) -> Dict[str, Any]:
@@ -658,6 +655,69 @@ async def chat_ui():
     if index_path.exists():
         return FileResponse(str(index_path))
     return {"message": "Psychology Tarot AI backend is running."}
+
+
+@app.get("/tarot")
+async def tarot_ui():
+    tarot_path = STATIC_DIR / "tarot.html"
+    if tarot_path.exists():
+        return FileResponse(str(tarot_path))
+    raise HTTPException(status_code=404, detail="Tarot UI not found")
+
+
+@app.get("/api/v1/tarot/deck")
+async def tarot_deck_catalog():
+    return list_deck_catalog()
+
+
+@app.post("/api/v1/tarot/draw")
+async def tarot_draw(request: TarotDrawRequest):
+    count = min(max(request.count, 1), 3)
+    return draw_cards(count=count, spread=request.spread, seed=request.seed)
+
+
+@app.post("/api/v1/tarot/reading")
+async def tarot_reading(request: TarotReadingRequest):
+    draw_result = (
+        {"spread": request.spread, "cards": request.cards}
+        if request.cards
+        else draw_cards(count=request.count, spread=request.spread)
+    )
+    local = build_local_reading(request.user_story, draw_result)
+    primary_card = local.get("primary_card") or "The Fool"
+    selected = [card.get("name_en") for card in draw_result.get("cards", []) if card.get("name_en")]
+
+    try:
+        therapy_output = _compose_output(
+            request.user_story or "지금 마음이 궁금해요.",
+            primary_card,
+            request.plan,
+            selected_cards=selected,
+            preferred_school=request.preferred_school,
+        )
+        reading = merge_reading_with_output(local, therapy_output)
+        _store_record(
+            request.user_id,
+            request.user_story,
+            primary_card,
+            request.plan,
+            therapy_output,
+            request.preferred_school,
+        )
+        _invalidate_user_caches(request.user_id)
+    except Exception:
+        reading = {
+            **local,
+            "ai_analysis": local["summary"],
+            "recommended_actions": local["cbt_actions"],
+        }
+
+    return {
+        "plan": request.plan.upper(),
+        "draw": draw_result,
+        "reading": reading,
+        "stored": True,
+    }
 
 
 @app.get("/api/v1/chat/sessions/{session_id}")

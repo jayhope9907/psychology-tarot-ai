@@ -139,6 +139,42 @@
       line-height: 1.5;
     }
 
+    .tarot-cta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(196, 165, 116, 0.16), rgba(61, 107, 90, 0.14));
+      border: 1px solid rgba(196, 165, 116, 0.28);
+      text-decoration: none;
+      color: var(--text);
+      transition: transform 0.2s var(--ease), border-color 0.2s;
+    }
+
+    .tarot-cta:hover {
+      transform: translateY(-1px);
+      border-color: var(--gold);
+    }
+
+    .tarot-cta strong {
+      display: block;
+      font-size: 0.82rem;
+      margin-bottom: 2px;
+    }
+
+    .tarot-cta span {
+      font-size: 0.72rem;
+      color: var(--text-soft);
+    }
+
+    .tarot-cta .tarot-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
     .counselor-card {
       flex: 1;
       min-height: 0;
@@ -1228,6 +1264,13 @@
           <h1 class="brand-name">마음쉼터</h1>
         </div>
         <p class="brand-tagline">조용히, 천천히 — 당신의 마음을 함께 살펴봅니다</p>
+        <a class="tarot-cta" href="/tarot">
+          <div>
+            <strong>3D 타로 리딩</strong>
+            <span>카드 애니메이션 · 심리 풀이</span>
+          </div>
+          <span class="tarot-icon" aria-hidden="true">✦</span>
+        </a>
       </div>
 
       <div class="counselor-card">
