@@ -657,6 +657,22 @@ async def chat_ui():
     return {"message": "Psychology Tarot AI backend is running."}
 
 
+@app.get("/health")
+async def health_check():
+    public_base = (os.getenv("PUBLIC_BASE_URL") or "").rstrip("/")
+    return {
+        "status": "ok",
+        "service": "psychology-tarot-ai",
+        "version": os.getenv("APP_VERSION", "main"),
+        "urls": {
+            "chat": f"{public_base}/" if public_base else "/",
+            "tarot": f"{public_base}/tarot" if public_base else "/tarot",
+            "tarot_deck_api": f"{public_base}/api/v1/tarot/deck" if public_base else "/api/v1/tarot/deck",
+        },
+        "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
+    }
+
+
 @app.get("/tarot")
 async def tarot_ui():
     tarot_path = STATIC_DIR / "tarot.html"

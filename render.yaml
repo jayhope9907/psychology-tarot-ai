@@ -1,11 +1,14 @@
 # Render.com Blueprint — https://render.com/docs/blueprint-spec
+# One-click deploy: https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai
 services:
   - type: web
     name: psychology-tarot-ai
     runtime: docker
+    repo: https://github.com/jayhope9907/psychology-tarot-ai
+    branch: main
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: OPENAI_API_KEY
         sync: false

@@ -1,0 +1,23 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-render:
+    if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
+  deploy-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print deploy URLs
+        run: |
+          echo "Render one-click (first time): https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai"
+          echo "Expected live URL after Render setup: https://psychology-tarot-ai.onrender.com"
+          echo "Chat: /  |  3D Tarot: /tarot  |  Health: /health"
