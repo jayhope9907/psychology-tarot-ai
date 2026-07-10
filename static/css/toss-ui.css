@@ -1,0 +1,521 @@
+/* 마음쉼터 · Toss-inspired design system */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+body.toss-ui {
+  --t-bg: #f2f4f6;
+  --t-surface: #ffffff;
+  --t-blue: #3182f6;
+  --t-blue-dark: #1b64da;
+  --t-blue-soft: #e8f3ff;
+  --t-text: #191f28;
+  --t-text-secondary: #6b7684;
+  --t-text-tertiary: #8b95a1;
+  --t-border: #e5e8eb;
+  --t-radius: 16px;
+  --t-radius-lg: 20px;
+  --t-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --t-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --t-font: "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
+  --accent: var(--t-blue);
+  --accent-light: #4d9aff;
+  --accent-soft: var(--t-blue-soft);
+  --text: var(--t-text);
+  --text-soft: var(--t-text-secondary);
+  --text-muted: var(--t-text-tertiary);
+  --text-on-dark: var(--t-text);
+  --glass: var(--t-surface);
+  --glass-border: var(--t-border);
+  --bg-deep: var(--t-bg);
+  --bg: var(--t-bg);
+  --gold: #f59e0b;
+  --gold-soft: #fff7ed;
+  font-family: var(--t-font);
+  color: var(--t-text);
+  background: var(--t-bg) !important;
+}
+
+body.toss-ui .ambient,
+body.toss-ui .grain {
+  display: none;
+}
+
+body.toss-ui .app {
+  max-width: 1120px;
+  padding: 0 16px 80px;
+  gap: 16px;
+}
+
+@media (min-width: 861px) {
+  body.toss-ui .app {
+    padding: 20px 20px 24px;
+    grid-template-columns: 280px 1fr;
+  }
+}
+
+/* ── Quick dashboard (한눈에) ── */
+.t-dash {
+  padding: 12px 0 4px;
+  flex-shrink: 0;
+}
+
+.t-dash-scroll {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .t-dash-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 4px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .t-dash-scroll::-webkit-scrollbar { display: none; }
+}
+
+.t-stat-card {
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius);
+  padding: 14px 14px 12px;
+  box-shadow: var(--t-shadow);
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  scroll-snap-align: start;
+}
+
+@media (max-width: 860px) {
+  .t-stat-card {
+    min-width: 132px;
+    flex: 0 0 auto;
+  }
+}
+
+.t-stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--t-shadow-lg);
+}
+
+.t-stat-card:active {
+  transform: scale(0.98);
+}
+
+.t-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--t-text-tertiary);
+  letter-spacing: -0.01em;
+}
+
+.t-stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--t-text);
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-stat-sub {
+  font-size: 0.7rem;
+  color: var(--t-text-secondary);
+  line-height: 1.35;
+}
+
+.t-stat-card.is-blue { background: var(--t-blue-soft); border-color: #c9e2ff; }
+.t-stat-card.is-blue .t-stat-value { color: var(--t-blue-dark); }
+
+.t-stat-card.is-amber { background: #fffbeb; border-color: #fde68a; }
+.t-stat-card.is-amber .t-stat-value { color: #b45309; }
+
+/* ── Bottom navigation ── */
+.t-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--t-border);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+
+@media (max-width: 860px) {
+  body.toss-ui .t-bottom-nav { display: grid; }
+  body.toss-ui .app { padding-bottom: 88px; }
+}
+
+.t-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--t-text-tertiary);
+  text-decoration: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.t-nav-item .t-nav-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.t-nav-item.active {
+  color: var(--t-blue);
+  background: var(--t-blue-soft);
+}
+
+/* ── Sidebar cards ── */
+body.toss-ui .brand,
+body.toss-ui .counselor-card,
+body.toss-ui .persona-panel {
+  background: var(--t-surface) !important;
+  border: 1px solid var(--t-border) !important;
+  box-shadow: var(--t-shadow) !important;
+  backdrop-filter: none !important;
+  border-radius: var(--t-radius-lg) !important;
+}
+
+body.toss-ui .brand-name {
+  font-family: var(--t-font) !important;
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em !important;
+}
+
+body.toss-ui .brand-icon {
+  background: var(--t-blue) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+body.toss-ui .tarot-cta {
+  background: var(--t-blue-soft) !important;
+  border: 1px solid #c9e2ff !important;
+  border-radius: 14px !important;
+}
+
+body.toss-ui .tarot-cta strong { color: var(--t-blue-dark); font-weight: 700; }
+
+body.toss-ui .counselor-card h2 {
+  font-family: var(--t-font) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em;
+}
+
+body.toss-ui .session-chip {
+  background: var(--t-blue-soft) !important;
+  color: var(--t-blue-dark) !important;
+  font-weight: 700;
+}
+
+body.toss-ui .phase-current {
+  font-weight: 800 !important;
+  color: var(--t-text) !important;
+  letter-spacing: -0.03em;
+}
+
+body.toss-ui .phase-step.active {
+  background: var(--t-blue) !important;
+}
+
+body.toss-ui .phase-step.done {
+  background: #93c5fd !important;
+}
+
+body.toss-ui .insight-card {
+  background: var(--t-bg) !important;
+  border-radius: 14px !important;
+}
+
+body.toss-ui .persona-btn.active {
+  background: var(--t-blue) !important;
+  border-color: var(--t-blue) !important;
+  color: white !important;
+}
+
+/* ── Main chat area ── */
+body.toss-ui .main {
+  background: var(--t-surface) !important;
+  border: 1px solid var(--t-border) !important;
+  border-radius: var(--t-radius-lg) !important;
+  box-shadow: var(--t-shadow) !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.toss-ui .mobile-header {
+  background: var(--t-surface) !important;
+  border-bottom: 1px solid var(--t-border) !important;
+  padding: 14px 16px !important;
+}
+
+body.toss-ui .mobile-header h1 {
+  font-weight: 800 !important;
+  letter-spacing: -0.04em;
+  font-size: 1.1rem !important;
+}
+
+body.toss-ui .mobile-toggle {
+  background: var(--t-bg) !important;
+  border: 1px solid var(--t-border) !important;
+  color: var(--t-text) !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+}
+
+body.toss-ui .chat-scroll {
+  background: #fafbfc !important;
+}
+
+body.toss-ui .empty-state h2 {
+  font-family: var(--t-font) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em;
+  color: var(--t-text) !important;
+}
+
+body.toss-ui .bubble.assistant {
+  background: white !important;
+  border: 1px solid var(--t-border) !important;
+  border-radius: 18px 18px 18px 4px !important;
+}
+
+body.toss-ui .bubble.user {
+  background: var(--t-blue) !important;
+  color: white !important;
+  border-radius: 18px 18px 4px 18px !important;
+  box-shadow: 0 2px 8px rgba(49, 130, 246, 0.25) !important;
+}
+
+body.toss-ui .composer-wrap {
+  background: var(--t-surface) !important;
+  border-top: 1px solid var(--t-border) !important;
+}
+
+body.toss-ui .composer textarea {
+  background: var(--t-bg) !important;
+  border: 1px solid var(--t-border) !important;
+  border-radius: 14px !important;
+}
+
+body.toss-ui .send {
+  background: var(--t-blue) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+}
+
+body.toss-ui .send:hover:not(:disabled) {
+  background: var(--t-blue-dark) !important;
+  box-shadow: 0 4px 12px rgba(49, 130, 246, 0.35) !important;
+}
+
+/* ── Cards: assessment, homework, package ── */
+body.toss-ui .assessment-card,
+body.toss-ui .homework-card,
+body.toss-ui .package-card {
+  background: var(--t-surface) !important;
+  border: 1px solid var(--t-border) !important;
+  border-radius: var(--t-radius-lg) !important;
+  box-shadow: var(--t-shadow-lg) !important;
+}
+
+body.toss-ui .assessment-card::before,
+body.toss-ui .homework-card::before {
+  background: linear-gradient(90deg, var(--t-blue), #60a5fa) !important;
+}
+
+body.toss-ui .homework-submit {
+  background: var(--t-blue) !important;
+}
+
+body.toss-ui button.option,
+body.toss-ui .package-pay-btn {
+  background: var(--t-blue-soft) !important;
+  border-color: #c9e2ff !important;
+  color: var(--t-blue-dark) !important;
+  font-weight: 600 !important;
+}
+
+body.toss-ui button.option:hover {
+  background: var(--t-blue) !important;
+  color: white !important;
+}
+
+/* ── Tarot page ── */
+body.toss-ui.tarot-page .shell {
+  max-width: 960px;
+  padding-bottom: 88px;
+}
+
+body.toss-ui .t-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 12px;
+}
+
+body.toss-ui .t-topbar h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+body.toss-ui .t-topbar p {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--t-text-secondary);
+}
+
+body.toss-ui .t-back {
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--t-blue);
+  padding: 8px 12px;
+  background: var(--t-blue-soft);
+  border-radius: 10px;
+}
+
+body.toss-ui .stage-panel,
+body.toss-ui .control-panel {
+  background: var(--t-surface) !important;
+  border: 1px solid var(--t-border) !important;
+  box-shadow: var(--t-shadow) !important;
+  backdrop-filter: none !important;
+}
+
+body.toss-ui #tarotCanvas {
+  background: linear-gradient(180deg, #1a2332 0%, #0f1419 100%);
+  border-radius: 0;
+}
+
+body.toss-ui .step-title {
+  font-family: var(--t-font) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em;
+  font-size: 1.25rem !important;
+}
+
+body.toss-ui .btn-primary,
+body.toss-ui .spread-btn.active {
+  background: var(--t-blue) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 700 !important;
+}
+
+body.toss-ui .btn-ghost,
+body.toss-ui .spread-btn,
+body.toss-ui .nav-link {
+  background: var(--t-bg) !important;
+  border: 1px solid var(--t-border) !important;
+  color: var(--t-text) !important;
+  font-weight: 600 !important;
+}
+
+body.toss-ui textarea {
+  background: var(--t-bg) !important;
+  border: 1px solid var(--t-border) !important;
+  color: var(--t-text) !important;
+}
+
+body.toss-ui .phase-pill {
+  background: var(--t-blue-soft) !important;
+  color: var(--t-blue-dark) !important;
+}
+
+/* ── Step flow (타로) ── */
+.t-step-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 16px;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius);
+  padding: 12px 16px;
+  box-shadow: var(--t-shadow);
+}
+
+.t-step {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+.t-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--t-bg);
+  color: var(--t-text-tertiary);
+  font-size: 0.8rem;
+  font-weight: 800;
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 4px;
+}
+
+.t-step.active .t-step-num {
+  background: var(--t-blue);
+  color: white;
+}
+
+.t-step.done .t-step-num {
+  background: #93c5fd;
+  color: white;
+}
+
+.t-step-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--t-text-tertiary);
+}
+
+.t-step.active .t-step-label { color: var(--t-blue-dark); }
+
+.t-step-line {
+  flex: 0 0 24px;
+  height: 2px;
+  background: var(--t-border);
+  margin-top: -18px;
+}
+
+.t-step-line.done { background: #93c5fd; }
+
+/* Sidebar mobile */
+@media (max-width: 860px) {
+  body.toss-ui .sidebar {
+    background: var(--t-bg) !important;
+  }
+}
+
+body.toss-ui .sidebar-overlay.visible {
+  background: rgba(0, 0, 0, 0.4) !important;
+}

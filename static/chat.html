@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#1a2e28" />
+  <meta name="theme-color" content="#3182F6" />
   <meta name="description" content="마음쉼터 — AI 상담과 함께하는 조용한 마음 돌봄 공간" />
   <title>마음쉼터 · 이서연 상담사</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1390,8 +1390,9 @@
       .safety { text-align: left; }
     }
   </style>
+  <link rel="stylesheet" href="/static/css/toss-ui.css" />
 </head>
-<body>
+<body class="toss-ui">
   <div class="ambient" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -1488,6 +1489,31 @@
         <button type="button" class="mobile-toggle" id="sidebarToggle">메뉴</button>
       </header>
 
+      <section class="t-dash" id="quickDashboard" aria-label="상담 한눈에 보기">
+        <div class="t-dash-scroll">
+          <button type="button" class="t-stat-card is-blue" id="dashPhase">
+            <span class="t-stat-label">상담 단계</span>
+            <span class="t-stat-value" id="dashPhaseValue">관계 형성</span>
+            <span class="t-stat-sub" id="dashPhaseSub">1 / 5 단계</span>
+          </button>
+          <a class="t-stat-card" href="/tarot" id="dashTarot">
+            <span class="t-stat-label">3D 타로</span>
+            <span class="t-stat-value">카드 리딩</span>
+            <span class="t-stat-sub">심리 풀이 연결</span>
+          </a>
+          <div class="t-stat-card is-amber" id="dashTask">
+            <span class="t-stat-label">후처리 과제</span>
+            <span class="t-stat-value" id="dashTaskValue">대기</span>
+            <span class="t-stat-sub" id="dashTaskSub">일기·감정 기록</span>
+          </div>
+          <div class="t-stat-card" id="dashBattery">
+            <span class="t-stat-label">마음 조사</span>
+            <span class="t-stat-value" id="dashBatteryValue">준비 중</span>
+            <span class="t-stat-sub" id="dashPaceSub">페이스 여유롭게</span>
+          </div>
+        </div>
+      </section>
+
       <div class="chat-scroll" id="chatScroll">
         <div id="messages">
           <div class="empty-state" id="emptyState">
@@ -1516,6 +1542,21 @@
       </footer>
     </main>
   </div>
+
+  <nav class="t-bottom-nav" aria-label="하단 메뉴">
+    <a href="/" class="t-nav-item active" id="navChat">
+      <span class="t-nav-icon" aria-hidden="true">💬</span>
+      상담
+    </a>
+    <a href="/tarot" class="t-nav-item" id="navTarot">
+      <span class="t-nav-icon" aria-hidden="true">✦</span>
+      타로
+    </a>
+    <button type="button" class="t-nav-item" id="navStatus">
+      <span class="t-nav-icon" aria-hidden="true">📊</span>
+      내 상태
+    </button>
+  </nav>
 
   <script>
     const COUNSELOR_NAME = "이서연";
@@ -1560,13 +1601,53 @@
     const sidebarOverlay = document.getElementById("sidebarOverlay");
     const sidebarToggle = document.getElementById("sidebarToggle");
     const tarotLink = document.getElementById("tarotLink");
+    const dashPhaseValue = document.getElementById("dashPhaseValue");
+    const dashPhaseSub = document.getElementById("dashPhaseSub");
+    const dashTaskValue = document.getElementById("dashTaskValue");
+    const dashTaskSub = document.getElementById("dashTaskSub");
+    const dashBatteryValue = document.getElementById("dashBatteryValue");
+    const dashPaceSub = document.getElementById("dashPaceSub");
+    const dashPhase = document.getElementById("dashPhase");
+    const dashTarot = document.getElementById("dashTarot");
+    const navStatus = document.getElementById("navStatus");
 
     function syncTarotLink() {
       if (!tarotLink) return;
       const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
-      tarotLink.href = `/tarot${q}`;
+      const href = `/tarot${q}`;
+      tarotLink.href = href;
+      if (dashTarot) dashTarot.href = href;
     }
     syncTarotLink();
+
+    function updateQuickDashboard(phaseInfo) {
+      if (phaseInfo && dashPhaseValue) {
+        dashPhaseValue.textContent = phaseInfo.phase_label || "관계 형성";
+        const idx = Number.isFinite(phaseInfo.phase_index) ? phaseInfo.phase_index + 1 : 1;
+        const total = phaseInfo.phase_total || 5;
+        dashPhaseSub.textContent = `${idx} / ${total} 단계`;
+        if (phaseInfo.rapport_readiness?.score != null) {
+          dashPhaseSub.textContent += ` · 파악 ${Math.round(phaseInfo.rapport_readiness.score * 100)}%`;
+        }
+      }
+    }
+
+    function updateDashBattery(label) {
+      if (dashBatteryValue) dashBatteryValue.textContent = label || "준비 중";
+    }
+
+    function updateDashPace(label) {
+      if (dashPaceSub) dashPaceSub.textContent = `페이스 ${label || "여유롭게"}`;
+    }
+
+    function updateDashHomework(hasPending) {
+      if (!dashTaskValue) return;
+      dashTaskValue.textContent = hasPending ? "도착함" : "대기";
+      dashTaskSub.textContent = hasPending ? "일기·감정 기록 확인" : "상담 후 자동 배정";
+    }
+
+    dashPhase?.addEventListener("click", () => toggleSidebar(true));
+    navStatus?.addEventListener("click", () => toggleSidebar(true));
 
     function hideEmptyState() {
       if (emptyState) emptyState.remove();
@@ -1747,15 +1828,19 @@
         if (idx < index) step.classList.add("done");
         if (idx === index) step.classList.add("active");
       });
+      updateQuickDashboard(phaseInfo);
     }
 
     function updatePace(fatigue) {
       if (!fatigue) return;
       const score = Math.round((fatigue.fatigue_score || 0) * 100);
       paceFill.style.width = `${Math.max(8, score)}%`;
-      if (score < 35) paceLabel.textContent = "여유롭게";
-      else if (score < 65) paceLabel.textContent = "천천히 이어가요";
-      else paceLabel.textContent = "잠시 쉬어가도 OK";
+      let label = "여유롭게";
+      if (score < 35) label = "여유롭게";
+      else if (score < 65) label = "천천히 이어가요";
+      else label = "잠시 쉬어가도 OK";
+      paceLabel.textContent = label;
+      updateDashPace(label);
     }
 
     function setBatteryProgress(pct) {
@@ -1794,6 +1879,7 @@
         const touched = data.instruments_touched || 0;
         const total = data.instruments_total || 0;
         batteryChip.textContent = `${pct}% · ${touched}/${total} 검사`;
+        updateDashBattery(`${pct}%`);
         setBatteryProgress(pct);
 
         const insightRes = await fetch(`/api/v1/insights/${activeSessionId}`);
@@ -1937,6 +2023,7 @@
 
     function renderHomeworkCard(pkg) {
       hideEmptyState();
+      updateDashHomework(true);
       if (!pkg?.assignments?.length) return;
       pendingHomework = pkg;
       const wrap = document.createElement("div");
@@ -2047,6 +2134,7 @@
         skipped,
       });
       pendingHomework = null;
+      updateDashHomework(false);
     }
 
     function renderAssessmentCard(assessment) {
