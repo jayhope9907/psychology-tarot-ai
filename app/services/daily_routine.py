@@ -4,6 +4,17 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from app.db.database import get_connection, init_db
+from app.services.mood_dimensions import (
+    MOOD_DIMENSION_META,
+    build_mood_agent_profile,
+    build_sphere_visual,
+    composite_mood_score,
+    default_dimensions_from_score,
+    dimension_summary,
+    dimensions_from_json,
+    dimensions_to_json,
+    normalize_dimensions,
+)
 from app.services.persistence import ensure_user
 
 
@@ -24,36 +35,65 @@ MOOD_LABELS = {
 }
 
 
-def record_checkin(user_id: str, mood_score: int, note: str = "") -> Dict[str, Any]:
+def _checkin_payload(
+    mood_score: int,
+    note: str,
+    checkin_date: str,
+    dimensions: Dict[str, int],
+) -> Dict[str, Any]:
+    dims = normalize_dimensions(dimensions)
+    agent = build_mood_agent_profile(dims, mood_score)
+    return {
+        "mood_score": mood_score,
+        "mood_label": MOOD_LABELS.get(mood_score, "보통"),
+        "note": note,
+        "checkin_date": checkin_date,
+        "dimensions": dims,
+        "dimension_summary": dimension_summary(dims),
+        "agent": agent.to_dict(),
+        "sphere": build_sphere_visual(dims),
+    }
+
+
+def record_checkin(
+    user_id: str,
+    mood_score: Optional[int] = None,
+    note: str = "",
+    dimensions: Optional[Dict[str, int]] = None,
+) -> Dict[str, Any]:
     init_db()
     ensure_user(user_id)
-    mood_score = max(1, min(5, int(mood_score)))
+    dims = normalize_dimensions(dimensions) if dimensions else None
+    if dims:
+        mood_score = composite_mood_score(dims)
+    elif mood_score is not None:
+        mood_score = max(1, min(5, int(mood_score)))
+        dims = default_dimensions_from_score(mood_score)
+    else:
+        mood_score = 3
+        dims = default_dimensions_from_score(mood_score)
     today = _date_str(_today_kst())
     conn = get_connection()
     try:
         conn.execute(
             """
-            INSERT INTO mood_checkins (user_id, mood_score, note, checkin_date)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO mood_checkins (user_id, mood_score, note, checkin_date, dimensions_json)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(user_id, checkin_date) DO UPDATE SET
                 mood_score = excluded.mood_score,
                 note = excluded.note,
+                dimensions_json = excluded.dimensions_json,
                 created_at = datetime('now')
             """,
-            (user_id, mood_score, (note or "").strip(), today),
+            (user_id, mood_score, (note or "").strip(), today, dimensions_to_json(dims)),
         )
         conn.commit()
     finally:
         conn.close()
     streak = compute_streak(user_id)
-    return {
-        "user_id": user_id,
-        "mood_score": mood_score,
-        "mood_label": MOOD_LABELS.get(mood_score, "보통"),
-        "note": note,
-        "checkin_date": today,
-        "streak_days": streak["current_streak"],
-    }
+    payload = _checkin_payload(mood_score, note, today, dims)
+    payload.update({"user_id": user_id, "streak_days": streak["current_streak"]})
+    return payload
 
 
 def compute_streak(user_id: str) -> Dict[str, int]:
@@ -107,7 +147,7 @@ def recent_checkins(user_id: str, days: int = 7) -> List[Dict[str, Any]]:
     try:
         rows = conn.execute(
             """
-            SELECT mood_score, note, checkin_date, created_at
+            SELECT mood_score, note, checkin_date, created_at, dimensions_json
             FROM mood_checkins
             WHERE user_id = ?
             ORDER BY checkin_date DESC
@@ -115,15 +155,17 @@ def recent_checkins(user_id: str, days: int = 7) -> List[Dict[str, Any]]:
             """,
             (user_id, days),
         ).fetchall()
-        return [
-            {
-                "mood_score": row["mood_score"],
-                "mood_label": MOOD_LABELS.get(row["mood_score"], "보통"),
-                "note": row["note"],
-                "checkin_date": row["checkin_date"],
-            }
-            for row in rows
-        ]
+        result = []
+        for row in rows:
+            raw_json = row["dimensions_json"] if "dimensions_json" in row.keys() else None
+            if raw_json and str(raw_json).strip() not in ("", "{}"):
+                dims = dimensions_from_json(str(raw_json))
+            else:
+                dims = default_dimensions_from_score(row["mood_score"])
+            result.append(
+                _checkin_payload(row["mood_score"], row["note"], row["checkin_date"], dims)
+            )
+        return result
     finally:
         conn.close()
 
@@ -135,19 +177,19 @@ def today_checkin(user_id: str) -> Optional[Dict[str, Any]]:
     try:
         row = conn.execute(
             """
-            SELECT mood_score, note, checkin_date FROM mood_checkins
+            SELECT mood_score, note, checkin_date, dimensions_json FROM mood_checkins
             WHERE user_id = ? AND checkin_date = ?
             """,
             (user_id, today),
         ).fetchone()
         if not row:
             return None
-        return {
-            "mood_score": row["mood_score"],
-            "mood_label": MOOD_LABELS.get(row["mood_score"], "보통"),
-            "note": row["note"],
-            "checkin_date": row["checkin_date"],
-        }
+        dims_raw = row["dimensions_json"] if "dimensions_json" in row.keys() else None
+        if dims_raw and str(dims_raw).strip() not in ("", "{}"):
+            dims = dimensions_from_json(str(dims_raw))
+        else:
+            dims = default_dimensions_from_score(row["mood_score"])
+        return _checkin_payload(row["mood_score"], row["note"], row["checkin_date"], dims)
     finally:
         conn.close()
 
@@ -163,12 +205,15 @@ def build_dashboard(user_id: str) -> Dict[str, Any]:
     tarot = list_tarot_draws(user_id, 3)
     weekly = build_weekly_report(user_id)
 
-    greeting = "오늘도 잠깐, 마음을 들여다볼까요?"
+    greeting = "오늘도 잠깐, 마음을 입체적으로 들여다볼까요?"
     if today:
+        agent_label = (today.get("agent") or {}).get("label", "")
         if today["mood_score"] <= 2:
-            greeting = "힘든 하루일 수 있어요. 천천히 함께해요."
+            greeting = f"힘든 하루일 수 있어요. {agent_label or '위로'} 모드로 천천히 함께해요."
         elif today["mood_score"] >= 4:
-            greeting = "오늘 마음이 조금 가벼워 보여요. 이 흐름을 이어가 봐요."
+            greeting = f"오늘 마음이 조금 가벼워 보여요. {agent_label or '성장'} 모드로 이어가 봐요."
+        elif agent_label:
+            greeting = f"오늘은 **{agent_label}** 모드로 맞춰 드릴게요."
 
     return {
         "user_id": user_id,
@@ -176,6 +221,7 @@ def build_dashboard(user_id: str) -> Dict[str, Any]:
         "today_checkin": today,
         "streak": streak,
         "recent_checkins": checkins,
+        "dimension_meta": MOOD_DIMENSION_META,
         "session_id": session.session_id if session else None,
         "counseling_phase": session.counseling_phase if session else None,
         "homework_pending": bool(session and session.pending_homework),
@@ -191,9 +237,12 @@ def build_daily_context_block(user_id: str) -> str:
     lines = ["[사용자 마음 루틴 컨텍스트]"]
     if today:
         lines.append(
-            f"- 오늘 기분 체크인: {today['mood_score']}/5 ({today['mood_label']})"
+            f"- 오늘 입체 체크인: {today.get('dimension_summary') or today['mood_score']}"
             + (f" — \"{today['note']}\"" if today.get("note") else "")
         )
+        agent = today.get("agent") or {}
+        if agent.get("label"):
+            lines.append(f"- 맞춤 AI 에이전트: {agent['label']} ({agent.get('focus', '')})")
     if len(recent) >= 2:
         scores = [c["mood_score"] for c in recent[:3]]
         avg = sum(scores) / len(scores)

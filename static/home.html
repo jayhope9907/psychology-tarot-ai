@@ -26,7 +26,7 @@
     }
     .checkin-card h2 { margin: 0 0 4px; font-size: 1rem; font-weight: 800; }
     .checkin-card .desc { margin: 0 0 14px; font-size: 0.8rem; color: var(--t-text-secondary); }
-    .mood-row { display: flex; gap: 8px; justify-content: space-between; }
+    .mood-row { display: flex; gap: 8px; justify-content: space-between; margin-bottom: 14px; }
     .mood-btn {
       flex: 1; border: 1px solid var(--t-border); background: var(--t-bg);
       border-radius: 14px; padding: 12px 4px; cursor: pointer; font: inherit;
@@ -34,6 +34,39 @@
     }
     .mood-btn.selected { border-color: var(--t-blue); background: var(--t-blue-soft); transform: scale(1.05); }
     .mood-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--t-text-tertiary); margin-top: 6px; }
+    .mood-sphere-stage {
+      perspective: 680px; height: 148px; display: grid; place-items: center;
+      margin: 4px 0 16px; position: relative;
+    }
+    .mood-sphere {
+      width: 96px; height: 96px; position: relative; transform-style: preserve-3d;
+      transition: transform 0.45s cubic-bezier(.2,.8,.2,1), filter 0.45s;
+    }
+    .sphere-core {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.85), rgba(49,130,246,0.55) 42%, rgba(26,86,180,0.85));
+      box-shadow: inset -8px -12px 24px rgba(0,0,0,0.18), 0 16px 36px rgba(49,130,246,0.28);
+    }
+    .sphere-glow {
+      position: absolute; inset: -18px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(49,130,246,0.35), transparent 68%);
+      filter: blur(8px); pointer-events: none;
+    }
+    .sphere-orbit {
+      position: absolute; inset: -10px; border-radius: 50%;
+      border: 1px dashed rgba(49,130,246,0.25); transform: rotateX(72deg);
+    }
+    .agent-pill {
+      display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px;
+      padding: 6px 12px; border-radius: 999px; background: rgba(49,130,246,0.1);
+      color: var(--t-blue-dark); font-size: 0.74rem; font-weight: 700;
+    }
+    .dim-grid { display: grid; gap: 10px; }
+    .dim-row { display: grid; grid-template-columns: 72px 1fr 36px; gap: 8px; align-items: center; }
+    .dim-row label { font-size: 0.72rem; font-weight: 700; color: var(--t-text-secondary); }
+    .dim-row input[type=range] { width: 100%; accent-color: var(--t-blue); }
+    .dim-row .dim-val { text-align: right; font-size: 0.78rem; font-weight: 800; color: var(--t-blue); }
+    .dim-hint { font-size: 0.65rem; color: var(--t-text-tertiary); margin-top: -4px; grid-column: 2 / -1; }
     .note-input {
       width: 100%; margin-top: 12px; border: 1px solid var(--t-border); border-radius: 12px;
       padding: 10px 12px; font: inherit; font-size: 0.85rem; resize: none; min-height: 56px;
@@ -72,8 +105,20 @@
   </header>
 
   <section class="checkin-card" id="checkinCard">
-    <h2>오늘의 마음 체크인</h2>
-    <p class="desc">30초면 충분해요. 오늘 기분을 골라 주세요.</p>
+    <h2>입체 마음 체크인</h2>
+    <p class="desc">기분·에너지·불안·관계·수면 — 5축으로 오늘 마음을 표현해 주세요.</p>
+    <span class="agent-pill" id="agentPill" hidden>맞춤 AI · 준비 중</span>
+
+    <div class="mood-sphere-stage" aria-hidden="true">
+      <div class="mood-sphere" id="moodSphere">
+        <div class="sphere-glow" id="sphereGlow"></div>
+        <div class="sphere-orbit"></div>
+        <div class="sphere-core" id="sphereCore"></div>
+      </div>
+    </div>
+
+    <p class="desc" style="margin:-4px 0 10px;text-align:center" id="dimensionSummary">5축 슬라이더를 조절해 보세요</p>
+
     <div class="mood-row" id="moodRow">
       <button type="button" class="mood-btn" data-score="1" aria-label="매우 힘듦">😔</button>
       <button type="button" class="mood-btn" data-score="2" aria-label="힘듦">😕</button>
@@ -81,7 +126,10 @@
       <button type="button" class="mood-btn" data-score="4" aria-label="괜찮음">🙂</button>
       <button type="button" class="mood-btn" data-score="5" aria-label="좋음">😊</button>
     </div>
-    <div class="mood-labels"><span>힘듦</span><span></span><span>보통</span><span></span><span>좋음</span></div>
+    <div class="mood-labels"><span>기분 빠른 선택</span><span></span><span></span><span></span><span></span></div>
+
+    <div class="dim-grid" id="dimGrid"></div>
+
     <textarea class="note-input" id="checkinNote" placeholder="한 줄 메모 (선택)"></textarea>
     <button type="button" class="submit-checkin" id="btnCheckin" disabled>체크인 저장</button>
     <p id="checkinStatus" style="margin:10px 0 0;font-size:0.8rem;color:var(--t-text-secondary)"></p>
@@ -127,14 +175,84 @@
     localStorage.setItem(USER_KEY, userId);
 
     let selectedMood = null;
+    let dimensionMeta = {};
+    const dimensions = { valence: 3, energy: 3, anxiety: 3, social: 3, sleep: 3 };
+
+    function renderDimensionSliders(meta) {
+      dimensionMeta = meta || dimensionMeta;
+      const grid = document.getElementById("dimGrid");
+      grid.innerHTML = Object.entries(dimensionMeta).map(([key, m]) => `
+        <div class="dim-row">
+          <label for="dim-${key}">${m.emoji || ""} ${m.label}</label>
+          <input type="range" id="dim-${key}" min="1" max="5" step="1" value="${dimensions[key] || 3}" data-key="${key}" />
+          <span class="dim-val" id="dim-val-${key}">${dimensions[key] || 3}</span>
+          <span class="dim-hint">${m.low} ↔ ${m.high}</span>
+        </div>
+      `).join("");
+      grid.querySelectorAll("input[type=range]").forEach((input) => {
+        input.addEventListener("input", () => {
+          dimensions[input.dataset.key] = Number(input.value);
+          document.getElementById(`dim-val-${input.dataset.key}`).textContent = input.value;
+          updateSpherePreview();
+          document.getElementById("btnCheckin").disabled = false;
+        });
+      });
+    }
+
+    function updateSpherePreview(sphere) {
+      const s = sphere || {
+        rotateX: (dimensions.energy - 3) * 12,
+        rotateY: (dimensions.valence - 3) * 14,
+        rotateZ: (dimensions.social - 3) * 8,
+        scale: Math.max(0.72, 1.08 - (dimensions.anxiety - 1) * 0.07),
+        glow: Math.min(1, 0.35 + dimensions.social * 0.12 + dimensions.valence * 0.05),
+        hue: Math.max(0, Math.min(360, 210 - (dimensions.valence - 3) * 28 + (dimensions.anxiety - 3) * 12)),
+        pulse: Math.max(0, (dimensions.anxiety - 2) * 0.18),
+      };
+      const el = document.getElementById("moodSphere");
+      const glow = document.getElementById("sphereGlow");
+      const core = document.getElementById("sphereCore");
+      el.style.transform = `rotateX(${s.rotateX}deg) rotateY(${s.rotateY}deg) rotateZ(${s.rotateZ}deg) scale(${s.scale})`;
+      glow.style.opacity = s.glow;
+      core.style.background = `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.88), hsl(${s.hue} 72% 62%) 42%, hsl(${s.hue} 68% 42%) 100%)`;
+      el.style.animation = s.pulse > 0.05 ? `pulse ${1.6 - s.pulse}s ease-in-out infinite` : "";
+    }
+
+    function applyDimensionsFromCheckin(checkin) {
+      if (!checkin?.dimensions) return;
+      Object.assign(dimensions, checkin.dimensions);
+      Object.keys(dimensions).forEach((key) => {
+        const input = document.getElementById(`dim-${key}`);
+        const val = document.getElementById(`dim-val-${key}`);
+        if (input) input.value = dimensions[key];
+        if (val) val.textContent = dimensions[key];
+      });
+      if (checkin.sphere) updateSpherePreview(checkin.sphere);
+      else updateSpherePreview();
+      if (checkin.agent?.label) {
+        const pill = document.getElementById("agentPill");
+        pill.hidden = false;
+        pill.textContent = `맞춤 AI · ${checkin.agent.label}`;
+      }
+      if (checkin.dimension_summary) {
+        document.getElementById("dimensionSummary").textContent = checkin.dimension_summary;
+      }
+    }
 
     async function loadDashboard() {
       const res = await fetch(`/api/v1/dashboard/${encodeURIComponent(userId)}`);
       const data = await res.json();
-      document.getElementById("greetingTitle").textContent = data.greeting || "안녕하세요";
+      renderDimensionSliders(data.dimension_meta || {
+        valence: { label: "기분", low: "우울", high: "밝음", emoji: "🎭" },
+        energy: { label: "에너지", low: "무기력", high: "활력", emoji: "⚡" },
+        anxiety: { label: "불안", low: "차분", high: "긴장", emoji: "🌊" },
+        social: { label: "관계", low: "고립", high: "연결", emoji: "🤝" },
+        sleep: { label: "수면", low: "피로", high: "회복", emoji: "🌙" },
+      });
+      document.getElementById("greetingTitle").textContent = (data.greeting || "안녕하세요").replace(/\*\*/g, "");
       document.getElementById("greetingSub").textContent = data.today_checkin
-        ? `오늘 기록: ${data.today_checkin.mood_label} (${data.today_checkin.mood_score}/5)`
-        : "오늘 아직 체크인하지 않았어요";
+        ? (data.today_checkin.dimension_summary || `오늘 기록: ${data.today_checkin.mood_label}`)
+        : "5축으로 오늘 마음을 표현해 보세요";
 
       const streak = data.streak?.current_streak || 0;
       const pill = document.getElementById("streakPill");
@@ -151,6 +269,9 @@
         document.getElementById("checkinNote").value = data.today_checkin.note || "";
         document.getElementById("btnCheckin").disabled = false;
         document.getElementById("btnCheckin").textContent = "체크인 수정";
+        applyDimensionsFromCheckin(data.today_checkin);
+      } else {
+        updateSpherePreview();
       }
 
       if (data.session_id) {
@@ -186,23 +307,38 @@
     document.querySelectorAll(".mood-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         selectedMood = Number(btn.dataset.score);
+        dimensions.valence = selectedMood;
+        dimensions.energy = Math.max(1, Math.min(5, selectedMood + (selectedMood >= 3 ? 0 : -1)));
+        dimensions.anxiety = Math.max(1, Math.min(5, 6 - selectedMood));
         document.querySelectorAll(".mood-btn").forEach((b) => b.classList.remove("selected"));
         btn.classList.add("selected");
+        Object.keys(dimensions).forEach((key) => {
+          const input = document.getElementById(`dim-${key}`);
+          const val = document.getElementById(`dim-val-${key}`);
+          if (input) input.value = dimensions[key];
+          if (val) val.textContent = dimensions[key];
+        });
+        updateSpherePreview();
         document.getElementById("btnCheckin").disabled = false;
       });
     });
 
     document.getElementById("btnCheckin").addEventListener("click", async () => {
-      if (!selectedMood) return;
       const note = document.getElementById("checkinNote").value.trim();
       const res = await fetch("/api/v1/checkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, mood_score: selectedMood, note }),
+        body: JSON.stringify({ user_id: userId, dimensions, note }),
       });
       const data = await res.json();
+      selectedMood = data.mood_score;
       document.getElementById("checkinStatus").textContent =
-        `저장됐어요! ${data.mood_label} · 연속 ${data.streak_days}일`;
+        `저장됐어요! ${data.agent?.label || data.mood_label} · 연속 ${data.streak_days}일`;
+      if (data.agent?.label) {
+        const pill = document.getElementById("agentPill");
+        pill.hidden = false;
+        pill.textContent = `맞춤 AI · ${data.agent.label}`;
+      }
       await loadDashboard();
     });
 

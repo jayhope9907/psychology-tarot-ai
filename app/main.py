@@ -230,8 +230,9 @@ class TarotPickRequest(BaseModel):
 
 class CheckinRequest(BaseModel):
     user_id: str
-    mood_score: int
+    mood_score: Optional[int] = None
     note: str = ""
+    dimensions: Optional[Dict[str, int]] = None
 
 
 class ReminderSettingsRequest(BaseModel):
@@ -818,20 +819,34 @@ async def user_dashboard(user_id: str):
 @app.get("/api/v1/chat/mood-context/{user_id}")
 async def chat_mood_context(user_id: str):
     from app.services.mood_assistant import get_mood_welcome_message, resolve_mood_context
+    from app.services.mood_dimensions import MOOD_DIMENSION_META, build_sphere_visual
 
     ctx = resolve_mood_context(user_id)
+    sphere = build_sphere_visual(ctx.dimensions) if ctx.has_checkin else None
     return {
         "user_id": user_id,
         "mood": ctx.to_dict(),
+        "agent": ctx.agent,
+        "sphere": sphere,
+        "dimension_meta": MOOD_DIMENSION_META,
         "welcome_message": get_mood_welcome_message(ctx),
     }
 
 
 @app.post("/api/v1/checkin")
 async def mood_checkin(request: CheckinRequest):
-    if request.mood_score < 1 or request.mood_score > 5:
+    if not request.dimensions and request.mood_score is None:
+        raise HTTPException(status_code=400, detail="mood_score or dimensions required")
+    if request.mood_score is not None and (request.mood_score < 1 or request.mood_score > 5):
         raise HTTPException(status_code=400, detail="mood_score must be 1-5")
-    return record_checkin(request.user_id, request.mood_score, request.note)
+    if request.dimensions:
+        from app.services.mood_dimensions import normalize_dimensions
+
+        dims = normalize_dimensions(request.dimensions)
+        for key, value in dims.items():
+            if value < 1 or value > 5:
+                raise HTTPException(status_code=400, detail=f"dimension {key} must be 1-5")
+    return record_checkin(request.user_id, request.mood_score, request.note, request.dimensions)
 
 
 @app.get("/api/v1/history/{user_id}")

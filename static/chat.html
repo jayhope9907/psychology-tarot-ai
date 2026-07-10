@@ -1940,7 +1940,7 @@
       } catch (_) {}
     }
 
-    function updateMoodChip(mood) {
+    function updateMoodChip(mood, agent) {
       if (!moodChip || !mood) return;
       if (!mood.has_checkin) {
         moodChip.hidden = true;
@@ -1950,7 +1950,11 @@
       moodChip.className = "mood-chip has-checkin";
       if (mood.score <= 2) moodChip.classList.add("low");
       else if (mood.score >= 4) moodChip.classList.add("high");
-      moodChip.textContent = `오늘 기분 · ${mood.label} (${mood.score}/5)`;
+      const agentLabel = (agent || mood.agent)?.label;
+      const summary = mood.dimension_summary || `${mood.label} (${mood.score}/5)`;
+      moodChip.textContent = agentLabel
+        ? `맞춤 AI · ${agentLabel} · ${summary}`
+        : `오늘 기분 · ${summary}`;
     }
 
     function renderAssessmentPackageCard(pkg) {
@@ -2328,7 +2332,7 @@
           }
           if (event === "assessment_package") renderAssessmentPackageCard(data);
           if (event === "mood_briefing") {
-            if (data.mood) updateMoodChip(data.mood);
+            if (data.mood) updateMoodChip(data.mood, data.mood);
             if (data.message && !gotToken) {
               hideTyping();
               assistantBubble = createAssistantRow();
@@ -2353,7 +2357,7 @@
             sessionId = data.session_id;
             localStorage.setItem("psychology_ai_session_id", sessionId);
             sessionChip.textContent = `상담 중 · ${sessionId.slice(0, 8)}`;
-            if (data.today_mood) updateMoodChip(data.today_mood);
+            if (data.today_mood) updateMoodChip(data.today_mood, data.today_mood.agent);
             if (data.assistant_message && assistantBubble) {
               assistantBubble.textContent = data.assistant_message;
             } else if (data.assistant_message && !gotToken) {
@@ -2429,13 +2433,16 @@
         const res = await fetch(`/api/v1/chat/mood-context/${encodeURIComponent(userId)}`);
         if (!res.ok) return showWelcomeIfNeeded();
         const data = await res.json();
-        if (data.mood) updateMoodChip(data.mood);
+        if (data.mood) updateMoodChip(data.mood, data.agent);
         if (localStorage.getItem(WELCOME_KEY) === "1") return;
         localStorage.setItem(WELCOME_KEY, "1");
         hideEmptyState();
         const bubble = createAssistantRow();
         bubble.textContent = data.welcome_message || "";
-        sessionChip.textContent = data.mood?.has_checkin ? "오늘 기분 맞춤 상담" : "새 상담 시작";
+        const agentLabel = data.agent?.label;
+        sessionChip.textContent = agentLabel
+          ? `맞춤 AI · ${agentLabel}`
+          : (data.mood?.has_checkin ? "입체 기분 맞춤 상담" : "새 상담 시작");
         updateCounselingPhase({
           phase_index: 0,
           phase_label: "관계 형성",

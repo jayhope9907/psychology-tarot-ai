@@ -38,8 +38,8 @@ def test_mood_welcome_low_mood():
     record_checkin(user, 1, "우울해요")
     ctx = resolve_mood_context(user)
     welcome = get_mood_welcome_message(ctx)
-    assert "1/5" in welcome
-    assert "천천히" in welcome or "힘드" in welcome
+    assert "위로" in welcome or "안전" in welcome
+    assert "입체" in welcome or "체크인" in welcome
 
 
 def test_mood_system_block_forbids_payment_on_low_mood():
@@ -71,7 +71,7 @@ def test_mood_priority_reply_first_turn():
     state.turn_count = 1
     reply = mood_priority_reply(ctx, state, "안녕하세요")
     assert reply is not None
-    assert "2/5" in reply
+    assert "입체" in reply or "모드" in reply
 
 
 def test_should_nudge_assessment_after_enough_turns():
@@ -103,10 +103,15 @@ def test_assessment_briefing_reply_includes_payment_frame():
 
 def test_mood_context_api():
     user = "mood-api-user"
-    record_checkin(user, 4, "괜찮아요")
+    record_checkin(
+        user,
+        dimensions={"valence": 4, "energy": 4, "anxiety": 2, "social": 4, "sleep": 4},
+        note="괜찮아요",
+    )
     response = client.get(f"/api/v1/chat/mood-context/{user}")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["mood"]["score"] == 4
+    assert payload["mood"]["score"] >= 3
+    assert payload["agent"]["label"]
+    assert payload["sphere"]
     assert payload["welcome_message"]
-    assert "4/5" in payload["welcome_message"]

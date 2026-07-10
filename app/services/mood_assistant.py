@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from app.services.chat_session import ChatSessionState
@@ -10,6 +10,15 @@ from app.services.counseling_phase import (
 )
 from app.services.daily_routine import MOOD_LABELS, today_checkin
 from app.services.fatigue_manager import detect_assessment_request, detect_distress
+from app.services.mood_dimensions import (
+    MOOD_DIMENSION_META,
+    build_agent_system_block,
+    build_agent_welcome,
+    build_mood_agent_profile,
+    dimension_summary,
+    dominant_concerns,
+    normalize_dimensions,
+)
 
 
 @dataclass
@@ -18,10 +27,12 @@ class MoodContext:
     label: str
     note: str
     has_checkin: bool
+    dimensions: Dict[str, int] = field(default_factory=dict)
+    agent: Optional[Dict[str, Any]] = None
 
     @classmethod
     def unknown(cls) -> "MoodContext":
-        return cls(score=3, label="보통", note="", has_checkin=False)
+        return cls(score=3, label="보통", note="", has_checkin=False, dimensions=normalize_dimensions({}))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -29,6 +40,9 @@ class MoodContext:
             "label": self.label,
             "note": self.note,
             "has_checkin": self.has_checkin,
+            "dimensions": self.dimensions,
+            "dimension_summary": dimension_summary(self.dimensions) if self.has_checkin else "",
+            "agent": self.agent,
         }
 
 
@@ -120,11 +134,15 @@ def resolve_mood_context(user_id: str) -> MoodContext:
     checkin = today_checkin(user_id)
     if not checkin:
         return MoodContext.unknown()
+    dims = normalize_dimensions(checkin.get("dimensions") or {})
+    agent = checkin.get("agent") or build_mood_agent_profile(dims, checkin["mood_score"]).to_dict()
     return MoodContext(
         score=int(checkin["mood_score"]),
         label=checkin.get("mood_label") or MOOD_LABELS.get(int(checkin["mood_score"]), "보통"),
         note=(checkin.get("note") or "").strip(),
         has_checkin=True,
+        dimensions=dims,
+        agent=agent,
     )
 
 
@@ -136,14 +154,18 @@ def build_mood_mandatory_system_block(ctx: MoodContext, state: ChatSessionState)
     profile = _profile(ctx)
     lines = [
         "## [필수] 오늘 기분 맞춤 상담 규칙",
-        "내담자의 **오늘 체크인 기분**에 무조건 맞춰 대화하세요. 다른 톤으로 시작하지 마세요.",
+        "내담자의 **오늘 입체 체크인(5축)** 에 무조건 맞춰 대화하세요.",
     ]
     if ctx.has_checkin:
-        lines.append(f"- 오늘 기분: **{ctx.score}/5 ({ctx.label})**")
+        lines.append(f"- 종합 기분: **{ctx.score}/5 ({ctx.label})**")
+        lines.append(f"- 입체 좌표: {dimension_summary(ctx.dimensions)}")
         if ctx.note:
             lines.append(f'- 체크인 메모: "{ctx.note}"')
-        lines.append(f"- 말투·속도: {profile['tone']}")
-        lines.append(f"- 우선 초점: {profile['comfort_focus']}")
+        if ctx.agent:
+            lines.append(build_agent_system_block(build_mood_agent_profile(ctx.dimensions, ctx.score)))
+        else:
+            lines.append(f"- 말투·속도: {profile['tone']}")
+            lines.append(f"- 우선 초점: {profile['comfort_focus']}")
         lines.append(f"- 금지 표현: {', '.join(profile['forbidden'])}")
     else:
         lines.append("- 오늘 체크인 기록이 없습니다. 먼저 따뜻히 환영하고, 기분을 가볍게 물어보세요.")
@@ -179,38 +201,10 @@ def build_mood_mandatory_system_block(ctx: MoodContext, state: ChatSessionState)
 
 
 def get_mood_welcome_message(ctx: MoodContext) -> str:
-    counselor = "이서연 상담사"
-    if not ctx.has_checkin:
-        return (
-            f"안녕하세요, {counselor}예요.\n\n"
-            "오늘 이 자리에 오신 것만으로도 큰 용기예요. "
-            "편한 속도로, 편한 만큼만 이야기해 주셔도 괜찮아요.\n\n"
-            "홈에서 오늘 기분을 체크인해 주시면, 그에 맞춰 더 잘 돕고 싶어요. "
-            "지금 가장 먼저 나누고 싶은 마음이 있다면 들려주세요."
-        )
-
-    note_line = f'\n체크인 메모: "{ctx.note}"\n' if ctx.note else "\n"
-    if ctx.score <= 2:
-        return (
-            f"안녕하세요, {counselor}예요.\n\n"
-            f"오늘 기분 체크인을 보니 **{ctx.label}**({ctx.score}/5)이시군요.{note_line}"
-            "그렇게 느끼고 계신다면 충분히 힘드실 수 있어요. "
-            "지금은 해결보다, 제가 옆에서 천천히 들어드릴게요.\n\n"
-            "무엇이 가장 버거우셨는지, 편한 만큼만 들려주세요."
-        )
-    if ctx.score == 3:
-        return (
-            f"안녕하세요, {counselor}예요.\n\n"
-            f"오늘 기분이 **{ctx.label}**({ctx.score}/5)으로 체크인해 주셨네요.{note_line}"
-            "그 마음 그대로 받아들이며 함께 이야기해요. "
-            "지금 가장 신경 쓰이는 부분이 있다면 들려주세요."
-        )
-    return (
-        f"안녕하세요, {counselor}예요.\n\n"
-        f"오늘 **{ctx.label}**({ctx.score}/5)으로 체크인해 주셨네요.{note_line}"
-        "이 흐름을 이어가며, 마음을 더 잘 이해하는 데 함께할게요. "
-        "오늘 나누고 싶은 이야기가 있다면 편하게 말씀해 주세요."
-    )
+    if ctx.has_checkin and ctx.agent:
+        profile = build_mood_agent_profile(ctx.dimensions, ctx.score)
+        return build_agent_welcome(profile, ctx.note, has_checkin=True)
+    return build_agent_welcome(build_mood_agent_profile(), ctx.note, has_checkin=False)
 
 
 def rapport_ready_for_assessment(state: ChatSessionState, ctx: MoodContext) -> bool:
@@ -240,13 +234,16 @@ def mood_priority_reply(
 
     profile = _profile(ctx)
     note_ref = f' "{ctx.note}"' if ctx.note else ""
+    concerns = dominant_concerns(ctx.dimensions)
+    concern_ref = f" {concerns[0]} 마음이" if concerns else ""
 
     if state.turn_count <= 1 and ctx.has_checkin:
+        agent_label = (ctx.agent or {}).get("label", "")
         if ctx.score <= 2:
             return (
-                f"오늘 {ctx.label}({ctx.score}/5)으로 체크인해 주셨죠.{note_ref} "
-                "그렇게 느끼시는 마음, 충분히 이해돼요. "
-                "지금 이 순간, 가슴이나 몸에서 가장 먼저 느껴지는 건 어떤가요?"
+                f"오늘 입체 체크인을 보니{concern_ref} 느껴지시는군요.{note_ref} "
+                f"{'**' + agent_label + '** 모드로 ' if agent_label else ''}"
+                "충분히 이해돼요. 지금 몸이나 마음에서 가장 먼저 느껴지는 건 어떤가요?"
             )
         if ctx.score >= 4:
             return (
@@ -329,8 +326,10 @@ def enrich_package_with_mood(
     profile = _profile(ctx)
     enriched = dict(package)
     enriched["mood_context"] = ctx.to_dict()
+    enriched["agent"] = ctx.agent
     enriched["mood_intro"] = (
-        f"오늘 {ctx.label}({ctx.score}/5)으로 체크인해 주셨어요. "
+        f"오늘 입체 체크인: {dimension_summary(ctx.dimensions)}. "
+        f"{(ctx.agent or {}).get('label', '')} 모드로 맞춰 드릴게요. "
         f"{profile['assessment_frame']}"
         if ctx.has_checkin
         else profile["assessment_frame"]

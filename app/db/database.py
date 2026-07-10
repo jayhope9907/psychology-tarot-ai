@@ -84,9 +84,19 @@ def init_db(force: bool = False) -> None:
             """
         )
         conn.commit()
+        _migrate_schema(conn)
+        conn.commit()
         _initialized = True
     finally:
         conn.close()
+
+
+def _migrate_schema(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(mood_checkins)")}
+    if "dimensions_json" not in cols:
+        conn.execute(
+            "ALTER TABLE mood_checkins ADD COLUMN dimensions_json TEXT NOT NULL DEFAULT '{}'"
+        )
 
 
 def reset_db() -> None:
