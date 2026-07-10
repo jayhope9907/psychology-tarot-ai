@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 import app.main as main_module
 from app.main import app
-from app.services.tarot import build_local_reading, draw_cards, get_major_arcana, list_deck_catalog
+from app.services.tarot import build_draw_from_picks, build_local_reading, draw_cards, get_major_arcana, list_deck_catalog
 
 
 client = TestClient(app)
@@ -23,6 +23,26 @@ def test_list_deck_catalog_endpoint():
     payload = response.json()
     assert len(payload["cards"]) == 22
     assert "three_card" in payload["spreads"]
+    assert payload["cards"][0]["image_url"].startswith("https://")
+    assert "upright_ko" in payload["cards"][0]
+
+
+def test_pick_endpoint_user_selected_cards():
+    response = client.post(
+        "/api/v1/tarot/pick",
+        json={"spread": "three_card", "card_ids": ["fool", "magician", "sun"]},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["cards"]) == 3
+    assert payload["cards"][0]["id"] == "fool"
+    assert payload["cards"][0]["image_url"].startswith("https://")
+
+
+def test_build_draw_from_picks():
+    result = build_draw_from_picks(["empress", "moon"], spread="three_card", reversed_flags=[False, True])
+    assert len(result["cards"]) == 2
+    assert result["cards"][1]["reversed"] is True
 
 
 def test_draw_three_cards_with_positions():

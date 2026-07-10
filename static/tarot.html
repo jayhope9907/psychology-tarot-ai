@@ -177,8 +177,28 @@
     .mini-card {
       padding: 10px; border-radius: 12px; text-align: center;
       background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border);
-      font-size: 0.78rem;
+      font-size: 0.78rem; cursor: pointer; transition: 0.2s;
     }
+    .mini-card img, .pick-card img, .fallback-card-img {
+      width: 100%; aspect-ratio: 2/3; object-fit: cover;
+      border-radius: 8px; display: block; margin-bottom: 6px;
+      background: #1a2822;
+    }
+    .mini-card.flipped { border-color: var(--gold); }
+    .mini-card.reversed img { transform: rotate(180deg); }
+    .pick-deck {
+      display: none; gap: 8px; flex-wrap: wrap;
+      max-height: 220px; overflow-y: auto; margin-top: 8px;
+    }
+    .pick-deck.visible { display: flex; }
+    .pick-card {
+      width: calc(25% - 6px); min-width: 64px; padding: 6px;
+      border-radius: 10px; border: 2px solid transparent;
+      background: rgba(0,0,0,0.25); cursor: pointer; text-align: center;
+      font-size: 0.68rem; color: var(--text-soft);
+    }
+    .pick-card.selected { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-soft); }
+    .pick-card.back img { filter: brightness(0.7); }
     .mini-card .sym { font-size: 1.4rem; display: block; margin-bottom: 4px; }
     .mini-card.reversed { opacity: 0.85; border-color: rgba(229,56,59,0.35); }
     .status-line {
@@ -234,7 +254,7 @@
         <div id="tarotCanvas"></div>
         <div class="stage-footer">
           <span class="phase-pill" id="phaseLabel">준비</span>
-          <span id="stageHint">카드를 섞고 뽑아 보세요</span>
+          <span id="stageHint">질문을 적고 카드를 섞어 주세요</span>
         </div>
       </section>
 
@@ -250,19 +270,20 @@
             <button type="button" class="spread-btn active" data-spread="three_card" data-count="3">3카드</button>
           </div>
           <div class="actions">
-            <button type="button" class="btn btn-primary" id="btnStart" disabled>카드 섞고 뽑기</button>
+            <button type="button" class="btn btn-primary" id="btnShuffle" disabled>카드 섞기</button>
           </div>
           <p class="status-line" id="statusLine"></p>
+          <div class="pick-deck" id="pickDeck" aria-label="카드 선택"></div>
           <div class="fallback-cards" id="fallbackCards"></div>
         </div>
 
         <div id="revealStep" style="display:none">
-          <h2 class="step-title">카드가 펼쳐졌어요</h2>
-          <p class="step-desc" id="revealDesc">카드를 뒤집는 중이에요. 잠시만 기다려 주세요…</p>
+          <h2 class="step-title">선택한 카드</h2>
+          <p class="step-desc" id="revealDesc">카드를 눌러 직접 뒤집어 보세요.</p>
           <div class="mini-cards" id="miniCards"></div>
           <div class="actions">
-            <button type="button" class="btn btn-ghost" id="btnFlip">카드 다시 뒤집기</button>
-            <button type="button" class="btn btn-primary" id="btnReading">심리 풀이 받기</button>
+            <button type="button" class="btn btn-ghost" id="btnFlipAll">모두 뒤집기</button>
+            <button type="button" class="btn btn-primary" id="btnReading" disabled>심리 풀이 받기</button>
           </div>
           <div class="loading" id="loadingReading"><span class="spinner"></span> 이서연 상담사가 풀이를 준비하고 있어요…</div>
           <div class="blend-banner" id="blendBanner" style="display:none">
@@ -306,16 +327,18 @@
       idle: "준비",
       ready: "대기",
       shuffling: "섞는 중",
-      spreading: "펼치는 중",
-      reveal: "공개",
+      picking: "선택 중",
+      spreading: "배치 중",
+      reveal: "뒤집기",
       complete: "완료",
     };
     const HINTS = {
-      ready: "카드를 섞고 뽑아 보세요",
+      ready: "카드 섞기 버튼을 눌러 주세요",
       shuffling: "카드가 에너지를 모으고 있어요…",
-      spreading: "운명의 카드가 자리를 찾고 있어요…",
-      reveal: "카드를 뒤집어 메시지를 확인하세요",
-      complete: "풀이를 받아 보세요",
+      picking: "직감으로 카드를 직접 선택하세요",
+      spreading: "선택한 카드가 자리를 찾고 있어요…",
+      reveal: "카드를 눌러 그림을 확인하세요",
+      complete: "심리 풀이를 받아 보세요",
     };
 
     const TAROT_HANDOFF_KEY = "psychology_ai_tarot_handoff";
@@ -330,17 +353,19 @@
     let currentReading = null;
     let selectedSpread = "three_card";
     let selectedCount = 3;
-    let flipIndex = 0;
     let deckReady = false;
     let use3d = true;
+    let pickFinalizing = false;
+    let pickedIds = [];
+    let flippedIndices = new Set();
 
     const els = {
       canvas: document.getElementById("tarotCanvas"),
       phaseLabel: document.getElementById("phaseLabel"),
       stageHint: document.getElementById("stageHint"),
       userStory: document.getElementById("userStory"),
-      btnStart: document.getElementById("btnStart"),
-      btnFlip: document.getElementById("btnFlip"),
+      btnShuffle: document.getElementById("btnShuffle"),
+      btnFlipAll: document.getElementById("btnFlipAll"),
       btnReading: document.getElementById("btnReading"),
       btnReset: document.getElementById("btnReset"),
       btnToChat: document.getElementById("btnToChat"),
@@ -348,6 +373,7 @@
       revealStep: document.getElementById("revealStep"),
       revealDesc: document.getElementById("revealDesc"),
       miniCards: document.getElementById("miniCards"),
+      pickDeck: document.getElementById("pickDeck"),
       fallbackCards: document.getElementById("fallbackCards"),
       statusLine: document.getElementById("statusLine"),
       loadingReading: document.getElementById("loadingReading"),
@@ -387,11 +413,92 @@
       });
     });
 
-    function renderFallbackCards(cards) {
-      els.fallbackCards.innerHTML = cards.map((c) => `
-        <div class="mini-card ${c.reversed ? "reversed" : ""}">
-          <span class="sym">${c.symbol}</span>
-          <strong>${c.name_ko}</strong>
+    function cardImgHtml(card, flipped) {
+      if (!flipped) {
+        return `<div style="width:100%;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(145deg,#1a2822,#0f1714);display:grid;place-items:center;color:#c4a574;font-size:1.4rem;margin-bottom:6px">✦</div>`;
+      }
+      const cls = card.reversed ? " reversed" : "";
+      const src = card.image_url || "";
+      if (src) {
+        return `<img class="fallback-card-img${cls}" src="${src}" alt="${card.name_ko}" loading="lazy" />`;
+      }
+      return `<span class="sym">${card.symbol}</span>`;
+    }
+
+    function renderPickDeck() {
+      els.pickDeck.innerHTML = deckCatalog.map((c) => `
+        <button type="button" class="pick-card back" data-id="${c.id}" aria-label="${c.name_ko} 선택">
+          <img src="${c.image_url || ""}" alt="" style="opacity:0.15" onerror="this.style.display='none'" />
+          ✦
+        </button>
+      `).join("");
+      els.pickDeck.classList.add("visible");
+      els.pickDeck.querySelectorAll(".pick-card").forEach((btn) => {
+        btn.addEventListener("click", () => togglePickId(btn.dataset.id));
+      });
+    }
+
+    function updatePickUI() {
+      els.pickDeck.querySelectorAll(".pick-card").forEach((btn) => {
+        const selected = pickedIds.includes(btn.dataset.id);
+        btn.classList.toggle("selected", selected);
+      });
+      setStatus(`${pickedIds.length}/${selectedCount}장 선택됨 — 직감으로 카드를 골라 주세요`);
+    }
+
+    function togglePickId(cardId) {
+      const idx = pickedIds.indexOf(cardId);
+      if (idx >= 0) {
+        pickedIds.splice(idx, 1);
+      } else if (pickedIds.length < selectedCount) {
+        pickedIds.push(cardId);
+      }
+      updatePickUI();
+      if (use3d && scene) scene.pickCardById(cardId);
+      if (pickedIds.length === selectedCount) finalizePicks();
+    }
+
+    async function finalizePicks() {
+      if (pickFinalizing || pickedIds.length !== selectedCount) return;
+      pickFinalizing = true;
+      els.btnShuffle.disabled = true;
+      els.pickDeck.classList.remove("visible");
+      setStatus("선택한 카드를 배치하는 중…");
+      try {
+        const pickRes = await fetch("/api/v1/tarot/pick", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spread: selectedSpread, card_ids: pickedIds }),
+        });
+        if (!pickRes.ok) throw new Error("pick failed");
+        currentDraw = await pickRes.json();
+
+        if (use3d && scene) {
+          await scene.layoutSelected(currentDraw.cards);
+        }
+
+        renderMiniCards(currentDraw.cards, false);
+        els.setupStep.style.display = "none";
+        els.revealStep.style.display = "block";
+        els.revealDesc.textContent = "3D 카드나 아래 카드를 눌러 직접 뒤집어 보세요.";
+        els.btnReading.disabled = true;
+        flippedIndices = new Set();
+        setTarotStep(3);
+        setStatus("카드를 눌러 그림을 확인하세요");
+      } catch (err) {
+        console.error(err);
+        setStatus("카드 배치 중 문제가 생겼어요. 다시 선택해 주세요.");
+        pickFinalizing = false;
+        els.btnShuffle.disabled = false;
+        renderPickDeck();
+      }
+    }
+
+    function renderFallbackCards(cards, flipped) {
+      els.fallbackCards.innerHTML = cards.map((c, i) => `
+        <div class="mini-card ${c.reversed ? "reversed" : ""} ${flipped ? "flipped" : ""}" data-idx="${i}">
+          ${cardImgHtml(c, flipped)}
+          <strong>${flipped ? c.name_ko : "???"}</strong>
         </div>
       `).join("");
       els.fallbackCards.classList.add("visible");
@@ -409,28 +516,54 @@
             els.phaseLabel.textContent = PHASE_LABELS[phase] || phase;
             els.stageHint.textContent = HINTS[phase] || "";
           };
+          scene.onCardFlip = (card, index) => {
+            if (!flippedIndices.has(index) && currentDraw) {
+              flippedIndices.add(index);
+              renderMiniCards(currentDraw.cards, false);
+              if (flippedIndices.size >= currentDraw.cards.length) {
+                els.revealDesc.textContent = "모든 카드가 공개됐어요. 심리 풀이를 받아 보세요.";
+                els.btnReading.disabled = false;
+                setStatus("");
+              }
+            }
+          };
           scene.buildDeck(deckCatalog);
         } else {
           use3d = false;
           els.stageHint.textContent = "3D 미리보기 대신 카드 풀이 모드로 진행합니다";
         }
         deckReady = true;
-        els.btnStart.disabled = false;
-        setStatus("준비 완료. 질문을 적고 카드를 뽑아 보세요.");
+        els.btnShuffle.disabled = false;
+        setStatus("준비 완료. 질문을 적고 카드를 섞어 주세요.");
       } catch (err) {
         setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
       }
     }
 
-    function renderMiniCards(cards) {
-      els.miniCards.innerHTML = cards.map((c) => `
-        <div class="mini-card ${c.reversed ? "reversed" : ""}">
-          <span class="sym">${c.symbol}</span>
-          <strong>${c.name_ko}</strong><br/>
+    function renderMiniCards(cards, flipped) {
+      els.miniCards.innerHTML = cards.map((c, i) => `
+        <div class="mini-card ${c.reversed ? "reversed" : ""} ${flippedIndices.has(i) || flipped ? "flipped" : ""}" data-idx="${i}">
+          ${cardImgHtml(c, flippedIndices.has(i) || flipped)}
+          <strong>${flippedIndices.has(i) || flipped ? c.name_ko : "???"}</strong><br/>
           <span>${c.position}</span>
         </div>
       `).join("");
-      renderFallbackCards(cards);
+      renderFallbackCards(cards, flippedIndices.size > 0 || flipped);
+      els.miniCards.querySelectorAll(".mini-card").forEach((el) => {
+        el.addEventListener("click", () => flipAtIndex(Number(el.dataset.idx)));
+      });
+    }
+
+    async function flipAtIndex(index, fromScene = false) {
+      if (!currentDraw?.cards?.[index] || flippedIndices.has(index)) return;
+      flippedIndices.add(index);
+      if (!fromScene && use3d && scene) await scene.flipCard(index);
+      renderMiniCards(currentDraw.cards, false);
+      if (flippedIndices.size >= currentDraw.cards.length) {
+        els.revealDesc.textContent = "모든 카드가 공개됐어요. 심리 풀이를 받아 보세요.";
+        els.btnReading.disabled = false;
+        setStatus("");
+      }
     }
 
     function renderReading(reading) {
@@ -451,75 +584,49 @@
       els.btnToChat.disabled = false;
     }
 
-    async function autoFlipAll() {
-      if (!use3d || !scene) return;
-      for (let i = 0; i < (currentDraw?.cards?.length || 0); i++) {
-        await scene.flipCard(i);
-        flipIndex = i + 1;
-        await new Promise((r) => setTimeout(r, 380));
-      }
-      scene.phase = "complete";
-      if (scene.onPhaseChange) scene.onPhaseChange("complete");
-    }
-
-    els.btnStart.addEventListener("click", async () => {
+    els.btnShuffle.addEventListener("click", async () => {
       if (!deckReady) return;
-      els.btnStart.disabled = true;
-      flipIndex = 0;
+      els.btnShuffle.disabled = true;
+      pickedIds = [];
+      flippedIndices = new Set();
+      pickFinalizing = false;
+      currentDraw = null;
       els.readingPanel.classList.remove("visible");
       els.blendBanner.style.display = "none";
       els.btnToChat.disabled = true;
       els.revealStep.style.display = "none";
+      els.pickDeck.classList.remove("visible");
 
       try {
         setTarotStep(2);
         setStatus("카드를 섞는 중이에요…");
-        if (use3d && scene) await scene.shuffle();
-
-        setStatus("운명의 카드를 뽑는 중이에요…");
-        const drawRes = await fetch("/api/v1/tarot/draw", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spread: selectedSpread, count: selectedCount }),
-        });
-        if (!drawRes.ok) throw new Error("draw failed");
-        currentDraw = await drawRes.json();
-        if (!currentDraw.cards?.length) throw new Error("empty draw");
-
-        setStatus("카드를 펼치는 중이에요…");
         if (use3d && scene) {
-          await scene.spread(currentDraw.cards);
+          scene.buildDeck(deckCatalog);
+          await scene.shuffle();
+          scene.onPick = (count, max) => setStatus(`${count}/${max}장 선택됨 — 3D 카드나 아래 목록에서 골라 주세요`);
+          scene.onPickComplete = (ids) => {
+            pickedIds = ids.slice();
+            updatePickUI();
+            finalizePicks();
+          };
+          scene.startPickMode(selectedCount);
         }
-
-        renderMiniCards(currentDraw.cards);
-        els.setupStep.style.display = "none";
-        els.revealStep.style.display = "block";
-        els.revealDesc.textContent = "카드를 뒤집고 있습니다…";
-        els.btnReading.disabled = true;
-
-        await autoFlipAll();
-        els.revealDesc.textContent = "카드가 공개됐어요. 심리 풀이를 받아 보세요.";
-        els.btnReading.disabled = false;
-        setTarotStep(3);
-        setStatus("");
+        renderPickDeck();
+        updatePickUI();
+        setStatus(`직감으로 ${selectedCount}장을 직접 선택하세요 (3D 또는 아래 카드)`);
       } catch (err) {
         console.error(err);
-        setStatus("카드 진행 중 문제가 생겼어요. 다시 시도해 주세요.");
-        els.setupStep.style.display = "block";
-        els.revealStep.style.display = "none";
-      } finally {
-        els.btnStart.disabled = false;
+        setStatus("카드 섞기 중 문제가 생겼어요. 다시 시도해 주세요.");
+        els.btnShuffle.disabled = false;
       }
     });
 
-    els.btnFlip.addEventListener("click", async () => {
-      if (!currentDraw || !use3d || !scene || !scene.meshes?.length) return;
-      flipIndex = 0;
-      scene.meshes.forEach((mesh) => {
-        mesh.userData.flipped = false;
-        mesh.rotation.y = 0;
-      });
-      await autoFlipAll();
+    els.btnFlipAll.addEventListener("click", async () => {
+      if (!currentDraw?.cards?.length) return;
+      for (let i = 0; i < currentDraw.cards.length; i++) {
+        if (!flippedIndices.has(i)) await flipAtIndex(i);
+        await new Promise((r) => setTimeout(r, 280));
+      }
     });
 
     els.btnReading.addEventListener("click", async () => {
@@ -591,16 +698,20 @@
     els.btnReset.addEventListener("click", () => {
       currentDraw = null;
       currentReading = null;
-      flipIndex = 0;
+      pickedIds = [];
+      flippedIndices = new Set();
+      pickFinalizing = false;
       els.setupStep.style.display = "block";
       els.revealStep.style.display = "none";
       els.readingPanel.classList.remove("visible");
       els.fallbackCards.classList.remove("visible");
+      els.pickDeck.classList.remove("visible");
       els.blendBanner.style.display = "none";
       els.btnReading.disabled = true;
       els.btnToChat.disabled = true;
+      els.btnShuffle.disabled = false;
       setTarotStep(1);
-      setStatus("다시 질문을 적고 카드를 뽑아 보세요.");
+      setStatus("다시 질문을 적고 카드를 섞어 주세요.");
       if (use3d && scene) scene.buildDeck(deckCatalog);
     });
 

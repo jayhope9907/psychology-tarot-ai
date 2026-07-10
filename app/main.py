@@ -91,7 +91,14 @@ class InMemoryTTLCache:
 DASHBOARD_CACHE = InMemoryTTLCache()
 ANALYTICS_CACHE = InMemoryTTLCache()
 
-from app.services.tarot import TAROT_ARCHETYPE_MAP, build_local_reading, draw_cards, list_deck_catalog, merge_reading_with_output
+from app.services.tarot import (
+    TAROT_ARCHETYPE_MAP,
+    build_draw_from_picks,
+    build_local_reading,
+    draw_cards,
+    list_deck_catalog,
+    merge_reading_with_output,
+)
 from app.services.tarot_bridge import apply_tarot_handoff, build_tarot_handoff
 from app.services.homework import homework_snapshot, record_homework_submission
 
@@ -204,6 +211,12 @@ class TarotDrawRequest(BaseModel):
     count: int = 3
     spread: str = "three_card"
     seed: Optional[int] = None
+
+
+class TarotPickRequest(BaseModel):
+    spread: str = "three_card"
+    card_ids: List[str]
+    reversed_flags: Optional[List[bool]] = None
 
 
 class TarotReadingRequest(BaseModel):
@@ -749,6 +762,19 @@ async def tarot_deck_catalog():
 async def tarot_draw(request: TarotDrawRequest):
     count = min(max(request.count, 1), 3)
     return draw_cards(count=count, spread=request.spread, seed=request.seed)
+
+
+@app.post("/api/v1/tarot/pick")
+async def tarot_pick(request: TarotPickRequest):
+    if not request.card_ids:
+        raise HTTPException(status_code=400, detail="card_ids required")
+    if len(request.card_ids) > 3:
+        raise HTTPException(status_code=400, detail="max 3 cards")
+    return build_draw_from_picks(
+        card_ids=request.card_ids,
+        spread=request.spread,
+        reversed_flags=request.reversed_flags,
+    )
 
 
 @app.post("/api/v1/tarot/reading")

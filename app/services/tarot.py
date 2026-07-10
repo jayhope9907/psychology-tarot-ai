@@ -8,6 +8,39 @@ from typing import Any, Dict, List, Optional
 _DECK_PATH = Path(__file__).resolve().parent.parent / "data" / "tarot_deck.json"
 _DECK_CACHE: Optional[Dict[str, Any]] = None
 
+# Rider–Waite Major Arcana (public domain, Wikimedia Commons)
+_TAROT_IMAGE_PATHS: Dict[str, str] = {
+    "fool": "9/90/RWS_Tarot_00_Fool.jpg",
+    "magician": "d/de/RWS_Tarot_01_Magician.jpg",
+    "high_priestess": "8/88/RWS_Tarot_02_High_Priestess.jpg",
+    "empress": "d/d2/RWS_Tarot_03_Empress.jpg",
+    "emperor": "c/c3/RWS_Tarot_04_Emperor.jpg",
+    "hierophant": "8/8d/RWS_Tarot_05_Hierophant.jpg",
+    "lovers": "3/3a/RWS_Tarot_06_Lovers.jpg",
+    "chariot": "9/9b/RWS_Tarot_07_Chariot.jpg",
+    "strength": "f/f5/RWS_Tarot_08_Strength.jpg",
+    "hermit": "4/4d/RWS_Tarot_09_Hermit.jpg",
+    "wheel_of_fortune": "3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg",
+    "justice": "e/e0/RWS_Tarot_11_Justice.jpg",
+    "hanged_man": "2/2b/RWS_Tarot_12_Hanged_Man.jpg",
+    "death": "d/d7/RWS_Tarot_13_Death.jpg",
+    "temperance": "f/f8/RWS_Tarot_14_Temperance.jpg",
+    "devil": "5/55/RWS_Tarot_15_Devil.jpg",
+    "tower": "5/53/RWS_Tarot_16_Tower.jpg",
+    "star": "d/db/RWS_Tarot_17_Star.jpg",
+    "moon": "7/7f/RWS_Tarot_18_Moon.jpg",
+    "sun": "1/17/RWS_Tarot_19_Sun.jpg",
+    "judgement": "d/dd/RWS_Tarot_20_Judgement.jpg",
+    "world": "f/ff/RWS_Tarot_21_World.jpg",
+}
+
+
+def card_image_url(card_id: str) -> str:
+    path = _TAROT_IMAGE_PATHS.get(card_id)
+    if not path:
+        return ""
+    return f"https://upload.wikimedia.org/wikipedia/commons/{path}"
+
 
 def _load_deck() -> Dict[str, Any]:
     global _DECK_CACHE
@@ -63,9 +96,58 @@ def list_deck_catalog() -> Dict[str, Any]:
                 "symbol": card["symbol"],
                 "keywords_ko": card["keywords_ko"],
                 "gradient": card["gradient"],
+                "image_url": card_image_url(card["id"]),
+                "upright_ko": card["upright_ko"],
+                "reversed_ko": card["reversed_ko"],
+                "psychology_theme": card["psychology_theme"],
             }
         )
     return {"cards": cards, "spreads": _load_deck()["spreads"]}
+
+
+def build_draw_from_picks(
+    card_ids: List[str],
+    spread: str = "three_card",
+    reversed_flags: Optional[List[bool]] = None,
+) -> Dict[str, Any]:
+    spread_meta = _load_deck()["spreads"].get(spread) or _load_deck()["spreads"]["three_card"]
+    positions = spread_meta["positions"]
+    drawn: List[Dict[str, Any]] = []
+
+    for index, card_id in enumerate(card_ids):
+        card = get_card_by_id(card_id)
+        if not card:
+            continue
+        reversed_card = (
+            reversed_flags[index]
+            if reversed_flags and index < len(reversed_flags)
+            else random.random() < 0.28
+        )
+        position = positions[index] if index < len(positions) else f"카드 {index + 1}"
+        drawn.append(
+            {
+                "id": card["id"],
+                "number": card["number"],
+                "name_en": card["name_en"],
+                "name_ko": card["name_ko"],
+                "symbol": card["symbol"],
+                "keywords_ko": card["keywords_ko"],
+                "gradient": card["gradient"],
+                "image_url": card_image_url(card["id"]),
+                "position": position,
+                "reversed": reversed_card,
+                "meaning_ko": card["reversed_ko"] if reversed_card else card["upright_ko"],
+                "psychology_theme": card["psychology_theme"],
+                "archetype": card["archetype"],
+            }
+        )
+
+    return {
+        "spread": spread,
+        "spread_label_ko": spread_meta["label_ko"],
+        "positions": positions[: len(drawn)],
+        "cards": drawn,
+    }
 
 
 def draw_cards(
@@ -94,6 +176,7 @@ def draw_cards(
                 "symbol": card["symbol"],
                 "keywords_ko": card["keywords_ko"],
                 "gradient": card["gradient"],
+                "image_url": card_image_url(card["id"]),
                 "position": position,
                 "reversed": reversed_card,
                 "meaning_ko": card["reversed_ko"] if reversed_card else card["upright_ko"],
