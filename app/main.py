@@ -723,11 +723,22 @@ def _store_chat_profile(user_id: str, profile_delta: Dict[str, Any], plan: str) 
 
 
 @app.get("/")
-async def home_ui():
+async def app_ui():
+    app_path = STATIC_DIR / "app.html"
+    if app_path.exists():
+        return FileResponse(str(app_path))
     home_path = STATIC_DIR / "home.html"
     if home_path.exists():
         return FileResponse(str(home_path))
     return {"message": "Psychology Tarot AI backend is running."}
+
+
+@app.get("/home")
+async def home_ui():
+    home_path = STATIC_DIR / "home.html"
+    if home_path.exists():
+        return FileResponse(str(home_path))
+    raise HTTPException(status_code=404, detail="Home UI not found")
 
 
 @app.get("/chat")
@@ -753,10 +764,12 @@ def _resolve_public_base(request: Optional[Request] = None) -> str:
 
 def _public_urls(public_base: str) -> Dict[str, str]:
     paths = {
-        "home": "/",
+        "app": "/",
+        "home": "/home",
         "chat": "/chat",
         "tarot": "/tarot",
         "test": "/test",
+        "legal": "/legal",
         "health": "/health",
         "tarot_deck_api": "/api/v1/tarot/deck",
     }
@@ -777,10 +790,11 @@ async def health_check(request: Request):
         "public_base": public_base or None,
         "urls": urls,
         "share_links": {
-            "홈": urls.get("home", "/"),
-            "상담 채팅": urls.get("chat", "/chat"),
+            "앱": urls.get("app", "/"),
+            "홈": urls.get("home", "/home"),
+            "AI 대화": urls.get("chat", "/chat"),
             "3D 타로": urls.get("tarot", "/tarot"),
-            "테스트 허브": urls.get("test", "/test"),
+            "이용 안내": urls.get("legal", "/legal"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -800,6 +814,28 @@ async def test_hub():
     if test_path.exists():
         return FileResponse(str(test_path))
     raise HTTPException(status_code=404, detail="Test hub not found")
+
+
+@app.get("/legal")
+async def legal_ui():
+    legal_path = STATIC_DIR / "legal.html"
+    if legal_path.exists():
+        return FileResponse(str(legal_path))
+    raise HTTPException(status_code=404, detail="Legal page not found")
+
+
+@app.get("/api/v1/legal/consent")
+async def legal_consent():
+    from app.services.legal_compliance import build_consent_document
+
+    return build_consent_document()
+
+
+@app.get("/api/v1/legal/scope")
+async def legal_scope():
+    from app.services.legal_compliance import SERVICE_SCOPE_SUMMARY, build_consent_document
+
+    return {"summary": SERVICE_SCOPE_SUMMARY, **build_consent_document()}
 
 
 @app.get("/api/v1/tarot/deck")

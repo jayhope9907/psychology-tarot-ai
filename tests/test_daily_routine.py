@@ -10,9 +10,15 @@ client = TestClient(app)
 
 
 def test_home_route():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "마음 체크인" in response.text or "마음쉼터" in response.text
+    res = client.get("/home")
+    assert res.status_code == 200
+    assert "마음 체크인" in res.text or "마음쉼터" in res.text
+
+
+def test_app_route():
+    res = client.get("/")
+    assert res.status_code == 200
+    assert "app-shell" in res.text
 
 
 def test_chat_route():

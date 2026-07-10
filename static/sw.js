@@ -1,5 +1,5 @@
-const CACHE = "maum-cache-v1";
-const ASSETS = ["/", "/chat", "/tarot", "/static/css/toss-ui.css"];
+const CACHE = "maum-cache-v2";
+const ASSETS = ["/", "/home", "/chat", "/tarot", "/legal", "/static/css/toss-ui.css", "/static/css/embed.css"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).catch(() => {}));

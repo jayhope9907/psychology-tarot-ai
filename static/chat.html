@@ -1505,6 +1505,8 @@
     }
   </style>
   <link rel="stylesheet" href="/static/css/toss-ui.css" />
+  <link rel="stylesheet" href="/static/css/embed.css" />
+  <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
 </head>
 <body class="toss-ui">
   <div class="ambient" aria-hidden="true"></div>
@@ -1542,8 +1544,8 @@
           </svg>
           <div class="avatar" id="counselorAvatar" aria-hidden="true">서연</div>
         </div>
-        <h2 id="counselorName">이서연 상담사</h2>
-        <p class="role" id="counselorRole">상담심리 전문가<br/>대화 속 마음 돌봄</p>
+        <h2 id="counselorName">이서연 AI 가이드</h2>
+        <p class="role" id="counselorRole">AI 웰니스 가이드<br/>대화 속 마음 돌봄 (비의료)</p>
         <span class="session-chip" id="sessionChip">상담 준비 중</span>
         <span class="mood-chip" id="moodChip" hidden>오늘 기분</span>
 
@@ -1563,13 +1565,13 @@
         <div class="insight-card" id="insightCard">
           <div class="insight-zone insufficient" id="insightZone">분석 준비 중</div>
           <div class="insight-prob-row">
-            <span>전문 상담·검사 권장 가능성</span>
+            <span>마음 상태 참고 지표</span>
             <span id="insightProbText">—</span>
           </div>
           <div class="insight-prob-bar" aria-hidden="true">
             <div class="insight-prob-fill" id="insightProbFill"></div>
           </div>
-          <p class="insight-summary" id="insightSummary">대화와 검사를 진행하면 정상 범주인지, 병원·상담이 필요한지 확률로 안내해 드려요.</p>
+          <p class="insight-summary" id="insightSummary">대화와 참고용 체크를 진행하면, 마음 패턴을 웰니스 관점에서 안내해 드려요. (의료 진단 아님)</p>
           <p class="insight-rec" id="insightRec"></p>
         </div>
 
@@ -1675,7 +1677,7 @@
         </form>
         <div class="composer-meta">
           <p class="composer-hint">Enter · 전송 &nbsp;·&nbsp; Shift+Enter · 줄바꿈</p>
-          <p class="safety">위기 시 1393 · 119 · 전문 상담기관</p>
+          <p class="safety">위기 시 1393 · 119 · 129 · 1577-0199 · <a href="/legal#disclaimer" style="color:inherit">비의료 웰니스</a></p>
         </div>
       </footer>
     </main>
@@ -1828,7 +1830,7 @@
       if (!style?.counselor) return;
       counselingStyle = style;
       COUNSELOR_NAME = style.counselor_name || style.counselor.name;
-      document.getElementById("counselorName").textContent = `${COUNSELOR_NAME} 상담사`;
+      document.getElementById("counselorName").textContent = `${COUNSELOR_NAME} AI 가이드`;
       document.getElementById("counselorRole").innerHTML =
         `${style.counselor.title}<br/>${style.counselor.tagline || style.texture_meta?.label || "대화 속 마음 돌봄"}`;
       document.getElementById("counselorAvatar").textContent = COUNSELOR_NAME.slice(0, 2);

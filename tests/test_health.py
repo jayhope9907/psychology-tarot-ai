@@ -10,7 +10,8 @@ def test_health_endpoint():
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
-    assert payload["urls"]["home"] == "/"
+    assert payload["urls"]["app"] == "/"
+    assert payload["urls"]["home"] == "/home"
     assert payload["urls"]["chat"] == "/chat"
     assert payload["urls"]["tarot"] == "/tarot"
     assert payload["urls"]["test"] == "/test"

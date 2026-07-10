@@ -1,7 +1,7 @@
 {
   "name": "마음쉼터",
   "short_name": "마음쉼터",
-  "description": "매일 30초 마음 체크인과 AI 상담·타로",
+  "description": "AI 마음 웰니스·자기성찰 (비의료) — 체크인·대화·타로",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F2F4F6",

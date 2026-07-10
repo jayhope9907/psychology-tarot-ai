@@ -531,11 +531,18 @@ async def run_chat_turn(
     )
     from app.services.persistence import get_user_settings
     from app.services.counseling_style import build_style_system_block, resolve_counseling_style
+    from app.services.legal_compliance import (
+        CRISIS_RESOURCES,
+        SERVICE_SCOPE_SUMMARY,
+        build_crisis_reply,
+        build_legal_system_block,
+        detect_crisis,
+    )
 
     ctx = resolve_mood_context(state.user_id)
     style = resolve_counseling_style(get_user_settings(state.user_id))
     counselor_name = style["counselor_name"]
-    style_block = build_style_system_block(style)
+    style_block = build_style_system_block(style) + "\n\n" + build_legal_system_block()
     state.phase_notes["counseling_style"] = {
         "counselor_id": style["counselor_id"],
         "counselor_name": counselor_name,
@@ -544,6 +551,27 @@ async def run_chat_turn(
         "voice_preset_id": style["voice_preset_id"],
     }
     state.phase_notes["today_mood"] = ctx.to_dict()
+
+    if detect_crisis(user_message):
+        crisis_text = build_crisis_reply()
+        state.messages.append({"role": "user", "content": user_message})
+        state.messages.append({"role": "assistant", "content": crisis_text})
+        async for token in _yield_text_with_pacing(crisis_text):
+            yield {"event": "token", "data": {"content": token}}
+        yield {"event": "crisis", "data": {"detected": True, "resources": CRISIS_RESOURCES}}
+        yield {
+            "event": "done",
+            "data": {
+                "session_id": state.session_id,
+                "assistant_message": crisis_text,
+                "counselor_name": counselor_name,
+                "crisis_mode": True,
+                "counseling_phase": phase_snapshot(state),
+                "today_mood": ctx.to_dict(),
+                "legal_notice": SERVICE_SCOPE_SUMMARY,
+            },
+        }
+        return
 
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING and not state.assessment_package_ready:
         package = build_assessment_package(state, user_message)

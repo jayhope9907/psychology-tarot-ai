@@ -1,0 +1,18 @@
+/* Embed mode — used inside unified app shell (?embed=1) */
+html.embed-mode .t-bottom-nav,
+html.embed-mode .mobile-header,
+html.embed-mode .app-hide-embed {
+  display: none !important;
+}
+
+html.embed-mode body.toss-ui.home-page {
+  padding-bottom: 16px;
+}
+
+html.embed-mode .sidebar-overlay {
+  z-index: 200;
+}
+
+html.embed-mode .sidebar {
+  z-index: 201;
+}
