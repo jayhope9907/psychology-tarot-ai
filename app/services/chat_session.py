@@ -75,17 +75,48 @@ CHAT_SESSIONS: Dict[str, ChatSessionState] = {}
 
 
 def get_or_create_session(user_id: str, session_id: Optional[str] = None, plan: str = "FREE") -> ChatSessionState:
-    if session_id and session_id in CHAT_SESSIONS:
-        session = CHAT_SESSIONS[session_id]
-        if session.user_id != user_id:
-            session = ChatSessionState(user_id=user_id, session_id=session_id, plan=plan)
-            CHAT_SESSIONS[session_id] = session
-        return session
+    from app.services.persistence import load_latest_session_for_user, load_session, save_session
+
+    if session_id:
+        if session_id in CHAT_SESSIONS:
+            session = CHAT_SESSIONS[session_id]
+            if session.user_id != user_id:
+                session = ChatSessionState(user_id=user_id, session_id=session_id, plan=plan)
+                CHAT_SESSIONS[session_id] = session
+                save_session(session)
+            return session
+        loaded = load_session(session_id)
+        if loaded:
+            if loaded.user_id != user_id:
+                loaded.user_id = user_id
+                save_session(loaded)
+            return loaded
+
+    latest = load_latest_session_for_user(user_id)
+    if latest and not session_id:
+        return latest
 
     session = ChatSessionState(user_id=user_id, plan=plan)
+    if session_id:
+        session.session_id = session_id
     CHAT_SESSIONS[session.session_id] = session
+    save_session(session)
     return session
+
+
+def get_session(session_id: str) -> Optional[ChatSessionState]:
+    from app.services.persistence import load_session
+
+    if session_id in CHAT_SESSIONS:
+        return CHAT_SESSIONS[session_id]
+    return load_session(session_id)
 
 
 def clear_sessions() -> None:
     CHAT_SESSIONS.clear()
+    try:
+        from app.db.database import reset_db
+
+        reset_db()
+    except Exception:
+        pass

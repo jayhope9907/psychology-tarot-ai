@@ -21,7 +21,7 @@ from app.prompt_config import build_system_prompt, build_user_prompt
 from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
 from app.services.assessment_package import PACKAGE_TIERS, build_assessment_package, complete_checkout, mark_package_presented
 from app.services.clinical_insight import build_clinical_insight, sync_session_insight
-from app.services.chat_session import CHAT_SESSIONS, get_or_create_session
+from app.services.chat_session import CHAT_SESSIONS, get_or_create_session, get_session
 from app.services.chat_stream import format_sse, run_chat_turn
 from app.services.orchestrator import record_assessment_answer
 from app.services.persona_router import PERSONA_CATALOG, detect_cognitive_distortions
@@ -33,6 +33,11 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI(title="Psychology Tarot AI System")
+
+
+@app.on_event("startup")
+async def startup_init_db():
+    init_db()
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 if STATIC_DIR.exists():
@@ -101,6 +106,9 @@ from app.services.tarot import (
 )
 from app.services.tarot_bridge import apply_tarot_handoff, build_tarot_handoff
 from app.services.homework import homework_snapshot, record_homework_submission
+from app.db.database import init_db
+from app.services.daily_routine import build_dashboard, record_checkin
+from app.services.persistence import list_tarot_draws, record_tarot_draw, save_session, save_user_settings, get_user_settings
 
 
 def _get_fernet() -> Fernet:
@@ -217,6 +225,19 @@ class TarotPickRequest(BaseModel):
     spread: str = "three_card"
     card_ids: List[str]
     reversed_flags: Optional[List[bool]] = None
+    user_id: str = "anonymous"
+
+
+class CheckinRequest(BaseModel):
+    user_id: str
+    mood_score: int
+    note: str = ""
+
+
+class ReminderSettingsRequest(BaseModel):
+    user_id: str
+    evening_reminder: bool = False
+    hour: int = 21
 
 
 class TarotReadingRequest(BaseModel):
@@ -684,11 +705,19 @@ def _store_chat_profile(user_id: str, profile_delta: Dict[str, Any], plan: str) 
 
 
 @app.get("/")
+async def home_ui():
+    home_path = STATIC_DIR / "home.html"
+    if home_path.exists():
+        return FileResponse(str(home_path))
+    return {"message": "Psychology Tarot AI backend is running."}
+
+
+@app.get("/chat")
 async def chat_ui():
     index_path = STATIC_DIR / "chat.html"
     if index_path.exists():
         return FileResponse(str(index_path))
-    return {"message": "Psychology Tarot AI backend is running."}
+    raise HTTPException(status_code=404, detail="Chat UI not found")
 
 
 def _resolve_public_base(request: Optional[Request] = None) -> str:
@@ -706,7 +735,8 @@ def _resolve_public_base(request: Optional[Request] = None) -> str:
 
 def _public_urls(public_base: str) -> Dict[str, str]:
     paths = {
-        "chat": "/",
+        "home": "/",
+        "chat": "/chat",
         "tarot": "/tarot",
         "test": "/test",
         "health": "/health",
@@ -729,9 +759,10 @@ async def health_check(request: Request):
         "public_base": public_base or None,
         "urls": urls,
         "share_links": {
-            "상담 채팅": urls["chat"],
-            "3D 타로": urls["tarot"],
-            "테스트 허브": urls["test"],
+            "홈": urls.get("home", "/"),
+            "상담 채팅": urls.get("chat", "/chat"),
+            "3D 타로": urls.get("tarot", "/tarot"),
+            "테스트 허브": urls.get("test", "/test"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -770,11 +801,57 @@ async def tarot_pick(request: TarotPickRequest):
         raise HTTPException(status_code=400, detail="card_ids required")
     if len(request.card_ids) > 3:
         raise HTTPException(status_code=400, detail="max 3 cards")
-    return build_draw_from_picks(
+    result = build_draw_from_picks(
         card_ids=request.card_ids,
         spread=request.spread,
         reversed_flags=request.reversed_flags,
     )
+    record_tarot_draw(request.user_id, result)
+    return result
+
+
+@app.get("/api/v1/dashboard/{user_id}")
+async def user_dashboard(user_id: str):
+    return build_dashboard(user_id)
+
+
+@app.post("/api/v1/checkin")
+async def mood_checkin(request: CheckinRequest):
+    if request.mood_score < 1 or request.mood_score > 5:
+        raise HTTPException(status_code=400, detail="mood_score must be 1-5")
+    return record_checkin(request.user_id, request.mood_score, request.note)
+
+
+@app.get("/api/v1/history/{user_id}")
+async def user_history(user_id: str):
+    from app.services.daily_routine import recent_checkins
+    from app.services.insights import build_weekly_report
+    from app.services.persistence import load_latest_session_for_user
+
+    session = load_latest_session_for_user(user_id)
+    return {
+        "user_id": user_id,
+        "session_id": session.session_id if session else None,
+        "checkins": recent_checkins(user_id, 14),
+        "tarot_draws": list_tarot_draws(user_id, 10),
+        "weekly_report": build_weekly_report(user_id),
+        "message_count": len(session.messages) if session else 0,
+    }
+
+
+@app.get("/api/v1/insights/weekly/{user_id}")
+async def weekly_insights(user_id: str):
+    from app.services.insights import build_weekly_report
+
+    return build_weekly_report(user_id)
+
+
+@app.post("/api/v1/settings/reminder")
+async def update_reminder_settings(request: ReminderSettingsRequest):
+    settings = get_user_settings(request.user_id)
+    settings["evening_reminder"] = request.evening_reminder
+    settings["reminder_hour"] = request.hour
+    return save_user_settings(request.user_id, settings)
 
 
 @app.post("/api/v1/tarot/reading")
@@ -840,12 +917,13 @@ async def tarot_bridge(request: TarotBridgeRequest):
     handoff = build_tarot_handoff(request.user_story, request.draw, request.reading)
     result = apply_tarot_handoff(session, handoff)
     session.messages.append({"role": "assistant", "content": result["bridge_message"]})
+    save_session(session)
     return result
 
 
 @app.get("/api/v1/sessions/{session_id}/homework")
 async def session_homework(session_id: str):
-    session = CHAT_SESSIONS.get(session_id)
+    session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return homework_snapshot(session)
@@ -855,7 +933,7 @@ async def session_homework(session_id: str):
 async def submit_homework(session_id: str, request: HomeworkSubmitRequest):
     if request.session_id != session_id:
         raise HTTPException(status_code=400, detail="Session mismatch")
-    session = CHAT_SESSIONS.get(session_id)
+    session = get_session(session_id)
     if not session or session.user_id != request.user_id:
         raise HTTPException(status_code=404, detail="Session not found")
     result = record_homework_submission(
@@ -869,7 +947,7 @@ async def submit_homework(session_id: str, request: HomeworkSubmitRequest):
 
 @app.get("/api/v1/chat/sessions/{session_id}")
 async def chat_session_state(session_id: str):
-    session = CHAT_SESSIONS.get(session_id)
+    session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return session.to_dict()
@@ -925,7 +1003,7 @@ async def assessments_catalog():
 
 @app.get("/api/v1/assessments/battery/{session_id}")
 async def assessments_battery(session_id: str):
-    session = CHAT_SESSIONS.get(session_id)
+    session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     status = build_battery_status(session)
@@ -935,7 +1013,7 @@ async def assessments_battery(session_id: str):
 
 @app.get("/api/v1/insights/{session_id}")
 async def clinical_insights(session_id: str):
-    session = CHAT_SESSIONS.get(session_id)
+    session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return build_clinical_insight(session)
@@ -943,7 +1021,7 @@ async def clinical_insights(session_id: str):
 
 @app.get("/api/v1/sessions/{session_id}/assessment-package")
 async def get_assessment_package(session_id: str):
-    session = CHAT_SESSIONS.get(session_id)
+    session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.assessment_package:
@@ -962,7 +1040,7 @@ async def assessment_package_catalog():
 
 @app.post("/api/v1/sessions/{session_id}/checkout")
 async def checkout_assessment_package(session_id: str, request: CheckoutRequest):
-    session = CHAT_SESSIONS.get(session_id)
+    session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.user_id != request.user_id:
@@ -1000,7 +1078,7 @@ async def checkout_assessment_package(session_id: str, request: CheckoutRequest)
 
 @app.post("/api/v1/assessments/submit")
 async def assessments_submit(request: AssessmentSubmitRequest):
-    session = CHAT_SESSIONS.get(request.session_id)
+    session = get_session(request.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.user_id != request.user_id:
@@ -1051,6 +1129,7 @@ async def chat_stream(request: ChatStreamRequest):
                     profile_delta = event["data"].get("profile_delta") or {}
                     _store_chat_profile(request.user_id, profile_delta, request.plan)
                     _invalidate_user_caches(request.user_id)
+                    save_session(session)
                 yield format_sse(event)
         except asyncio.CancelledError:
             raise

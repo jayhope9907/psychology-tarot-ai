@@ -352,6 +352,12 @@ def build_chat_messages(
     system_prompt += build_tarot_system_block(state)
     system_prompt += build_homework_chat_context(state)
 
+    from app.services.daily_routine import build_daily_context_block
+
+    daily_block = build_daily_context_block(state.user_id)
+    if daily_block:
+        system_prompt += "\n\n" + daily_block
+
     if should_suggest_tarot(state):
         system_prompt += (
             "\n\n내담자가 사례를 정리하는 단계입니다. 대화 흐름이 자연스럽다면 "

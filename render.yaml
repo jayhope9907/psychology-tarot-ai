@@ -20,3 +20,5 @@ services:
         value: "8000"
       - key: PUBLIC_BASE_URL
         value: https://psychology-tarot-ai.onrender.com
+      - key: DATABASE_PATH
+        value: /app/data/app.db

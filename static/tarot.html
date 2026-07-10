@@ -224,7 +224,7 @@
         <h1>3D 타로</h1>
         <p>질문 → 카드 → 심리 풀이 → 상담 연결</p>
       </div>
-      <a class="t-back" href="/">← 상담</a>
+      <a class="t-back" href="/chat">← 상담</a>
     </header>
 
     <div class="t-step-flow" id="stepFlow">
@@ -307,16 +307,16 @@
 
   <nav class="t-bottom-nav" aria-label="하단 메뉴">
     <a href="/" class="t-nav-item">
+      <span class="t-nav-icon" aria-hidden="true">🏠</span>
+      홈
+    </a>
+    <a href="/chat" class="t-nav-item">
       <span class="t-nav-icon" aria-hidden="true">💬</span>
       상담
     </a>
     <a href="/tarot" class="t-nav-item active">
       <span class="t-nav-icon" aria-hidden="true">✦</span>
       타로
-    </a>
-    <a href="/" class="t-nav-item">
-      <span class="t-nav-icon" aria-hidden="true">📊</span>
-      내 상태
     </a>
   </nav>
 
@@ -468,7 +468,7 @@
         const pickRes = await fetch("/api/v1/tarot/pick", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spread: selectedSpread, card_ids: pickedIds }),
+          body: JSON.stringify({ spread: selectedSpread, card_ids: pickedIds, user_id: userId }),
         });
         if (!pickRes.ok) throw new Error("pick failed");
         currentDraw = await pickRes.json();
@@ -688,7 +688,7 @@
           draw: currentDraw,
           reading: currentReading,
         }));
-        window.location.href = "/?from_tarot=1";
+        window.location.href = "/chat?from_tarot=1";
       } catch (err) {
         alert("상담 연결에 실패했어요. 다시 시도해 주세요.");
         els.btnToChat.disabled = false;

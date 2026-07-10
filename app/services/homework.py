@@ -218,6 +218,17 @@ def select_homework_types(state: ChatSessionState) -> List[str]:
     for item in selected:
         if item not in deduped:
             deduped.append(item)
+
+    try:
+        from app.services.insights import suggest_homework_intensity
+
+        intensity = suggest_homework_intensity(state.user_id)
+        if intensity == "light":
+            return deduped[:1]
+        if intensity == "gentle":
+            return [k for k in deduped if k in ("emotion_journal", "grounding_log", "tarot_reflection")][:1] or deduped[:1]
+    except Exception:
+        pass
     return deduped[:2]
 
 

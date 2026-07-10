@@ -32,7 +32,7 @@ COPY static ./static
 # FastAPI entrypoint: app/main.py (uvicorn app.main:app)
 COPY requirements.txt ./requirements.txt
 
-RUN chown -R app:app /app
+RUN chown -R app:app /app && mkdir -p /app/data
 USER app
 
 EXPOSE 8000

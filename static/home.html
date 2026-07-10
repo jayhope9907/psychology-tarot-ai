@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#3182F6" />
+  <meta name="description" content="매일 30초 마음 체크인 — 마음쉼터" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="apple-touch-icon" href="/static/icons/icon.svg" />
+  <title>마음쉼터 · 홈</title>
+  <link rel="stylesheet" href="/static/css/toss-ui.css" />
+  <style>
+    body.toss-ui.home-page { min-height: 100vh; padding: 16px 16px 100px; max-width: 720px; margin: 0 auto; }
+    .home-greeting { margin: 8px 0 20px; }
+    .home-greeting h1 { margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.04em; }
+    .home-greeting p { margin: 6px 0 0; color: var(--t-text-secondary); font-size: 0.9rem; line-height: 1.5; }
+    .streak-pill {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+      padding: 6px 12px; border-radius: 999px; background: var(--t-blue-soft);
+      color: var(--t-blue-dark); font-size: 0.78rem; font-weight: 700;
+    }
+    .checkin-card {
+      background: var(--t-surface); border: 1px solid var(--t-border);
+      border-radius: var(--t-radius-lg); padding: 18px; margin-bottom: 12px;
+      box-shadow: var(--t-shadow);
+    }
+    .checkin-card h2 { margin: 0 0 4px; font-size: 1rem; font-weight: 800; }
+    .checkin-card .desc { margin: 0 0 14px; font-size: 0.8rem; color: var(--t-text-secondary); }
+    .mood-row { display: flex; gap: 8px; justify-content: space-between; }
+    .mood-btn {
+      flex: 1; border: 1px solid var(--t-border); background: var(--t-bg);
+      border-radius: 14px; padding: 12px 4px; cursor: pointer; font: inherit;
+      font-size: 1.4rem; transition: 0.15s;
+    }
+    .mood-btn.selected { border-color: var(--t-blue); background: var(--t-blue-soft); transform: scale(1.05); }
+    .mood-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--t-text-tertiary); margin-top: 6px; }
+    .note-input {
+      width: 100%; margin-top: 12px; border: 1px solid var(--t-border); border-radius: 12px;
+      padding: 10px 12px; font: inherit; font-size: 0.85rem; resize: none; min-height: 56px;
+    }
+    .submit-checkin {
+      width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 12px;
+      background: var(--t-blue); color: white; font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .submit-checkin:disabled { opacity: 0.5; }
+    .quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    .quick-card {
+      display: block; padding: 16px; border-radius: var(--t-radius-lg);
+      background: var(--t-surface); border: 1px solid var(--t-border);
+      text-decoration: none; color: var(--t-text); box-shadow: var(--t-shadow);
+    }
+    .quick-card strong { display: block; font-size: 0.95rem; margin-bottom: 4px; }
+    .quick-card span { font-size: 0.78rem; color: var(--t-text-secondary); }
+    .chart-row { display: flex; gap: 6px; align-items: flex-end; height: 64px; margin-top: 10px; }
+    .chart-bar {
+      flex: 1; background: var(--t-blue-soft); border-radius: 6px 6px 0 0;
+      min-height: 8px; position: relative;
+    }
+    .chart-bar span {
+      position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+      font-size: 0.6rem; color: var(--t-text-tertiary); white-space: nowrap;
+    }
+    .report-list { margin: 10px 0 0; padding-left: 18px; font-size: 0.82rem; color: var(--t-text-secondary); line-height: 1.6; }
+    .reminder-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 0.85rem; }
+  </style>
+</head>
+<body class="toss-ui home-page">
+  <header class="home-greeting">
+    <h1 id="greetingTitle">안녕하세요</h1>
+    <p id="greetingSub">오늘 마음은 어떤가요?</p>
+    <span class="streak-pill" id="streakPill" hidden>🔥 연속 0일</span>
+  </header>
+
+  <section class="checkin-card" id="checkinCard">
+    <h2>오늘의 마음 체크인</h2>
+    <p class="desc">30초면 충분해요. 오늘 기분을 골라 주세요.</p>
+    <div class="mood-row" id="moodRow">
+      <button type="button" class="mood-btn" data-score="1" aria-label="매우 힘듦">😔</button>
+      <button type="button" class="mood-btn" data-score="2" aria-label="힘듦">😕</button>
+      <button type="button" class="mood-btn" data-score="3" aria-label="보통">😐</button>
+      <button type="button" class="mood-btn" data-score="4" aria-label="괜찮음">🙂</button>
+      <button type="button" class="mood-btn" data-score="5" aria-label="좋음">😊</button>
+    </div>
+    <div class="mood-labels"><span>힘듦</span><span></span><span>보통</span><span></span><span>좋음</span></div>
+    <textarea class="note-input" id="checkinNote" placeholder="한 줄 메모 (선택)"></textarea>
+    <button type="button" class="submit-checkin" id="btnCheckin" disabled>체크인 저장</button>
+    <p id="checkinStatus" style="margin:10px 0 0;font-size:0.8rem;color:var(--t-text-secondary)"></p>
+  </section>
+
+  <div class="quick-grid">
+    <a class="quick-card" href="/chat"><strong>💬 상담</strong><span>이서연 상담사와 대화</span></a>
+    <a class="quick-card" href="/tarot"><strong>✦ 타로</strong><span>직접 섞고 뽑기</span></a>
+    <a class="quick-card" href="/test"><strong>🧪 테스트</strong><span>API·상태 확인</span></a>
+    <a class="quick-card" href="/chat" id="continueChat"><strong>↩ 이어하기</strong><span id="continueHint">최근 상담 이어가기</span></a>
+  </div>
+
+  <section class="checkin-card">
+    <h2>이번 주 기분</h2>
+    <p class="desc">최근 7일 체크인</p>
+    <div class="chart-row" id="moodChart"></div>
+  </section>
+
+  <section class="checkin-card" id="weeklyCard">
+    <h2>주간 인사이트</h2>
+    <p class="desc" id="weeklySummary">불러오는 중…</p>
+    <ul class="report-list" id="weeklyInsights"></ul>
+  </section>
+
+  <section class="checkin-card">
+    <h2>알림 설정</h2>
+    <p class="desc">매일 저녁 9시, 체크인 리마인더 (PWA)</p>
+    <div class="reminder-row">
+      <span>저녁 리마인더</span>
+      <input type="checkbox" id="reminderToggle" />
+    </div>
+  </section>
+
+  <nav class="t-bottom-nav" aria-label="하단 메뉴">
+    <a href="/" class="t-nav-item active"><span class="t-nav-icon">🏠</span>홈</a>
+    <a href="/chat" class="t-nav-item"><span class="t-nav-icon">💬</span>상담</a>
+    <a href="/tarot" class="t-nav-item"><span class="t-nav-icon">✦</span>타로</a>
+  </nav>
+
+  <script>
+    const USER_KEY = "psychology_ai_user_id";
+    const userId = localStorage.getItem(USER_KEY) || `user-${crypto.randomUUID().slice(0, 8)}`;
+    localStorage.setItem(USER_KEY, userId);
+
+    let selectedMood = null;
+
+    async function loadDashboard() {
+      const res = await fetch(`/api/v1/dashboard/${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      document.getElementById("greetingTitle").textContent = data.greeting || "안녕하세요";
+      document.getElementById("greetingSub").textContent = data.today_checkin
+        ? `오늘 기록: ${data.today_checkin.mood_label} (${data.today_checkin.mood_score}/5)`
+        : "오늘 아직 체크인하지 않았어요";
+
+      const streak = data.streak?.current_streak || 0;
+      const pill = document.getElementById("streakPill");
+      if (streak > 0) {
+        pill.hidden = false;
+        pill.textContent = `🔥 연속 ${streak}일`;
+      }
+
+      if (data.today_checkin) {
+        selectedMood = data.today_checkin.mood_score;
+        document.querySelectorAll(".mood-btn").forEach((b) => {
+          b.classList.toggle("selected", Number(b.dataset.score) === selectedMood);
+        });
+        document.getElementById("checkinNote").value = data.today_checkin.note || "";
+        document.getElementById("btnCheckin").disabled = false;
+        document.getElementById("btnCheckin").textContent = "체크인 수정";
+      }
+
+      if (data.session_id) {
+        document.getElementById("continueChat").href = `/chat?session_id=${data.session_id}`;
+        document.getElementById("continueHint").textContent = data.counseling_phase
+          ? `상담 단계: ${data.counseling_phase}` : "최근 상담 이어가기";
+      }
+
+      renderChart(data.recent_checkins || []);
+      renderWeekly(data.weekly_report || {});
+    }
+
+    function renderChart(checkins) {
+      const chart = document.getElementById("moodChart");
+      if (!checkins.length) {
+        chart.innerHTML = '<p style="font-size:0.8rem;color:var(--t-text-tertiary)">아직 기록이 없어요</p>';
+        return;
+      }
+      const ordered = [...checkins].reverse();
+      chart.innerHTML = ordered.map((c) => {
+        const h = Math.max(12, c.mood_score * 12);
+        const day = c.checkin_date.slice(5);
+        return `<div class="chart-bar" style="height:${h}px" title="${c.mood_label}"><span>${day}</span></div>`;
+      }).join("");
+    }
+
+    function renderWeekly(report) {
+      document.getElementById("weeklySummary").textContent = report.summary || "기록을 쌓으면 주간 리포트가 생성됩니다.";
+      document.getElementById("weeklyInsights").innerHTML = (report.insights || [])
+        .map((i) => `<li>${i}</li>`).join("");
+    }
+
+    document.querySelectorAll(".mood-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedMood = Number(btn.dataset.score);
+        document.querySelectorAll(".mood-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        document.getElementById("btnCheckin").disabled = false;
+      });
+    });
+
+    document.getElementById("btnCheckin").addEventListener("click", async () => {
+      if (!selectedMood) return;
+      const note = document.getElementById("checkinNote").value.trim();
+      const res = await fetch("/api/v1/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, mood_score: selectedMood, note }),
+      });
+      const data = await res.json();
+      document.getElementById("checkinStatus").textContent =
+        `저장됐어요! ${data.mood_label} · 연속 ${data.streak_days}일`;
+      await loadDashboard();
+    });
+
+    document.getElementById("reminderToggle").addEventListener("change", async (e) => {
+      const enabled = e.target.checked;
+      if (enabled && "Notification" in window) {
+        await Notification.requestPermission();
+      }
+      await fetch("/api/v1/settings/reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, evening_reminder: enabled, hour: 21 }),
+      });
+      if (enabled && "serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        reg.active?.postMessage({ type: "SCHEDULE_REMINDER", hour: 21 });
+      }
+    });
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/static/sw.js").catch(() => {});
+    }
+
+    loadDashboard().catch(() => {
+      document.getElementById("checkinStatus").textContent = "대시보드를 불러오지 못했어요.";
+    });
+  </script>
+</body>
+</html>

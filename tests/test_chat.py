@@ -159,7 +159,7 @@ def test_chat_stream_endpoint_returns_sse_payload(monkeypatch):
 
 
 def test_chat_ui_route_served():
-    response = client.get("/")
+    response = client.get("/chat")
     assert response.status_code == 200
     assert "이서연" in response.text
 
@@ -167,6 +167,8 @@ def test_chat_ui_route_served():
 def test_chat_session_state_endpoint():
     session = get_or_create_session("user-state", plan="BASIC")
     session.turn_count = 2
+    from app.services.persistence import save_session
+    save_session(session)
 
     response = client.get(f"/api/v1/chat/sessions/{session.session_id}")
     assert response.status_code == 200
