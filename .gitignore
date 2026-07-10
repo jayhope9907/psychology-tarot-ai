@@ -13,3 +13,5 @@ __pycache__/
 htmlcov/
 coverage.xml
 tools/
+logs/
+public-url.json
