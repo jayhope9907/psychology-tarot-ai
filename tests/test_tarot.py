@@ -100,7 +100,17 @@ def test_tarot_reading_endpoint_with_mock_openai(monkeypatch):
 def test_local_reading_workplace_actions():
     draw = draw_cards(count=3, spread="three_card", seed=1)
     reading = build_local_reading("직장에서 스트레스가 심해요", draw)
+    assert reading.get("reading_tone") == "light_projection"
+    assert "거울" in reading["summary"]
     assert any("직장" in action for action in reading["cbt_actions"])
+
+
+def test_tarot_reading_prompt_is_light_projection():
+    from app.prompt_config import build_tarot_reading_system_prompt
+
+    prompt = build_tarot_reading_system_prompt()
+    assert "깊게" in prompt
+    assert "그림자" in prompt
 
 
 def test_archetype_map_covers_all_major_arcana():

@@ -96,15 +96,15 @@
   </header>
 
   <nav class="app-tabs" aria-label="앱 메뉴">
+    <button type="button" data-tab="tarot" class="active" id="tabTarot">타로</button>
     <button type="button" data-tab="checkin" id="tabCheckin">오늘 마음</button>
-    <button type="button" data-tab="chat" class="active" id="tabChat">AI 대화</button>
-    <button type="button" data-tab="tarot" id="tabTarot">타로</button>
+    <button type="button" data-tab="chat" id="tabChat">AI 대화</button>
   </nav>
 
   <main class="app-main">
+    <iframe class="app-frame active" id="frameTarot" title="타로 자기성찰" src="/tarot?embed=1"></iframe>
     <iframe class="app-frame" id="frameCheckin" title="오늘 마음 체크인" src="/home?embed=1"></iframe>
-    <iframe class="app-frame active" id="frameChat" title="AI 마음 대화" src="/chat?embed=1"></iframe>
-    <iframe class="app-frame" id="frameTarot" title="타로 자기성찰" src="/tarot?embed=1"></iframe>
+    <iframe class="app-frame" id="frameChat" title="AI 마음 대화" src="/chat?embed=1"></iframe>
   </main>
 
   <footer class="app-footer">
@@ -119,10 +119,11 @@
 
   <script>
     const CONSENT_KEY = "psychology_ai_consent_v1";
+    const DEFAULT_TAB = "tarot";
     const frames = {
+      tarot: document.getElementById("frameTarot"),
       checkin: document.getElementById("frameCheckin"),
       chat: document.getElementById("frameChat"),
-      tarot: document.getElementById("frameTarot"),
     };
     const tabs = document.querySelectorAll(".app-tabs button");
 
@@ -136,9 +137,9 @@
 
     tabs.forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 
-    const hash = (location.hash || "#chat").replace("#", "");
+    const hash = (location.hash || `#${DEFAULT_TAB}`).replace("#", "");
     if (frames[hash]) switchTab(hash);
-    else switchTab("chat");
+    else switchTab(DEFAULT_TAB);
 
     async function loadConsent() {
       if (localStorage.getItem(CONSENT_KEY) === "1") return;

@@ -1,7 +1,7 @@
 {
   "name": "마음쉼터",
   "short_name": "마음쉼터",
-  "description": "AI 마음 웰니스·자기성찰 (비의료) — 체크인·대화·타로",
+  "description": "타로·체크인·AI 대화 — 마음을 가볍게 돌보는 AI 웰니스 (비의료)",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F2F4F6",

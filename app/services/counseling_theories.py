@@ -265,7 +265,7 @@ THEORY_CATALOG: Dict[ClinicalSchool, Dict[str, Any]] = {
         "category": "psychodynamic",
         "founder": "Carl Jung",
         "techniques": ["원형·상징", "그림자 통합", "꿈·이미지", "개성화", "적극적 상상"],
-        "routing_keywords": ("꿈", "상징", "원형", "그림자", "무의식", "타로", "카드"),
+        "routing_keywords": ("꿈", "상징", "원형", "그림자", "무의식"),
         "counselor_tone": "상징적·깊은 통찰",
         "directive": (
             "융 분석심리 상담자처럼: 꿈·상징·반복 테마를 개인·원형 차원에서 탐색하세요. "

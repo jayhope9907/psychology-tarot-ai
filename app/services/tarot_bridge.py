@@ -61,14 +61,13 @@ def build_counselor_bridge_message(
             card_bits.append(
                 f"{card['position']}의 {card['name_ko']}({card['orientation']}) — {card['psychology_theme']}"
             )
-        lines.append("카드가 비춘 흐름을 상담에 이어서 정리해 볼게요. " + " / ".join(card_bits) + ".")
+        lines.append("카드가 **살짝** 비춘 흐름을 대화에 이어갈게요. " + " / ".join(card_bits) + ".")
 
     if reading.get("summary"):
         lines.append(reading["summary"])
 
     lines.append(
-        "타로는 점이 아니라 지금 마음을 비추는 거울이에요. "
-        "카드 이야기와 방금 느껴지는 감정 중, 가장 와닿는 부분이 있다면 편하게 말씀해 주세요."
+        "카드는 **가벼운 거울**이에요. 깊은 해석보다, 지금 와닿는 느낌 하나만 편하게 말씀해 주셔도 충분해요."
     )
     return " ".join(lines)
 
@@ -131,10 +130,10 @@ def build_tarot_system_block(state: ChatSessionState) -> str:
         + "\n\n풀이 요약: "
         + (handoff.get("reading_summary") or "")
         + "\n\n상담 지침:\n"
-        "- 타로 상징을 **공감과 탐색의 언어**로 자연스럽게 엮되, 점·운명 단정은 하지 마세요.\n"
-        "- 카드가 비춘 심리 테마와 내담자의 실제 이야기를 연결해 한 단계 더 깊이 물어보세요.\n"
-        "- CBT 관점에서 카드가 건드린 감정·사고 패턴을 부드럽게 짚어 주세요.\n"
-        "- 아래 실천 제안을 상담 흐름에 맞게 1~2개만 자연스럽게 제안할 수 있습니다:\n"
+        "- 타로는 **가벼운 거울·은유**로만 언급. 그림자·무의식·원형 **깊은 해석 금지**.\n"
+        "- '혹시 ~일 수도 있어요' 톤. 사용자가 원할 때만 조금 더 깊이.\n"
+        "- 카드 테마와 실제 이야기를 **부담 없이** 연결하는 질문 1~2개.\n"
+        "- 아래 제안은 부담 없이 1개만 자연스럽게:\n"
         + (action_text or "  · (없음)")
     )
 

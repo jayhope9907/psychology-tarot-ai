@@ -17,7 +17,12 @@ from sse_starlette import EventSourceResponse
 
 from app.assessments import ALL_INSTRUMENTS, ASSESSMENT_DOMAINS, INSTRUMENT_PROFILES
 from app.models.clinical import ClinicalSchool
-from app.prompt_config import build_system_prompt, build_user_prompt
+from app.prompt_config import (
+    build_system_prompt,
+    build_tarot_reading_system_prompt,
+    build_tarot_reading_user_prompt,
+    build_user_prompt,
+)
 from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
 from app.services.assessment_package import PACKAGE_TIERS, build_assessment_package, complete_checkout, mark_package_presented
 from app.services.clinical_insight import build_clinical_insight, sync_session_insight
@@ -101,6 +106,7 @@ from app.services.tarot import (
     build_draw_from_picks,
     build_local_reading,
     draw_cards,
+    format_draw_for_prompt,
     list_deck_catalog,
     merge_reading_with_output,
 )
@@ -516,6 +522,30 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
         },
         **behavior_metadata,
     }
+
+
+def _compose_tarot_reading(user_story: str, draw_result: Dict[str, Any]) -> str:
+    """Light projection-style tarot reading (not deep Jungian / clinical)."""
+    local = build_local_reading(user_story, draw_result)
+    fallback = local["summary"]
+    cards_block = format_draw_for_prompt(draw_result)
+    system_prompt = build_tarot_reading_system_prompt()
+    user_prompt = build_tarot_reading_user_prompt(user_story, cards_block)
+    if client and getattr(client, "api_key", None):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.65,
+                max_tokens=420,
+            )
+            return response.choices[0].message.content or fallback
+        except Exception:
+            return fallback
+    return fallback
 
 
 def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, output: Dict[str, Any], preferred_school: Optional[ClinicalSchool] = None) -> None:
@@ -976,23 +1006,20 @@ async def tarot_reading(request: TarotReadingRequest):
     )
     local = build_local_reading(request.user_story, draw_result)
     primary_card = local.get("primary_card") or "The Fool"
-    selected = [card.get("name_en") for card in draw_result.get("cards", []) if card.get("name_en")]
 
     try:
-        therapy_output = _compose_output(
-            request.user_story or "지금 마음이 궁금해요.",
-            primary_card,
-            request.plan,
-            selected_cards=selected,
-            preferred_school=request.preferred_school,
-        )
-        reading = merge_reading_with_output(local, therapy_output)
+        ai_analysis = _compose_tarot_reading(request.user_story, draw_result)
+        reading = {
+            **local,
+            "ai_analysis": ai_analysis,
+            "recommended_actions": local.get("cbt_actions") or [],
+        }
         _store_record(
             request.user_id,
             request.user_story,
             primary_card,
             request.plan,
-            therapy_output,
+            {"summary": ai_analysis, "reading_tone": "light_projection"},
             request.preferred_school,
         )
         _invalidate_user_caches(request.user_id)

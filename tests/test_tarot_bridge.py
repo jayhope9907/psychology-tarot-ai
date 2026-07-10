@@ -83,4 +83,4 @@ def test_counselor_bridge_message_mentions_cards():
     ]
     msg = build_counselor_bridge_message("힘들어요", cards, {"summary": "요약"})
     assert "탑" in msg
-    assert "타로" in msg
+    assert "카드" in msg

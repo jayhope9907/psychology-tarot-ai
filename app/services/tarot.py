@@ -213,18 +213,19 @@ def build_local_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[st
 
     primary = cards[0] if cards else {}
     summary_parts = [
-        f"질문과 상황을 바탕으로 {len(cards)}장의 카드가 전하는 메시지를 정리했어요.",
+        "카드는 지금 마음을 **살짝** 비춰 주는 거울이에요. 깊게 파고들 필요는 없어요.",
     ]
     if user_story.strip():
-        summary_parts.append("말씀해 주신 마음을 충분히 담아 해석했습니다.")
+        summary_parts.append("적어 주신 상황을 바탕으로, 부담 없이 읽을 수 있게 정리했어요.")
     if primary:
         summary_parts.append(
-            f"핵심 카드 '{primary.get('name_ko', '')}'는 {primary.get('psychology_theme', '지금의 마음')}과 연결됩니다."
+            f"'{primary.get('name_ko', '')}' 카드가 {primary.get('psychology_theme', '지금 마음')}과 "
+            "가볍게 연결될 수 있어요."
         )
 
     cbt_actions = [
-        "오늘 카드가 비춘 감정을 한 문장으로 적어 보세요.",
-        "내일 시도할 아주 작은 행동 하나를 정해 보세요.",
+        "카드가 건드린 느낌 중 하나만 골라 한 줄 적어 보세요.",
+        "부담 없는 작은 행동 하나만 떠올려 보세요.",
     ]
     if "직장" in user_story or "회사" in user_story:
         cbt_actions[1] = "직장에서 통제 가능한 작은 한 가지를 정해 실천해 보세요."
@@ -235,7 +236,19 @@ def build_local_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[st
         "psychology_themes": themes,
         "cbt_actions": cbt_actions,
         "primary_card": primary.get("name_en", "The Fool"),
+        "reading_tone": "light_projection",
     }
+
+
+def format_draw_for_prompt(draw_result: Dict[str, Any]) -> str:
+    lines: List[str] = []
+    for card in draw_result.get("cards") or []:
+        orientation = "역방향" if card.get("reversed") else "정방향"
+        lines.append(
+            f"- {card.get('position', '카드')}: {card.get('name_ko')} ({orientation}) — "
+            f"{card.get('meaning_ko', '')} · 테마: {card.get('psychology_theme', '')}"
+        )
+    return "\n".join(lines) if lines else "- (카드 없음)"
 
 
 def merge_reading_with_output(local: Dict[str, Any], therapy_output: Dict[str, Any]) -> Dict[str, Any]:
