@@ -678,18 +678,47 @@ async def chat_ui():
     return {"message": "Psychology Tarot AI backend is running."}
 
 
+def _resolve_public_base(request: Optional[Request] = None) -> str:
+    env_base = (os.getenv("PUBLIC_BASE_URL") or "").rstrip("/")
+    if env_base:
+        return env_base
+    if request is None:
+        return ""
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+    if not host or host.startswith("127.0.0.1") or host.startswith("localhost") or host == "testserver":
+        return ""
+    scheme = (request.headers.get("x-forwarded-proto") or request.url.scheme or "https").split(",")[0].strip()
+    return f"{scheme}://{host}".rstrip("/")
+
+
+def _public_urls(public_base: str) -> Dict[str, str]:
+    paths = {
+        "chat": "/",
+        "tarot": "/tarot",
+        "test": "/test",
+        "health": "/health",
+        "tarot_deck_api": "/api/v1/tarot/deck",
+    }
+    if public_base:
+        return {name: f"{public_base}{path}" for name, path in paths.items()}
+    return paths
+
+
 @app.get("/health")
-async def health_check():
-    public_base = (os.getenv("PUBLIC_BASE_URL") or "").rstrip("/")
+async def health_check(request: Request):
+    public_base = _resolve_public_base(request)
+    urls = _public_urls(public_base)
     return {
         "status": "ok",
         "service": "psychology-tarot-ai",
         "version": os.getenv("APP_VERSION", "main"),
-        "urls": {
-            "chat": f"{public_base}/" if public_base else "/",
-            "tarot": f"{public_base}/tarot" if public_base else "/tarot",
-            "test": f"{public_base}/test" if public_base else "/test",
-            "tarot_deck_api": f"{public_base}/api/v1/tarot/deck" if public_base else "/api/v1/tarot/deck",
+        "public": bool(public_base),
+        "public_base": public_base or None,
+        "urls": urls,
+        "share_links": {
+            "상담 채팅": urls["chat"],
+            "3D 타로": urls["tarot"],
+            "테스트 허브": urls["test"],
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }

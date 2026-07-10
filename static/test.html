@@ -183,6 +183,17 @@
   </header>
 
   <section class="test-section">
+    <h2>공유 링크</h2>
+    <p class="desc">아래 링크를 복사해서 다른 사람에게 보내세요. 누구나 접속할 수 있습니다.</p>
+    <div id="shareLinks" class="test-info">링크 불러오는 중…</div>
+    <div class="test-grid" style="margin-top:10px">
+      <button type="button" class="test-btn primary" id="btnCopyChat">상담 링크 복사</button>
+      <button type="button" class="test-btn" id="btnCopyTarot">타로 링크 복사</button>
+      <button type="button" class="test-btn" id="btnCopyTest">테스트 링크 복사</button>
+    </div>
+  </section>
+
+  <section class="test-section">
     <h2>바로가기</h2>
     <p class="desc">실제 사용자 화면으로 이동</p>
     <div class="test-grid">
@@ -248,6 +259,33 @@
     const logEl = document.getElementById("testLog");
     const healthBadge = document.getElementById("healthBadge");
     const sessionInfo = document.getElementById("sessionInfo");
+    const shareLinksEl = document.getElementById("shareLinks");
+    let shareUrls = { chat: "/", tarot: "/tarot", test: "/test" };
+
+    function absoluteUrl(path) {
+      if (/^https?:\/\//i.test(path)) return path;
+      return `${window.location.origin}${path.startsWith("/") ? path : `/${path}`}`;
+    }
+
+    function renderShareLinks() {
+      const chat = absoluteUrl(shareUrls.chat);
+      const tarot = absoluteUrl(shareUrls.tarot);
+      const test = absoluteUrl(shareUrls.test);
+      shareLinksEl.innerHTML = `
+        <strong>상담</strong> <a href="${chat}">${chat}</a><br/>
+        <strong>타로</strong> <a href="${tarot}">${tarot}</a><br/>
+        <strong>테스트</strong> <a href="${test}">${test}</a>
+      `;
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        log(`✓ 링크 복사 → ${text}`);
+      } catch {
+        log(`복사 실패 → ${text}`);
+      }
+    }
 
     function log(msg) {
       const time = new Date().toLocaleTimeString("ko-KR");
@@ -279,8 +317,16 @@
       const res = await fetch("/health");
       const data = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(data));
-      healthBadge.textContent = `서버 정상 · ${data.service}`;
+      healthBadge.textContent = data.public ? `공개 서버 정상 · ${data.service}` : `서버 정상 · ${data.service}`;
       healthBadge.className = "test-badge ok";
+      if (data.urls) {
+        shareUrls = {
+          chat: data.urls.chat || "/",
+          tarot: data.urls.tarot || "/tarot",
+          test: data.urls.test || "/test",
+        };
+        renderShareLinks();
+      }
       return data;
     }
 
@@ -347,6 +393,10 @@
       });
     });
 
+    document.getElementById("btnCopyChat").addEventListener("click", () => copyText(absoluteUrl(shareUrls.chat)));
+    document.getElementById("btnCopyTarot").addEventListener("click", () => copyText(absoluteUrl(shareUrls.tarot)));
+    document.getElementById("btnCopyTest").addEventListener("click", () => copyText(absoluteUrl(shareUrls.test)));
+
     document.getElementById("btnNewSession").addEventListener("click", () => {
       localStorage.removeItem("psychology_ai_session_id");
       localStorage.removeItem("psychology_ai_welcomed");
@@ -389,6 +439,7 @@
     }
 
     refreshSessionInfo();
+    renderShareLinks();
     runPageChecks();
   </script>
 </body>

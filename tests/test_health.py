@@ -12,4 +12,5 @@ def test_health_endpoint():
     assert payload["status"] == "ok"
     assert payload["urls"]["tarot"] == "/tarot"
     assert payload["urls"]["test"] == "/test"
+    assert payload["share_links"]["3D 타로"] == "/tarot"
     assert "render.com/deploy" in payload["deploy_hint"]

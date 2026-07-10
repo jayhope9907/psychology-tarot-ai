@@ -18,3 +18,5 @@ services:
         generateValue: true
       - key: PORT
         value: "8000"
+      - key: PUBLIC_BASE_URL
+        value: https://psychology-tarot-ai.onrender.com
