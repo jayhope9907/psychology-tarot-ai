@@ -70,18 +70,18 @@ PROCESS_TIMELINE_TEMPLATE: List[Dict[str, str]] = [
     {
         "step_id": "micro_tests",
         "title": "대화 속 마이크로 검사",
-        "description": "상담 흐름을 끊지 않고 짧은 질문으로 하나씩 진행합니다.",
+        "description": "대화 흐름을 끊지 않고 짧은 질문으로 하나씩 진행합니다.",
         "status": "pending",
     },
     {
         "step_id": "insight_report",
         "title": "결과 종합 · 안내",
-        "description": "정상 범주 / 상담 권장 / 병원 평가 필요성을 확률로 안내합니다.",
+        "description": "정상 범주 / 전문 기관 상담 고려 / 추가 평가 필요성을 참고 지표로 안내합니다.",
         "status": "pending",
     },
     {
         "step_id": "counseling_continue",
-        "title": "사례 개념화 → 상담 개입",
+        "title": "사례 개념화 → 실행·변화",
         "description": "검사 결과를 바탕으로 목표 설정과 변화를 함께 이어갑니다.",
         "status": "pending",
     },
@@ -194,7 +194,7 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
         "process_timeline": timeline,
         "disclaimer": (
             "본 검사는 의료 진단이 아닌 참고용 스크리닝입니다. "
-            "결과는 대화와 함께 누적되며, 정상 범주·상담·병원 평가 필요성을 확률로 안내합니다."
+            "결과는 대화와 함께 누적되며, 정상 범주·전문 기관 상담 고려·추가 평가 필요성을 참고 지표로 안내합니다."
         ),
         "payment_required": not state.assessment_paid,
     }

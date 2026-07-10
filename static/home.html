@@ -138,10 +138,10 @@
   </section>
 
   <div class="quick-grid">
-    <a class="quick-card" href="/chat"><strong>💬 상담</strong><span>이서연 상담사와 대화</span></a>
+    <a class="quick-card" href="/chat"><strong>💬 AI 대화</strong><span>이서연 AI 가이드와 대화</span></a>
     <a class="quick-card" href="/tarot"><strong>✦ 타로</strong><span>직접 섞고 뽑기</span></a>
     <a class="quick-card" href="/test"><strong>🧪 테스트</strong><span>API·상태 확인</span></a>
-    <a class="quick-card" href="/chat" id="continueChat"><strong>↩ 이어하기</strong><span id="continueHint">최근 상담 이어가기</span></a>
+    <a class="quick-card" href="/chat" id="continueChat"><strong>↩ 이어하기</strong><span id="continueHint">최근 대화 이어가기</span></a>
   </div>
 
   <section class="checkin-card">
@@ -167,10 +167,11 @@
 
   <nav class="t-bottom-nav" aria-label="하단 메뉴">
     <a href="/" class="t-nav-item active"><span class="t-nav-icon">🏠</span>홈</a>
-    <a href="/chat" class="t-nav-item"><span class="t-nav-icon">💬</span>상담</a>
+    <a href="/chat" class="t-nav-item"><span class="t-nav-icon">💬</span>AI 대화</a>
     <a href="/tarot" class="t-nav-item"><span class="t-nav-icon">✦</span>타로</a>
   </nav>
 
+  <script src="/static/js/embed-bridge.js"></script>
   <script>
     const USER_KEY = "psychology_ai_user_id";
     const userId = localStorage.getItem(USER_KEY) || `user-${crypto.randomUUID().slice(0, 8)}`;
@@ -279,7 +280,7 @@
       if (data.session_id) {
         document.getElementById("continueChat").href = `/chat?session_id=${data.session_id}`;
         document.getElementById("continueHint").textContent = data.counseling_phase
-          ? `상담 단계: ${data.counseling_phase}` : "최근 상담 이어가기";
+          ? `대화 단계: ${data.counseling_phase}` : "최근 대화 이어가기";
       }
 
       renderChart(data.recent_checkins || []);

@@ -1,6 +1,7 @@
 /* Embed mode — used inside unified app shell (?embed=1) */
 html.embed-mode .t-bottom-nav,
 html.embed-mode .mobile-header,
+html.embed-mode .t-topbar,
 html.embed-mode .app-hide-embed {
   display: none !important;
 }
@@ -15,4 +16,8 @@ html.embed-mode .sidebar-overlay {
 
 html.embed-mode .sidebar {
   z-index: 201;
+}
+
+html.embed-mode .t-bottom-nav-spacer {
+  display: none !important;
 }

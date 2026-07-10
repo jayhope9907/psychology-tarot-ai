@@ -219,7 +219,7 @@ def fallback_reply(
     if assessment_response and assessment_response.get("value") is not None:
         return (
             "답해 주셔서 고마워요. 방금 답변을 바탕으로 지금 상태를 조금씩 그려가고 있어요. "
-            "검사가 쌓일수록 정상 범주인지, 전문 상담이 도움이 될지 더 정확히 안내해 드릴 수 있어요. "
+            "검사가 쌓일수록 정상 범주인지, 전문 기관 상담을 고려할 여지가 있는지 더 정확히 안내해 드릴 수 있어요. "
             "그때 가장 먼저 떠오르는 생각이나 감정이 있다면 함께 나눠 주세요."
         )
 
@@ -241,14 +241,14 @@ def fallback_reply(
             )
         return (
             f"대화를 이어가면서 {label} 질문 하나 드릴게요. "
-            "편한 만큼만 선택해 주시면, 정상 범주인지 전문 상담이 필요한지도 함께 살펴볼 수 있어요."
+            "편한 만큼만 선택해 주시면, 정상 범주인지 전문 기관 상담을 고려할 여지가 있는지도 함께 살펴볼 수 있어요."
         )
 
     if detect_assessment_request(user_message):
         return (
             "네, 검사·상태 확인은 가능해요. "
             "대화 속에서 PHQ·GAD 같은 표준 도구를 짧게 진행하고, "
-            "정상 범주인지 전문 상담·병원 평가가 필요한지 확률로 안내해 드릴게요. "
+            "정상 범주인지 전문 기관 상담·추가 평가를 고려할 여지가 있는지 참고 지표로 안내해 드릴게요. "
             "지금 가장 불편한 마음부터 조금만 더 들려주실 수 있을까요?"
         )
 
@@ -393,21 +393,21 @@ def build_chat_messages(
     if detect_assessment_request(user_message):
         system_prompt += (
             "\n\n내담자가 검사·상태 확인을 요청했습니다. "
-            "'가능하다'고 명확히 답하고, 곧 이어질 짧은 심리검사(스크리닝)를 자연스럽게 안내하세요. "
+            "'가능하다'고 명확히 답하고, 곧 이어질 짧은 마음 체크(스크리닝)를 자연스럽게 안내하세요. "
             "질문을 그대로 반복하거나 '가장 먼저 다루고 싶은 이야기'만 되묻지 마세요."
         )
 
     if session_has_distress(state, user_message) and not detect_assessment_request(user_message):
         system_prompt += (
             "\n\n내담자가 우울·답답함 등 고통 신호를 보였습니다. "
-            "감정을 먼저 반영하고, 필요하면 검사·상담 안내도 자연스럽게 언급하세요."
+            "감정을 먼저 반영하고, 필요하면 마음 체크·전문 기관 안내도 자연스럽게 언급하세요."
         )
 
     if decision and decision.action == "inject_assessment":
         instrument_id = (decision.selection or {}).get("instrument_id", "")
         system_prompt += (
             f"\n\n이번 턴에 {instrument_id} 관련 짧은 검사 카드가 함께 표시됩니다. "
-            "상담 멘트에서 검사를 소개하고, 아래 카드에서 답하도록 부드럽게 안내하세요."
+            "대화 멘트에서 마음 체크를 소개하고, 아래 카드에서 답하도록 부드럽게 안내하세요."
         )
 
     if assessment_response:

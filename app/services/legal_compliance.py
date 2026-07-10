@@ -115,8 +115,20 @@ def reframe_clinical_label(text: str) -> str:
         "상담심리 전문가": "AI 웰니스 가이드",
         "임상심리 상담사": "AI 마음 가이드",
         "상담사": "AI 가이드",
+        "병원·전문기관": "전문 의료·상담 기관",
+        "전문 상담·검사": "전문 기관 상담·참고 체크",
+        "심리검사": "마음 체크",
     }
     result = text
     for old, new in replacements.items():
         result = result.replace(old, new)
     return result
+
+
+def reframe_insight_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    reframed = dict(payload)
+    for key in ("overall_zone_label", "recommendation_label", "summary_ko", "disclaimer"):
+        if reframed.get(key):
+            reframed[key] = reframe_clinical_label(str(reframed[key]))
+    reframed["care_reference_label"] = "전문 기관 상담 고려 지표"
+    return reframed

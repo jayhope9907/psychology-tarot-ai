@@ -168,6 +168,14 @@
       navigator.serviceWorker.register("/static/sw.js").catch(() => {});
     }
     loadConsent();
+    window.addEventListener("message", (event) => {
+      const tab = event.data?.tab;
+      if (event.data?.type !== "maum-nav" || !frames[tab]) return;
+      switchTab(tab);
+      if (tab === "chat" && event.data.from_tarot) {
+        frames.chat.contentWindow?.postMessage({ type: "maum-tarot-handoff" }, "*");
+      }
+    });
   </script>
 </body>
 </html>

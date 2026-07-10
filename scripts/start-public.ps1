@@ -135,9 +135,12 @@ if (-not (Wait-PublicHealth $publicUrl)) {
 
 $shareObj = [ordered]@{
     public_url = $publicUrl
-    chat = "$publicUrl/"
+    app = "$publicUrl/"
+    home = "$publicUrl/home"
+    chat = "$publicUrl/chat"
     tarot = "$publicUrl/tarot"
     test = "$publicUrl/test"
+    legal = "$publicUrl/legal"
     health = "$publicUrl/health"
     started_at = (Get-Date).ToUniversalTime().ToString("o")
 }
@@ -147,8 +150,11 @@ Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " 공개 배포 완료" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "상담 : $($shareObj.chat)"
+Write-Host "앱   : $($shareObj.app)"
+Write-Host "홈   : $($shareObj.home)"
+Write-Host "대화 : $($shareObj.chat)"
 Write-Host "타로 : $($shareObj.tarot)"
+Write-Host "법률 : $($shareObj.legal)"
 Write-Host "테스트: $($shareObj.test)"
 Write-Host ""
 Write-Host "링크는 public-url.json 에 저장되었습니다."

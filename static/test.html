@@ -197,8 +197,8 @@
     <h2>바로가기</h2>
     <p class="desc">실제 사용자 화면으로 이동</p>
     <div class="test-grid">
-      <a class="test-link" href="/">홈 대시보드 <span>→</span></a>
-      <a class="test-link" href="/chat">상담 채팅 <span>→</span></a>
+      <a class="test-link" href="/">통합 앱 <span>→</span></a>
+      <a class="test-link" href="/chat">AI 대화 <span>→</span></a>
       <a class="test-link" href="/tarot">3D 타로 <span>→</span></a>
       <a class="test-link" href="/health" target="_blank" rel="noopener">Health JSON <span>↗</span></a>
       <a class="test-link" href="https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai" target="_blank" rel="noopener">Render 배포 <span>↗</span></a>
@@ -210,7 +210,7 @@
     <p class="desc">브라우저에 저장된 테스트 데이터</p>
     <div class="test-info" id="sessionInfo">불러오는 중…</div>
     <div class="test-grid">
-      <button type="button" class="test-btn" id="btnNewSession">새 상담 세션</button>
+      <button type="button" class="test-btn" id="btnNewSession">새 대화 세션</button>
       <button type="button" class="test-btn danger" id="btnClearStorage">저장 데이터 초기화</button>
     </div>
   </section>
@@ -234,7 +234,7 @@
     <p class="desc">페이지 로드 시 자동 점검</p>
     <ul class="check-list" id="checkList">
       <li data-check="health"><span class="check-icon">·</span><span>서버 /health 응답</span></li>
-      <li data-check="chat"><span class="check-icon">·</span><span>상담 페이지 로드</span></li>
+      <li data-check="chat"><span class="check-icon">·</span><span>AI 대화 페이지 로드</span></li>
       <li data-check="tarot"><span class="check-icon">·</span><span>타로 페이지 로드</span></li>
       <li data-check="css"><span class="check-icon">·</span><span>토스 UI 스타일시트</span></li>
       <li data-check="deck"><span class="check-icon">·</span><span>타로 덱 API (22장)</span></li>
@@ -252,7 +252,7 @@
     </a>
     <a href="/chat" class="t-nav-item">
       <span class="t-nav-icon">💬</span>
-      상담
+      AI 대화
     </a>
     <a href="/tarot" class="t-nav-item">
       <span class="t-nav-icon">✦</span>
@@ -265,7 +265,7 @@
     const healthBadge = document.getElementById("healthBadge");
     const sessionInfo = document.getElementById("sessionInfo");
     const shareLinksEl = document.getElementById("shareLinks");
-    let shareUrls = { chat: "/", tarot: "/tarot", test: "/test" };
+    let shareUrls = { app: "/", home: "/home", chat: "/chat", tarot: "/tarot", test: "/test", legal: "/legal" };
 
     function absoluteUrl(path) {
       if (/^https?:\/\//i.test(path)) return path;
@@ -273,12 +273,16 @@
     }
 
     function renderShareLinks() {
-      const chat = absoluteUrl(shareUrls.chat);
-      const tarot = absoluteUrl(shareUrls.tarot);
-      const test = absoluteUrl(shareUrls.test);
+      const app = absoluteUrl(shareUrls.app || "/");
+      const chat = absoluteUrl(shareUrls.chat || "/chat");
+      const tarot = absoluteUrl(shareUrls.tarot || "/tarot");
+      const test = absoluteUrl(shareUrls.test || "/test");
+      const legal = absoluteUrl(shareUrls.legal || "/legal");
       shareLinksEl.innerHTML = `
-        <strong>상담</strong> <a href="${chat}">${chat}</a><br/>
+        <strong>앱</strong> <a href="${app}">${app}</a><br/>
+        <strong>AI 대화</strong> <a href="${chat}">${chat}</a><br/>
         <strong>타로</strong> <a href="${tarot}">${tarot}</a><br/>
+        <strong>법률</strong> <a href="${legal}">${legal}</a><br/>
         <strong>테스트</strong> <a href="${test}">${test}</a>
       `;
     }
@@ -313,7 +317,7 @@
       sessionInfo.innerHTML = `
         <strong>user_id</strong> ${userId}<br/>
         <strong>session_id</strong> ${sessionId}<br/>
-        <strong>상담 스타일</strong> ${school}<br/>
+        <strong>대화 스타일</strong> ${school}<br/>
         <strong>타로 handoff</strong> ${tarot}
       `;
     }
@@ -326,9 +330,12 @@
       healthBadge.className = "test-badge ok";
       if (data.urls) {
         shareUrls = {
-          chat: data.urls.chat || "/",
+          app: data.urls.app || "/",
+          home: data.urls.home || "/home",
+          chat: data.urls.chat || "/chat",
           tarot: data.urls.tarot || "/tarot",
           test: data.urls.test || "/test",
+          legal: data.urls.legal || "/legal",
         };
         renderShareLinks();
       }
@@ -424,7 +431,7 @@
       } catch { setCheck("css", false); }
 
       try {
-        const chat = await fetch("/");
+        const chat = await fetch("/chat");
         setCheck("chat", chat.ok && (await chat.text()).includes("마음쉼터"));
       } catch { setCheck("chat", false); }
 

@@ -39,18 +39,18 @@ CLINICAL_INSTRUMENTS = frozenset(
 )
 
 ZONE_LABELS = {
-    "normal": "정상 범주에 가깝습니다",
-    "mild_elevation": "경미한 주의가 필요합니다",
-    "clinical_concern": "전문 상담·검사를 고려할 만합니다",
-    "insufficient_data": "아직 판단하기 이릅니다",
+    "normal": "전반적으로 안정적인 편입니다",
+    "mild_elevation": "가벼운 주의가 도움될 수 있습니다",
+    "clinical_concern": "전문 기관 상담을 고려할 여지가 있습니다",
+    "insufficient_data": "아직 참고하기 이릅니다",
 }
 
 RECOMMENDATION_LABELS = {
     "self_monitoring": "자가 관찰 · 생활 리듬 유지",
-    "counseling_suggested": "심리 상담 상담을 권장합니다",
-    "clinical_evaluation_recommended": "병원·전문기관 평가를 권장합니다",
+    "counseling_suggested": "전문 기관 상담을 고려해 볼 수 있습니다",
+    "clinical_evaluation_recommended": "전문 의료·상담 기관 평가를 고려해 볼 수 있습니다",
     "urgent_care_suggested": "가까운 전문기관·위기 지원을 권장합니다",
-    "continue_assessment": "검사를 조금 더 진행해 주세요",
+    "continue_assessment": "참고용 체크를 조금 더 진행해 주세요",
 }
 
 
@@ -188,9 +188,9 @@ def _build_summary(
 
     if zone == "insufficient_data":
         return (
-            "아직 충분한 검사 데이터가 쌓이지 않았어요. "
+            "아직 충분한 참고 데이터가 쌓이지 않았어요. "
             "대화를 이어가며 몇 가지 질문에 답해 주시면, "
-            "정상 범주인지 전문 상담이 필요한지 더 정확히 안내해 드릴 수 있어요."
+            "마음 패턴을 웰니스 관점에서 더 정확히 안내해 드릴 수 있어요."
         )
 
     lead = ZONE_LABELS.get(zone, "")
@@ -199,14 +199,16 @@ def _build_summary(
 
     return (
         f"{lead} "
-        f"전문 상담·검사가 도움이 될 가능성은 약 {pct}%로 추정됩니다(신뢰도 {conf_pct}%). "
+        f"전문 기관 상담을 고려할 여지는 약 {pct}%로 추정됩니다(신뢰도 {conf_pct}%). "
         f"주요 신호: {top_domains or '종합 패턴'}. "
-        f"권장: {rec}. "
-        "※ 본 결과는 의학적 진단이 아니며, 스크리닝 참고용입니다."
+        f"참고: {rec}. "
+        "※ 본 결과는 의학적 진단이 아니며, 웰니스·스크리닝 참고용입니다."
     )
 
 
 def build_clinical_insight(state: ChatSessionState) -> Dict[str, Any]:
+    from app.services.legal_compliance import reframe_insight_payload
+
     battery = build_battery_status(state)
     findings = _domain_findings(state)
     confidence = _confidence(state, battery)
@@ -216,21 +218,23 @@ def build_clinical_insight(state: ChatSessionState) -> Dict[str, Any]:
 
     normal_probability = round(max(0.0, 1.0 - probability - (0.15 if confidence < 0.3 else 0.05)), 2)
 
-    return {
-        "session_id": state.session_id,
-        "overall_zone": zone,
-        "overall_zone_label": ZONE_LABELS.get(zone, zone),
-        "professional_care_probability": probability,
-        "normal_range_probability": normal_probability,
-        "confidence": confidence,
-        "recommendation_tier": recommendation,
-        "recommendation_label": RECOMMENDATION_LABELS.get(recommendation, recommendation),
-        "domain_findings": findings,
-        "summary_ko": _build_summary(zone, probability, confidence, recommendation, findings),
-        "disclaimer": "본 분석은 PHQ·GAD 등 표준 도구의 부분 문항을 바탕으로 한 스크리닝 추정치이며, 의학적 진단을 대체하지 않습니다.",
-        "battery_completion_rate": battery.get("overall_completion_rate", 0.0),
-        "ready_for_interpretation": confidence >= 0.25 and bool(findings),
-    }
+    return reframe_insight_payload(
+        {
+            "session_id": state.session_id,
+            "overall_zone": zone,
+            "overall_zone_label": ZONE_LABELS.get(zone, zone),
+            "professional_care_probability": probability,
+            "normal_range_probability": normal_probability,
+            "confidence": confidence,
+            "recommendation_tier": recommendation,
+            "recommendation_label": RECOMMENDATION_LABELS.get(recommendation, recommendation),
+            "domain_findings": findings,
+            "summary_ko": _build_summary(zone, probability, confidence, recommendation, findings),
+            "disclaimer": "본 분석은 참고용 자가 스크리닝 추정치이며, 의학적·임상 진단을 대체하지 않습니다.",
+            "battery_completion_rate": battery.get("overall_completion_rate", 0.0),
+            "ready_for_interpretation": confidence >= 0.25 and bool(findings),
+        }
+    )
 
 
 def sync_session_insight(state: ChatSessionState) -> Dict[str, Any]:
