@@ -16,9 +16,10 @@ def test_style_catalog_api():
     res = client.get("/api/v1/chat/style-catalog")
     assert res.status_code == 200
     data = res.json()
-    assert len(data["counselors"]) >= 8
-    assert len(data["voice_presets"]) >= 10
+    assert len(data["counselors"]) >= 14
+    assert len(data["voice_presets"]) >= 16
     assert len(data["textures"]) >= 5
+    assert len(data["theories"]) >= 18
 
 
 def test_save_and_load_counseling_style():

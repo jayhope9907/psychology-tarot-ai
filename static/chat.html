@@ -543,8 +543,39 @@
 
     .persona-options {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .persona-category {
+      grid-column: 1 / -1;
+      margin: 6px 0 2px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    .persona-category:first-child { margin-top: 0; }
+
+    .persona-btn .theory-sub {
+      display: block;
+      font-size: 0.58rem;
+      font-weight: 400;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    .counselor-pick strong { display: block; font-size: 0.78rem; }
+    .counselor-pick span { display: block; font-size: 0.62rem; opacity: 0.85; line-height: 1.35; }
+    .counselor-pick .counselor-theory {
+      display: block;
+      font-size: 0.58rem;
+      color: var(--accent);
+      margin-top: 2px;
     }
 
     .persona-btn {
@@ -1591,21 +1622,18 @@
       </div>
 
       <div class="persona-panel">
-        <h3>대화 스타일</h3>
+        <h3>상담 종류</h3>
         <div class="persona-options" id="personaOptions">
           <button type="button" class="persona-btn active" data-school="">자동</button>
-          <button type="button" class="persona-btn" data-school="ROGERIAN">수용</button>
-          <button type="button" class="persona-btn" data-school="BECK_CBT">인지</button>
-          <button type="button" class="persona-btn" data-school="FREUDIAN">통찰</button>
         </div>
-        <p id="personaStatus">자동 맞춤 대화</p>
+        <p id="personaStatus">맞춤 · 상황에 맞게 골라드려요</p>
       </div>
 
       <div class="style-panel" id="stylePanel">
-        <h3>톤 · 질감 · 음성</h3>
+        <h3>상담사 · 목소리</h3>
         <div class="gender-tabs" id="genderTabs">
-          <button type="button" class="active" data-gender="female">여성 AI 가이드</button>
-          <button type="button" data-gender="male">남성 AI 가이드</button>
+          <button type="button" class="active" data-gender="female">여성 상담사</button>
+          <button type="button" data-gender="male">남성 상담사</button>
         </div>
         <div class="counselor-list" id="counselorList"></div>
         <p style="margin:0 0 6px;font-size:0.68rem;color:var(--text-muted)">질감</p>
@@ -1802,17 +1830,57 @@
       if (emptyState) emptyState.remove();
     }
 
+    let personaCatalog = null;
+
+    function renderPersonaOptions() {
+      if (!personaCatalog?.length) return;
+      const categories = {};
+      personaCatalog.forEach((p) => {
+        const cat = p.user_category_label || p.category_label || "기타";
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(p);
+      });
+      let html = `<button type="button" class="persona-btn ${preferredSchool === "" ? "active" : ""}" data-school="">자동</button>`;
+      Object.entries(categories).forEach(([catLabel, items]) => {
+        html += `<div class="persona-category">${catLabel}</div>`;
+        items.forEach((p) => {
+          const short = p.user_short_label || p.short_label || p.label;
+          html += `<button type="button" class="persona-btn ${preferredSchool === p.school ? "active" : ""}" data-school="${p.school}" title="${p.user_label || p.label}">
+            ${short}
+          </button>`;
+        });
+      });
+      personaOptions.innerHTML = html;
+    }
+
+    async function loadPersonaCatalog() {
+      try {
+        const res = await fetch("/api/v1/chat/personas");
+        const data = await res.json();
+        personaCatalog = data.personas || [];
+        if (!personaCatalog.length && styleCatalog?.theories) {
+          personaCatalog = styleCatalog.theories;
+        }
+        renderPersonaOptions();
+        syncPersonaButtons();
+      } catch (_) {}
+    }
+
     function syncPersonaButtons() {
       personaOptions.querySelectorAll(".persona-btn").forEach((button) => {
         button.classList.toggle("active", button.dataset.school === preferredSchool);
       });
-      const labels = {
-        "": "자동 맞춤 대화",
-        ROGERIAN: "인간중심 수용 모드",
-        BECK_CBT: "인지 왜곡 교정 모드",
-        FREUDIAN: "무의식 직면 모드",
-      };
-      personaStatus.textContent = labels[preferredSchool] || "자동 맞춤 대화";
+      if (preferredSchool === "") {
+        const counselor = counselingStyle?.counselor;
+        personaStatus.textContent = counselor
+          ? `맞춤 · ${counselor.name} 상담사(${counselor.user_specialty || counselor.tagline})`
+          : "맞춤 · 상황에 맞게 골라드려요";
+        return;
+      }
+      const match = (personaCatalog || []).find((p) => p.school === preferredSchool);
+      personaStatus.textContent = match
+        ? (match.user_label || match.label)
+        : preferredSchool;
     }
 
     personaOptions.addEventListener("click", (event) => {
@@ -1833,9 +1901,9 @@
       if (!style?.counselor) return;
       counselingStyle = style;
       COUNSELOR_NAME = style.counselor_name || style.counselor.name;
-      document.getElementById("counselorName").textContent = `${COUNSELOR_NAME} AI 가이드`;
+      document.getElementById("counselorName").textContent = `${COUNSELOR_NAME} 상담사`;
       document.getElementById("counselorRole").innerHTML =
-        `${style.counselor.title}<br/>${style.counselor.tagline || style.texture_meta?.label || "대화 속 마음 돌봄"}`;
+        `${style.counselor.user_title || style.counselor.title}<br/>${style.counselor.user_specialty || style.counselor.tagline || ""}`;
       document.getElementById("counselorAvatar").textContent = COUNSELOR_NAME.slice(0, 2);
       if (window.VoiceEngine) {
         VoiceEngine.configure({
@@ -1874,7 +1942,8 @@
         .map((c) => `
           <button type="button" class="counselor-pick ${counselingStyle?.counselor_id === c.id ? "active" : ""}" data-id="${c.id}">
             <strong>${c.name}</strong>
-            <span>${c.tagline}</span>
+            <span>${c.user_specialty || c.tagline}</span>
+            <span class="counselor-theory">${c.user_title || ""}</span>
           </button>
         `).join("");
       list.querySelectorAll(".counselor-pick").forEach((btn) => {
@@ -1885,6 +1954,7 @@
             voice_preset_id: counselor?.default_voice,
             texture: counselor?.default_texture,
           });
+          syncPersonaButtons();
           renderCounselorList();
           renderVoiceList();
         });
@@ -1974,11 +2044,15 @@
         renderTextureTabs();
         renderToneGrid();
         renderVoiceList();
+        personaCatalog = styleCatalog.theories || personaCatalog;
+        renderPersonaOptions();
+        syncPersonaButtons();
         document.getElementById("styleStatus").textContent =
           `${counselingStyle.counselor_name} · ${counselingStyle.texture_meta?.label}`;
       } catch (_) {
         document.getElementById("styleStatus").textContent = "스타일 설정을 불러오지 못했어요.";
       }
+      loadPersonaCatalog();
     }
 
     document.getElementById("genderTabs").addEventListener("click", (e) => {

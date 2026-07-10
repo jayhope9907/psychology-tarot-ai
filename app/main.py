@@ -433,34 +433,18 @@ def _resolve_clinical_school(preferred_school: Optional[ClinicalSchool]) -> Clin
 
 
 def _build_behavior_metadata(school: ClinicalSchool) -> Dict[str, Any]:
-    if school == ClinicalSchool.FREUDIAN:
-        return {
-            "clinical_protocol_mode": "FREUDIAN",
-            "assistant_behavior_rules": [
-                "Explore unconscious conflict with gentle curiosity.",
-                "Frame recurring patterns as unresolved emotional themes.",
-                "Encourage reflection on early relational imprints."
-            ],
-            "daily_logotherapy_homework_style": "A reflection journaling exercise on unconscious repetition and emotional conflict.",
-        }
-    if school == ClinicalSchool.BECK_CBT:
-        return {
-            "clinical_protocol_mode": "BECK_CBT",
-            "assistant_behavior_rules": [
-                "Identify cognitive distortions with precision.",
-                "Reframe maladaptive thoughts into balanced alternatives.",
-                "Anchor the plan in measurable behavioral experiments."
-            ],
-            "daily_logotherapy_homework_style": "A thought record exercise focused on evidence, reframe, and behavioral experiment.",
-        }
+    from app.services.counseling_theories import get_theory_meta
+
+    meta = get_theory_meta(school)
     return {
-        "clinical_protocol_mode": "ROGERIAN",
-        "assistant_behavior_rules": [
-            "Offer unconditional positive regard.",
-            "Validate the client's experience without judgment.",
-            "Support self-directed growth through empathic reflection."
-        ],
-        "daily_logotherapy_homework_style": "A gentle reflective homework prompt centered on self-acceptance and emotional safety.",
+        "clinical_protocol_mode": school.value,
+        "assistant_behavior_rules": meta["techniques"][:4],
+        "daily_logotherapy_homework_style": (
+            f"{meta['label']} 기반 자기성찰 과제 — "
+            f"{meta['techniques'][0] if meta['techniques'] else '감정 기록'}"
+        ),
+        "theory_label": meta["label"],
+        "founder": meta["founder"],
     }
 
 
@@ -1084,16 +1068,11 @@ async def chat_session_state(session_id: str):
 
 @app.get("/api/v1/chat/personas")
 async def chat_personas():
+    from app.services.counseling_theories import list_categories_for_api, list_theories_for_api
+
     return {
-        "personas": [
-            {
-                "school": school.value,
-                "label": meta["label"],
-                "subtitle": meta["subtitle"],
-                "counselor_tone": meta["counselor_tone"],
-            }
-            for school, meta in PERSONA_CATALOG.items()
-        ]
+        "personas": list_theories_for_api(),
+        "categories": list_categories_for_api(),
     }
 
 

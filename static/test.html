@@ -173,6 +173,19 @@
 
     .check-list li.pass .check-icon { background: #d1fae5; color: #047857; }
     .check-list li.fail .check-icon { background: #fee2e2; color: #b91c1c; }
+
+    .tech-theory-grid { display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
+    .tech-theory-item {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--t-bg);
+      border: 1px solid var(--t-border);
+      font-size: 0.74rem;
+      line-height: 1.45;
+    }
+    .tech-theory-item strong { display: block; font-size: 0.82rem; margin-bottom: 4px; }
+    .tech-theory-item .tech-user { color: var(--t-blue); font-weight: 600; margin-bottom: 2px; }
+    .tech-theory-item .tech-meta { color: var(--t-text-tertiary); font-size: 0.68rem; }
   </style>
 </head>
 <body class="toss-ui test-hub">
@@ -227,6 +240,12 @@
       <button type="button" class="test-btn primary" data-api="all">전체 자동 실행</button>
     </div>
     <pre class="test-log" id="testLog">테스트 로그가 여기 표시됩니다.</pre>
+  </section>
+
+  <section class="test-section">
+    <h2>상담 이론 · 가이드 (기술명)</h2>
+    <p class="desc">유저 화면은 쉬운 이름, 여기서는 학파·기법 등 기술 정보를 그대로 확인합니다.</p>
+    <div class="tech-theory-grid" id="techTheoryGrid">불러오는 중…</div>
   </section>
 
   <section class="test-section">
@@ -342,6 +361,50 @@
       return data;
     }
 
+    function renderTechnicalCatalog(data) {
+      const grid = document.getElementById("techTheoryGrid");
+      if (!grid) return;
+      const theories = data?.personas || [];
+      if (!theories.length) {
+        grid.textContent = "이론 카탈로그를 불러오지 못했어요.";
+        return;
+      }
+      grid.innerHTML = theories.map((t) => `
+        <div class="tech-theory-item">
+          <strong>${t.label}</strong>
+          <div class="tech-user">유저 표기: ${t.user_label || "-"} (${t.user_short_label || "-"})</div>
+          <div>${t.subtitle}</div>
+          <div class="tech-meta">${t.category_label} · ${t.founder} · ${(t.techniques || []).slice(0, 4).join(", ")}</div>
+        </div>
+      `).join("");
+    }
+
+    async function loadTechnicalCatalog() {
+      try {
+        const [personasRes, styleRes] = await Promise.all([
+          fetch("/api/v1/chat/personas"),
+          fetch("/api/v1/chat/style-catalog"),
+        ]);
+        const personas = await personasRes.json();
+        const style = await styleRes.json();
+        renderTechnicalCatalog(personas);
+        const grid = document.getElementById("techTheoryGrid");
+        if (grid && style.counselors?.length) {
+          grid.innerHTML += style.counselors.map((c) => `
+            <div class="tech-theory-item">
+              <strong>${c.name} · ${c.title}</strong>
+              <div class="tech-user">유저 표기: ${c.user_title || "-"} · ${c.user_specialty || "-"}</div>
+              <div>${c.tagline}</div>
+              <div class="tech-meta">primary: ${c.primary_school || "-"} · ${(c.techniques || []).join(", ")}</div>
+            </div>
+          `).join("");
+        }
+      } catch (_) {
+        const grid = document.getElementById("techTheoryGrid");
+        if (grid) grid.textContent = "카탈로그 로드 실패";
+      }
+    }
+
     const apiTests = {
       async health() {
         const d = await apiHealth();
@@ -370,7 +433,8 @@
       async personas() {
         const res = await fetch("/api/v1/chat/personas");
         const d = await res.json();
-        log(`✓ personas → ${d.personas?.length || 0}개`);
+        log(`✓ personas → ${d.personas?.length || 0}개 이론`);
+        renderTechnicalCatalog(d);
         return d;
       },
       async catalog() {
@@ -452,6 +516,7 @@
 
     refreshSessionInfo();
     renderShareLinks();
+    loadTechnicalCatalog();
     runPageChecks();
   </script>
 </body>

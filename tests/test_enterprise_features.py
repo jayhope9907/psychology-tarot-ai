@@ -37,7 +37,8 @@ def test_prompt_binding_injects_quant_context_block():
 
     assert binding["severity_multiplier"] >= 0.5
     assert "attachment_matrix_score" in binding["context_block"]
-    assert "socratic_intensity" in binding["weights"]
+    assert binding["weights"]["homework_structure"] >= 0.5
+    assert binding["weights"]["theory"] == "BECK_CBT"
 
 
 def test_vault_dual_seal_requires_matching_user():

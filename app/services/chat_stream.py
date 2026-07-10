@@ -340,7 +340,10 @@ def build_chat_messages(
     style_block: str = "",
 ) -> List[Dict[str, str]]:
     name = counselor_name or COUNSELOR_NAME
-    school = ClinicalSchool(state.preferred_school or ClinicalSchool.ROGERIAN.value)
+    try:
+        school = ClinicalSchool(state.preferred_school) if state.preferred_school else ClinicalSchool.INTEGRATIVE
+    except ValueError:
+        school = ClinicalSchool.INTEGRATIVE
     distortions = (state.persona_routing or {}).get("detected_distortions") or []
     quant = state.quant_features or extract_chat_quant_features(user_message, state)
 
@@ -494,8 +497,30 @@ async def run_chat_turn(
 
     explicit_school = preferred_school
     if explicit_school is None and state.preferred_school:
-        explicit_school = ClinicalSchool(state.preferred_school)
-    routing = route_clinical_persona(user_message, explicit_school, state.messages)
+        try:
+            explicit_school = ClinicalSchool(state.preferred_school)
+        except ValueError:
+            explicit_school = None
+
+    from app.services.counseling_style import resolve_counseling_style
+    from app.services.persistence import get_user_settings
+
+    counselor_default: Optional[ClinicalSchool] = None
+    if explicit_school is None:
+        style_preview = resolve_counseling_style(get_user_settings(state.user_id))
+        primary = (style_preview.get("counselor") or {}).get("primary_school")
+        if primary:
+            try:
+                counselor_default = ClinicalSchool(primary)
+            except ValueError:
+                counselor_default = None
+
+    routing = route_clinical_persona(
+        user_message,
+        explicit_school,
+        state.messages,
+        counselor_default_school=counselor_default,
+    )
     state.persona_routing = {
         "school": routing["school"].value,
         "mood_state": routing["mood_state"].value,

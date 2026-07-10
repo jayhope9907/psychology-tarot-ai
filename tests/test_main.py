@@ -44,7 +44,7 @@ def test_prompt_binding_factory_adjusts_prompt_variables_per_school():
         cognitive_distortions=["all_or_nothing", "catastrophizing"],
     ).build()
     assert freudian_binding["weights"]["interpretation_depth"] >= 0.7
-    assert "심층 해석" in freudian_binding["system_prompt"] or "직면 강도" in freudian_binding["system_prompt"]
+    assert "정신분석" in freudian_binding["system_prompt"] or "방어" in freudian_binding["system_prompt"]
 
     rogerian_binding = main_module.PromptContextWeightBindingFactory(
         school=ClinicalSchool.ROGERIAN,
@@ -188,7 +188,11 @@ def test_clinical_school_switching_tails_behavior_metadata():
     assert default_response.status_code == 200
     default_payload = default_response.json()["output"]
     assert default_payload["clinical_protocol_mode"] == "ROGERIAN"
-    assert any("regard" in rule.lower() for rule in default_payload["assistant_behavior_rules"])
+    assert default_payload.get("theory_label") or default_payload["assistant_behavior_rules"]
+    assert any(
+        keyword in str(default_payload["assistant_behavior_rules"]).lower()
+        for keyword in ("경청", "반영", "수용", "regard")
+    )
 
     cbt_response = client.post(
         "/api/v1/therapy/read",
@@ -203,8 +207,10 @@ def test_clinical_school_switching_tails_behavior_metadata():
     assert cbt_response.status_code == 200
     cbt_payload = cbt_response.json()["output"]
     assert cbt_payload["clinical_protocol_mode"] == "BECK_CBT"
-    assert any("cognitive" in rule.lower() or "thought" in rule.lower() for rule in cbt_payload["assistant_behavior_rules"])
-    assert "thought" in cbt_payload["daily_logotherapy_homework_style"].lower()
+    rules_text = str(cbt_payload["assistant_behavior_rules"]).lower()
+    assert any(k in rules_text for k in ("인지", "cognitive", "사고", "thought"))
+    homework = cbt_payload["daily_logotherapy_homework_style"].lower()
+    assert any(k in homework for k in ("인지", "cbt", "thought", "자기"))
 
     freudian_response = client.post(
         "/api/v1/therapy/read",
@@ -219,8 +225,10 @@ def test_clinical_school_switching_tails_behavior_metadata():
     assert freudian_response.status_code == 200
     freud_payload = freudian_response.json()["output"]
     assert freud_payload["clinical_protocol_mode"] == "FREUDIAN"
-    assert any("unconscious" in rule.lower() or "conflict" in rule.lower() for rule in freud_payload["assistant_behavior_rules"])
-    assert "reflection" in freud_payload["daily_logotherapy_homework_style"].lower()
+    rules_text = str(freud_payload["assistant_behavior_rules"]).lower()
+    assert any(k in rules_text for k in ("방어", "unconscious", "자유", "conflict"))
+    homework = freud_payload["daily_logotherapy_homework_style"].lower()
+    assert any(k in homework for k in ("정신", "reflection", "자기", "분석"))
 
 
 def test_analytics_endpoint_ranks_cognitive_distortions():

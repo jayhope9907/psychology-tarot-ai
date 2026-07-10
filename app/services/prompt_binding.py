@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.models.clinical import ClinicalSchool
+from app.services.counseling_theories import build_theory_system_prompt, get_theory_meta
 from app.services.persona_router import detect_cognitive_distortions
 
 
@@ -17,7 +18,7 @@ class PromptContextWeightBindingFactory:
         psychiatric_stress_weight: Optional[float] = None,
         structural_sign: Optional[str] = None,
     ):
-        self.school = school or ClinicalSchool.ROGERIAN
+        self.school = school or ClinicalSchool.INTEGRATIVE
         self.psychological_readiness_index = float(psychological_readiness_index or 0.5)
         self.cognitive_distortions = cognitive_distortions or []
         self.attachment_matrix_score = float(attachment_matrix_score if attachment_matrix_score is not None else 0.5)
@@ -54,57 +55,27 @@ class PromptContextWeightBindingFactory:
         readiness = self._clamp(self.psychological_readiness_index)
         distortion_count = max(0, len(self.cognitive_distortions))
         severity = self._severity_multiplier()
+        meta = get_theory_meta(self.school)
+        profile = meta["weight_profile"]
 
-        if self.school == ClinicalSchool.FREUDIAN:
-            interpretation_depth = self._clamp(0.55 + severity * 0.35 + distortion_count * 0.04)
-            empathy_level = self._clamp(0.42 + readiness * 0.12)
-            homework_structure = self._clamp(0.25 + readiness * 0.15)
-            confrontation_level = self._clamp(0.45 + severity * 0.4)
-            system_prompt = (
-                "당신은 무의식·방어기제·반복 패턴을 탐색하는 정신분석적 상담사입니다. "
-                f"심층 해석 강도 {interpretation_depth:.2f}, 직면 강도 {confrontation_level:.2f}로 조정하세요. "
-                f"공감 {empathy_level:.2f}, 과제 구조 {homework_structure:.2f}. "
-                "억압된 감정과 그림자를 날카롭게 비추되 비난하지 마세요."
-            )
-            weights = {
-                "interpretation_depth": interpretation_depth,
-                "empathy_level": empathy_level,
-                "homework_structure": homework_structure,
-                "confrontation_level": confrontation_level,
-                "severity_multiplier": severity,
-            }
-        elif self.school == ClinicalSchool.BECK_CBT:
-            interpretation_depth = self._clamp(0.35 + severity * 0.2)
-            empathy_level = self._clamp(0.4 + readiness * 0.12)
-            homework_structure = self._clamp(0.55 + severity * 0.35 + distortion_count * 0.05)
-            socratic_intensity = self._clamp(0.5 + severity * 0.35 + distortion_count * 0.06)
-            system_prompt = (
-                "당신은 인지왜곡을 교정하고 소크라테스식 질문을 사용하는 CBT 상담사입니다. "
-                f"재구성 강도 {homework_structure:.2f}, 소크라테스식 탐문 강도 {socratic_intensity:.2f}로 조정하세요. "
-                f"공감 {empathy_level:.2f}. ALL_OR_NOTHING·OVERGENERALIZATION 등 왜곡을 협력적으로 분해하세요."
-            )
-            weights = {
-                "interpretation_depth": interpretation_depth,
-                "empathy_level": empathy_level,
-                "homework_structure": homework_structure,
-                "socratic_intensity": socratic_intensity,
-                "severity_multiplier": severity,
-            }
-        else:
-            interpretation_depth = self._clamp(0.45 + readiness * 0.12)
-            empathy_level = self._clamp(0.72 + readiness * 0.18 + severity * 0.05)
-            homework_structure = self._clamp(0.35 + readiness * 0.1)
-            system_prompt = (
-                "당신은 로저스식 인간중심 상담사입니다. "
-                f"공감·수용 강도 {empathy_level:.2f}, 해석 강도 {interpretation_depth:.2f}로 조정하세요. "
-                "무조건적 긍정적 존중으로 내담자의 경험을 반영하고 지지하세요."
-            )
-            weights = {
-                "interpretation_depth": interpretation_depth,
-                "empathy_level": empathy_level,
-                "homework_structure": homework_structure,
-                "severity_multiplier": severity,
-            }
+        interpretation_depth = self._clamp(profile["interpretation"] + severity * 0.15 + distortion_count * 0.03)
+        empathy_level = self._clamp(profile["empathy"] + readiness * 0.1)
+        homework_structure = self._clamp(profile["structure"] + severity * 0.12 + distortion_count * 0.04)
+        confrontation_level = self._clamp(profile.get("confrontation", 0.25) + severity * 0.2)
+
+        system_prompt = build_theory_system_prompt(
+            self.school,
+            severity,
+            [d for d in self.cognitive_distortions if isinstance(d, str)],
+        )
+        weights = {
+            "interpretation_depth": interpretation_depth,
+            "empathy_level": empathy_level,
+            "homework_structure": homework_structure,
+            "confrontation_level": confrontation_level,
+            "severity_multiplier": severity,
+            "theory": self.school.value,
+        }
 
         return {
             "weights": weights,
