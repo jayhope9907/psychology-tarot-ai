@@ -579,6 +579,73 @@
       text-align: center;
     }
 
+    .style-panel {
+      margin-top: 10px;
+      padding: 14px;
+      border-radius: var(--radius-lg);
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-sm);
+      max-height: 42vh;
+      overflow-y: auto;
+    }
+
+    .style-panel h3 {
+      margin: 0 0 8px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .gender-tabs, .texture-tabs { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .gender-tabs button, .texture-tabs button, .counselor-pick {
+      border: 1px solid rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.45);
+      color: var(--text-soft);
+      border-radius: 10px;
+      padding: 7px 9px;
+      font: inherit;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+    .gender-tabs button.active, .texture-tabs button.active, .counselor-pick.active {
+      background: var(--accent); border-color: var(--accent); color: white; font-weight: 600;
+    }
+    .counselor-list { display: grid; gap: 6px; margin-bottom: 10px; }
+    .counselor-pick { text-align: left; width: 100%; }
+    .counselor-pick strong { display: block; font-size: 0.78rem; }
+    .counselor-pick span { font-size: 0.65rem; opacity: 0.85; }
+    .tone-grid { display: grid; gap: 8px; margin-bottom: 10px; }
+    .tone-row { display: grid; grid-template-columns: 56px 1fr 28px; gap: 6px; align-items: center; }
+    .tone-row label { font-size: 0.68rem; color: var(--text-muted); }
+    .tone-row input { width: 100%; accent-color: var(--accent); }
+    .tone-row output { font-size: 0.68rem; text-align: right; color: var(--accent); font-weight: 700; }
+    .voice-search {
+      width: 100%; border: 1px solid rgba(255,255,255,0.5); border-radius: 10px;
+      padding: 8px 10px; font: inherit; font-size: 0.74rem; margin-bottom: 8px;
+      background: rgba(255,255,255,0.5);
+    }
+    .voice-list { display: grid; gap: 5px; max-height: 120px; overflow-y: auto; margin-bottom: 8px; }
+    .voice-item {
+      border: 1px solid rgba(255,255,255,0.45); border-radius: 10px; padding: 7px 9px;
+      font-size: 0.68rem; cursor: pointer; background: rgba(255,255,255,0.35); text-align: left;
+    }
+    .voice-item.active { border-color: var(--accent); background: var(--accent-soft); }
+    .voice-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .voice-actions button {
+      flex: 1; border: none; border-radius: 10px; padding: 8px; font: inherit;
+      font-size: 0.68rem; font-weight: 600; cursor: pointer; background: var(--accent-soft); color: var(--accent);
+    }
+    .voice-actions button.primary { background: var(--accent); color: white; }
+    .style-toggle-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; margin: 6px 0; }
+    .speak-btn {
+      margin-left: 8px; border: none; background: var(--accent-soft); color: var(--accent);
+      border-radius: 999px; padding: 2px 8px; font-size: 0.65rem; cursor: pointer; vertical-align: middle;
+    }
+
     /* ── Main chat ── */
     .main {
       display: grid;
@@ -1473,10 +1540,10 @@
             <circle class="track" cx="44" cy="44" r="40"/>
             <circle class="progress" id="batteryRing" cx="44" cy="44" r="40"/>
           </svg>
-          <div class="avatar" aria-hidden="true">서연</div>
+          <div class="avatar" id="counselorAvatar" aria-hidden="true">서연</div>
         </div>
-        <h2>이서연 상담사</h2>
-        <p class="role">상담심리 전문가<br/>대화 속 마음 돌봄</p>
+        <h2 id="counselorName">이서연 상담사</h2>
+        <p class="role" id="counselorRole">상담심리 전문가<br/>대화 속 마음 돌봄</p>
         <span class="session-chip" id="sessionChip">상담 준비 중</span>
         <span class="mood-chip" id="moodChip" hidden>오늘 기분</span>
 
@@ -1528,6 +1595,29 @@
           <button type="button" class="persona-btn" data-school="FREUDIAN">통찰</button>
         </div>
         <p id="personaStatus">자동 맞춤 상담</p>
+      </div>
+
+      <div class="style-panel" id="stylePanel">
+        <h3>톤 · 질감 · 음성</h3>
+        <div class="gender-tabs" id="genderTabs">
+          <button type="button" class="active" data-gender="female">여성 상담사</button>
+          <button type="button" data-gender="male">남성 상담사</button>
+        </div>
+        <div class="counselor-list" id="counselorList"></div>
+        <p style="margin:0 0 6px;font-size:0.68rem;color:var(--text-muted)">질감</p>
+        <div class="texture-tabs" id="textureTabs"></div>
+        <p style="margin:8px 0 6px;font-size:0.68rem;color:var(--text-muted)">톤 조절</p>
+        <div class="tone-grid" id="toneGrid"></div>
+        <p style="margin:0 0 6px;font-size:0.68rem;color:var(--text-muted)">음성 검색 · 미리듣기</p>
+        <input type="search" class="voice-search" id="voiceSearch" placeholder="부드러운, 남성, 차분…" />
+        <div class="voice-list" id="voiceList"></div>
+        <div class="voice-actions">
+          <button type="button" class="primary" id="btnVoicePreview">🔊 미리듣기</button>
+          <button type="button" id="btnVoiceStop">정지</button>
+        </div>
+        <div class="style-toggle-row"><span>음성 상담 사용</span><input type="checkbox" id="voiceEnabled" checked /></div>
+        <div class="style-toggle-row"><span>답변 자동 읽기</span><input type="checkbox" id="autoSpeak" /></div>
+        <p id="styleStatus" style="margin:8px 0 0;font-size:0.65rem;color:var(--text-muted)"></p>
       </div>
     </aside>
 
@@ -1610,8 +1700,9 @@
     </button>
   </nav>
 
+  <script src="/static/js/voice-engine.js"></script>
   <script>
-    const COUNSELOR_NAME = "이서연";
+    let COUNSELOR_NAME = "이서연";
     const WELCOME_KEY = "psychology_ai_welcomed";
     const TAROT_HANDOFF_KEY = "psychology_ai_tarot_handoff";
     const RING_CIRC = 251.2;
@@ -1728,6 +1819,187 @@
     });
     syncPersonaButtons();
 
+    let styleCatalog = null;
+    let counselingStyle = null;
+    let selectedGender = "female";
+    let saveStyleTimer = null;
+
+    function applyCounselorUi(style) {
+      if (!style?.counselor) return;
+      counselingStyle = style;
+      COUNSELOR_NAME = style.counselor_name || style.counselor.name;
+      document.getElementById("counselorName").textContent = `${COUNSELOR_NAME} 상담사`;
+      document.getElementById("counselorRole").innerHTML =
+        `${style.counselor.title}<br/>${style.counselor.tagline || style.texture_meta?.label || "대화 속 마음 돌봄"}`;
+      document.getElementById("counselorAvatar").textContent = COUNSELOR_NAME.slice(0, 2);
+      if (window.VoiceEngine) {
+        VoiceEngine.configure({
+          preset: style.voice,
+          enabled: style.voice_enabled,
+          autoSpeak: style.auto_speak,
+        });
+      }
+    }
+
+    function scheduleStyleSave(partial) {
+      clearTimeout(saveStyleTimer);
+      saveStyleTimer = setTimeout(() => saveCounselingStyle(partial), 350);
+    }
+
+    async function saveCounselingStyle(partial) {
+      try {
+        const res = await fetch("/api/v1/settings/counseling-style", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, ...partial }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        applyCounselorUi(data);
+        document.getElementById("styleStatus").textContent =
+          `${data.counselor_name} · ${data.texture_meta?.label} · ${data.voice?.label || ""}`;
+      } catch (_) {}
+    }
+
+    function renderCounselorList() {
+      const list = document.getElementById("counselorList");
+      if (!styleCatalog) return;
+      list.innerHTML = (styleCatalog.counselors || [])
+        .filter((c) => c.gender === selectedGender)
+        .map((c) => `
+          <button type="button" class="counselor-pick ${counselingStyle?.counselor_id === c.id ? "active" : ""}" data-id="${c.id}">
+            <strong>${c.name}</strong>
+            <span>${c.tagline}</span>
+          </button>
+        `).join("");
+      list.querySelectorAll(".counselor-pick").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const counselor = styleCatalog.counselors.find((c) => c.id === btn.dataset.id);
+          scheduleStyleSave({
+            counselor_id: btn.dataset.id,
+            voice_preset_id: counselor?.default_voice,
+            texture: counselor?.default_texture,
+          });
+          renderCounselorList();
+          renderVoiceList();
+        });
+      });
+    }
+
+    function renderTextureTabs() {
+      const tabs = document.getElementById("textureTabs");
+      if (!styleCatalog) return;
+      tabs.innerHTML = (styleCatalog.textures || []).map((t) => `
+        <button type="button" data-texture="${t.id}" class="${counselingStyle?.texture === t.id ? "active" : ""}">${t.label}</button>
+      `).join("");
+      tabs.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          scheduleStyleSave({ texture: btn.dataset.texture });
+          renderTextureTabs();
+        });
+      });
+    }
+
+    function renderToneGrid() {
+      const grid = document.getElementById("toneGrid");
+      if (!styleCatalog || !counselingStyle) return;
+      grid.innerHTML = (styleCatalog.tone_axes || []).map((axis) => {
+        const val = counselingStyle.tone?.[axis.id] ?? 3;
+        return `
+          <div class="tone-row">
+            <label for="tone-${axis.id}">${axis.label}</label>
+            <input type="range" id="tone-${axis.id}" min="1" max="5" step="1" value="${val}" data-axis="${axis.id}" />
+            <output id="tone-out-${axis.id}">${val}</output>
+          </div>`;
+      }).join("");
+      grid.querySelectorAll("input[type=range]").forEach((input) => {
+        input.addEventListener("input", () => {
+          document.getElementById(`tone-out-${input.dataset.axis}`).textContent = input.value;
+          const tone = { ...(counselingStyle.tone || {}) };
+          tone[input.dataset.axis] = Number(input.value);
+          scheduleStyleSave({ tone });
+        });
+      });
+    }
+
+    function renderVoiceList() {
+      const list = document.getElementById("voiceList");
+      const q = document.getElementById("voiceSearch").value.trim();
+      if (!styleCatalog) return;
+      let presets = styleCatalog.voice_presets || [];
+      if (window.VoiceEngine) presets = VoiceEngine.searchPresets(presets, q, selectedGender);
+      else presets = presets.filter((p) => p.gender === selectedGender);
+      if (counselingStyle?.counselor_id) {
+        presets = presets.filter((p) => p.counselor_id === counselingStyle.counselor_id);
+      }
+      list.innerHTML = presets.map((p) => `
+        <button type="button" class="voice-item ${counselingStyle?.voice_preset_id === p.id ? "active" : ""}" data-id="${p.id}">
+          ${p.label} · ${(p.tags || []).slice(0, 2).join(", ")}
+        </button>
+      `).join("");
+      list.querySelectorAll(".voice-item").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          scheduleStyleSave({ voice_preset_id: btn.dataset.id });
+          renderVoiceList();
+        });
+      });
+    }
+
+    async function loadCounselingStyle() {
+      try {
+        const [catalogRes, styleRes] = await Promise.all([
+          fetch("/api/v1/chat/style-catalog"),
+          fetch(`/api/v1/settings/counseling-style/${encodeURIComponent(userId)}`),
+        ]);
+        styleCatalog = await catalogRes.json();
+        counselingStyle = await styleRes.json();
+        selectedGender = counselingStyle.counselor?.gender || "female";
+        document.querySelectorAll("#genderTabs button").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.gender === selectedGender);
+        });
+        document.getElementById("voiceEnabled").checked = !!counselingStyle.voice_enabled;
+        document.getElementById("autoSpeak").checked = !!counselingStyle.auto_speak;
+        if (window.VoiceEngine) await VoiceEngine.init({
+          preset: counselingStyle.voice,
+          enabled: counselingStyle.voice_enabled,
+          autoSpeak: counselingStyle.auto_speak,
+        });
+        applyCounselorUi(counselingStyle);
+        renderCounselorList();
+        renderTextureTabs();
+        renderToneGrid();
+        renderVoiceList();
+        document.getElementById("styleStatus").textContent =
+          `${counselingStyle.counselor_name} · ${counselingStyle.texture_meta?.label}`;
+      } catch (_) {
+        document.getElementById("styleStatus").textContent = "스타일 설정을 불러오지 못했어요.";
+      }
+    }
+
+    document.getElementById("genderTabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-gender]");
+      if (!btn) return;
+      selectedGender = btn.dataset.gender;
+      document.querySelectorAll("#genderTabs button").forEach((b) => b.classList.toggle("active", b === btn));
+      renderCounselorList();
+      renderVoiceList();
+    });
+    document.getElementById("voiceSearch").addEventListener("input", () => renderVoiceList());
+    document.getElementById("btnVoicePreview").addEventListener("click", () => {
+      if (!window.VoiceEngine || !counselingStyle) return;
+      VoiceEngine.speak(
+        `안녕하세요, ${counselingStyle.counselor_name} 상담사예요. 오늘 마음, 편한 속도로 함께 이야기해요.`,
+        counselingStyle.voice,
+      );
+    });
+    document.getElementById("btnVoiceStop").addEventListener("click", () => VoiceEngine?.stop());
+    document.getElementById("voiceEnabled").addEventListener("change", (e) => {
+      scheduleStyleSave({ voice_enabled: e.target.checked });
+    });
+    document.getElementById("autoSpeak").addEventListener("change", (e) => {
+      scheduleStyleSave({ auto_speak: e.target.checked });
+    });
+
     function toggleSidebar(open) {
       sidebar.classList.toggle("open", open);
       sidebarOverlay.classList.toggle("visible", open);
@@ -1753,16 +2025,27 @@
       hideEmptyState();
       const row = document.createElement("div");
       row.className = "message-row assistant";
+      const avatarText = (COUNSELOR_NAME || "서연").slice(0, 1);
       row.innerHTML = `
-        <div class="mini-avatar" aria-hidden="true">서</div>
+        <div class="mini-avatar" aria-hidden="true">${avatarText}</div>
         <div class="message-stack">
           <span class="sender">${COUNSELOR_NAME} · ${nowTime()}</span>
           <div class="bubble assistant"></div>
         </div>
       `;
       messagesEl.appendChild(row);
+      const bubble = row.querySelector(".bubble");
+      if (counselingStyle?.voice_enabled && window.VoiceEngine) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "speak-btn";
+        btn.textContent = "🔊";
+        btn.title = "음성으로 듣기";
+        btn.addEventListener("click", () => VoiceEngine.speak(bubble.textContent, counselingStyle.voice));
+        row.querySelector(".sender").appendChild(btn);
+      }
       scrollToBottom();
-      return row.querySelector(".bubble");
+      return bubble;
     }
 
     function appendAssistantText(text) {
@@ -2358,11 +2641,19 @@
             localStorage.setItem("psychology_ai_session_id", sessionId);
             sessionChip.textContent = `상담 중 · ${sessionId.slice(0, 8)}`;
             if (data.today_mood) updateMoodChip(data.today_mood, data.today_mood.agent);
+            if (data.counseling_style) applyCounselorUi(data.counseling_style);
             if (data.assistant_message && assistantBubble) {
               assistantBubble.textContent = data.assistant_message;
             } else if (data.assistant_message && !gotToken) {
               assistantBubble = createAssistantRow();
               assistantBubble.textContent = data.assistant_message;
+            }
+            if (
+              data.assistant_message &&
+              (data.counseling_style?.auto_speak || counselingStyle?.auto_speak) &&
+              window.VoiceEngine
+            ) {
+              VoiceEngine.speak(data.assistant_message, data.voice_preset || data.counseling_style?.voice);
             }
             updatePace(data.profile_delta?.fatigue);
             updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
@@ -2500,6 +2791,7 @@
     });
 
     loadMoodWelcome();
+    loadCounselingStyle();
     processTarotHandoff();
     autoResize();
     messageInput.focus();

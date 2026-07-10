@@ -336,7 +336,10 @@ def build_chat_messages(
     preferred_school: Optional[ClinicalSchool] = None,
     decision: Optional[OrchestratorDecision] = None,
     homework_response: Optional[Dict[str, Any]] = None,
+    counselor_name: Optional[str] = None,
+    style_block: str = "",
 ) -> List[Dict[str, str]]:
+    name = counselor_name or COUNSELOR_NAME
     school = ClinicalSchool(state.preferred_school or ClinicalSchool.ROGERIAN.value)
     distortions = (state.persona_routing or {}).get("detected_distortions") or []
     quant = state.quant_features or extract_chat_quant_features(user_message, state)
@@ -352,7 +355,7 @@ def build_chat_messages(
     ).build()
 
     system_prompt = (
-        build_chat_system_prompt(COUNSELOR_NAME)
+        build_chat_system_prompt(name)
         + "\n\n"
         + build_persona_directive(school, distortions)
         + "\n\n"
@@ -373,6 +376,8 @@ def build_chat_messages(
 
     ctx = resolve_mood_context(state.user_id)
     system_prompt += "\n\n" + build_mood_mandatory_system_block(ctx, state)
+    if style_block:
+        system_prompt += "\n\n" + style_block
 
     daily_block = build_daily_context_block(state.user_id)
     if daily_block:
@@ -524,8 +529,20 @@ async def run_chat_turn(
         enrich_package_with_mood,
         resolve_mood_context,
     )
+    from app.services.persistence import get_user_settings
+    from app.services.counseling_style import build_style_system_block, resolve_counseling_style
 
     ctx = resolve_mood_context(state.user_id)
+    style = resolve_counseling_style(get_user_settings(state.user_id))
+    counselor_name = style["counselor_name"]
+    style_block = build_style_system_block(style)
+    state.phase_notes["counseling_style"] = {
+        "counselor_id": style["counselor_id"],
+        "counselor_name": counselor_name,
+        "texture": style["texture"],
+        "tone": style["tone"],
+        "voice_preset_id": style["voice_preset_id"],
+    }
     state.phase_notes["today_mood"] = ctx.to_dict()
 
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING and not state.assessment_package_ready:
@@ -547,10 +564,11 @@ async def run_chat_turn(
             "action": decision.action,
             "reason": decision.reason,
             "fatigue": decision.fatigue,
-            "counselor_name": COUNSELOR_NAME,
+            "counselor_name": counselor_name,
             "selection": decision.selection,
             "persona": state.persona_routing,
             "counseling_phase": phase_info,
+            "counseling_style": state.phase_notes.get("counseling_style"),
         },
     }
 
@@ -559,7 +577,14 @@ async def run_chat_turn(
         yield {"event": "assessment", "data": decision.assessment}
 
     messages = build_chat_messages(
-        state, user_message, assessment_response, preferred_school, decision, homework_response
+        state,
+        user_message,
+        assessment_response,
+        preferred_school,
+        decision,
+        homework_response,
+        counselor_name=counselor_name,
+        style_block=style_block,
     )
     streamer = stream_fn or stream_chat_completion
     assistant_chunks: List[str] = []
@@ -605,10 +630,12 @@ async def run_chat_turn(
         "data": {
             "session_id": state.session_id,
             "assistant_message": assistant_text,
-            "counselor_name": COUNSELOR_NAME,
+            "counselor_name": counselor_name,
             "persona": state.persona_routing,
             "profile_delta": profile_delta,
             "counseling_phase": phase_snapshot(state),
+            "counseling_style": style,
+            "voice_preset": style.get("voice"),
             "suggest_tarot": should_suggest_tarot(state),
             "tarot_blended": state.tarot_blended,
             "homework": homework_package or None,

@@ -241,6 +241,23 @@ class ReminderSettingsRequest(BaseModel):
     hour: int = 21
 
 
+class CounselingStyleTone(BaseModel):
+    warmth: int = 4
+    formality: int = 2
+    pace: int = 3
+    directness: int = 2
+
+
+class CounselingStyleRequest(BaseModel):
+    user_id: str
+    counselor_id: Optional[str] = None
+    texture: Optional[str] = None
+    tone: Optional[CounselingStyleTone] = None
+    voice_preset_id: Optional[str] = None
+    voice_enabled: Optional[bool] = None
+    auto_speak: Optional[bool] = None
+
+
 class TarotReadingRequest(BaseModel):
     user_id: str = "anonymous"
     user_story: str = ""
@@ -879,6 +896,55 @@ async def update_reminder_settings(request: ReminderSettingsRequest):
     settings["evening_reminder"] = request.evening_reminder
     settings["reminder_hour"] = request.hour
     return save_user_settings(request.user_id, settings)
+
+
+@app.get("/api/v1/chat/style-catalog")
+async def chat_style_catalog():
+    from app.services.counseling_style import build_style_catalog
+
+    return build_style_catalog()
+
+
+@app.get("/api/v1/settings/counseling-style/{user_id}")
+async def get_counseling_style(user_id: str):
+    from app.services.counseling_style import resolve_counseling_style
+
+    return resolve_counseling_style(get_user_settings(user_id))
+
+
+@app.post("/api/v1/settings/counseling-style")
+async def update_counseling_style(request: CounselingStyleRequest):
+    from app.services.counseling_style import normalize_style, resolve_counseling_style
+
+    settings = get_user_settings(request.user_id)
+    current = normalize_style(settings.get("counseling_style"))
+    if request.counselor_id is not None:
+        current["counselor_id"] = request.counselor_id
+    if request.texture is not None:
+        current["texture"] = request.texture
+    if request.tone is not None:
+        current["tone"] = request.tone.model_dump()
+    if request.voice_preset_id is not None:
+        current["voice_preset_id"] = request.voice_preset_id
+    if request.voice_enabled is not None:
+        current["voice_enabled"] = request.voice_enabled
+    if request.auto_speak is not None:
+        current["auto_speak"] = request.auto_speak
+    settings["counseling_style"] = normalize_style(current)
+    save_user_settings(request.user_id, settings)
+    return resolve_counseling_style(settings)
+
+
+@app.get("/api/v1/voice/presets")
+async def voice_presets(query: str = "", gender: Optional[str] = None, counselor_id: Optional[str] = None):
+    from app.services.counseling_style import search_voice_presets
+
+    return {
+        "query": query,
+        "presets": search_voice_presets(query, gender, counselor_id),
+        "tts_engine": "browser_speech_synthesis",
+        "hint": "클라이언트 Web Speech API로 재생. voice_hints로 시스템 음성 매칭.",
+    }
 
 
 @app.post("/api/v1/tarot/reading")
