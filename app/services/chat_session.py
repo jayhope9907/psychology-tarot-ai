@@ -32,6 +32,11 @@ class ChatSessionState:
     assessment_package_ready: bool = False
     assessment_paid: bool = False
     payment_id: Optional[str] = None
+    tarot_handoff: Optional[Dict[str, Any]] = None
+    tarot_blended: bool = False
+    homework_packages: List[Dict[str, Any]] = field(default_factory=list)
+    homework_completed: List[Dict[str, Any]] = field(default_factory=list)
+    pending_homework: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -58,6 +63,10 @@ class ChatSessionState:
             "assessment_package_ready": self.assessment_package_ready,
             "assessment_paid": self.assessment_paid,
             "payment_id": self.payment_id,
+            "tarot_blended": self.tarot_blended,
+            "has_tarot_handoff": bool(self.tarot_handoff),
+            "homework_pending": bool(self.pending_homework),
+            "homework_completed_count": len(self.homework_completed),
             "message_count": len(self.messages),
         }
 

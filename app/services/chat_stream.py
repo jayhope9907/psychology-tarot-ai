@@ -30,6 +30,8 @@ from app.services.orchestrator import (
     record_assessment_answer,
     record_assessment_offer,
 )
+from app.services.homework import build_homework_chat_context, maybe_assign_homework, record_homework_submission
+from app.services.tarot_bridge import build_tarot_system_block, should_suggest_tarot
 from app.services.persona_router import build_persona_directive, route_clinical_persona
 from app.services.prompt_binding import PromptContextWeightBindingFactory, extract_chat_quant_features
 
@@ -317,6 +319,7 @@ def build_chat_messages(
     assessment_response: Optional[Dict[str, Any]] = None,
     preferred_school: Optional[ClinicalSchool] = None,
     decision: Optional[OrchestratorDecision] = None,
+    homework_response: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, str]]:
     school = ClinicalSchool(state.preferred_school or ClinicalSchool.ROGERIAN.value)
     distortions = (state.persona_routing or {}).get("detected_distortions") or []
@@ -346,6 +349,15 @@ def build_chat_messages(
         system_prompt += "\n\n이번 턴은 관계 형성·첫 인사에 가깝습니다. 따뜻하게 환영하고, 부담 없이 한 문장만 더 물어보세요."
 
     system_prompt += "\n\n" + build_phase_prompt(state, user_message)
+    system_prompt += build_tarot_system_block(state)
+    system_prompt += build_homework_chat_context(state)
+
+    if should_suggest_tarot(state):
+        system_prompt += (
+            "\n\n내담자가 사례를 정리하는 단계입니다. 대화 흐름이 자연스럽다면 "
+            "타로 카드로 마음을 비춰보는 선택을 부드럽게 제안할 수 있습니다. "
+            "강요하지 말고, 카드는 점이 아니라 자기 성찰 도구임을 짧게 안내하세요."
+        )
 
     if detect_assessment_request(user_message):
         system_prompt += (
@@ -374,6 +386,16 @@ def build_chat_messages(
             system_prompt += (
                 "\n\n내담자가 방금 짧은 확인 질문에 답했습니다. "
                 "답을 분석하기보다 고마움을 표현하고, 감정 탐색으로 자연스럽게 이어가세요."
+            )
+
+    if homework_response:
+        if homework_response.get("skipped"):
+            system_prompt += "\n\n내담자가 후처리 과제를 나중으로 미뤘습니다. 부담 주지 말고 대화를 이어가세요."
+        else:
+            system_prompt += (
+                "\n\n내담자가 방금 후처리 과제(일기·감정 기록 등)를 작성했습니다. "
+                "과제 내용을 짧게 반영하고, 감정을 먼저 수용한 뒤 스스로 돌본 노력을 인정해 주세요. "
+                "채점·평가하지 마세요."
             )
 
     messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
@@ -432,10 +454,12 @@ async def run_chat_turn(
     client: Any,
     max_tokens: int = 380,
     assessment_response: Optional[Dict[str, Any]] = None,
+    homework_response: Optional[Dict[str, Any]] = None,
     stream_fn: Optional[Callable[..., AsyncIterator[str]]] = None,
     preferred_school: Optional[ClinicalSchool] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     state.turn_count += 1
+    homework_package: Optional[Dict[str, Any]] = None
 
     explicit_school = preferred_school
     if explicit_school is None and state.preferred_school:
@@ -458,12 +482,25 @@ async def run_chat_turn(
         # 새 메시지를 보냈지만 이전 검사에 답하지 않음 → 흐름이 끊기지 않게 해제
         state.pending_assessment = None
 
+    if homework_response:
+        recorded = record_homework_submission(
+            state,
+            homework_response.get("assignment_id", ""),
+            homework_response.get("responses") or {},
+            skipped=bool(homework_response.get("skipped")),
+        )
+        yield {"event": "homework_recorded", "data": recorded}
+
     phase_info = sync_counseling_phase(state, user_message)
 
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING and not state.assessment_package_ready:
         package = build_assessment_package(state, user_message)
         mark_package_presented(state, package)
         yield {"event": "assessment_package", "data": package}
+
+    homework_package = maybe_assign_homework(state, user_message)
+    if homework_package:
+        yield {"event": "homework", "data": homework_package}
 
     decision = decide_turn(state, user_message, assessment_response=assessment_response, client=client)
     yield {
@@ -484,7 +521,7 @@ async def run_chat_turn(
         yield {"event": "assessment", "data": decision.assessment}
 
     messages = build_chat_messages(
-        state, user_message, assessment_response, preferred_school, decision
+        state, user_message, assessment_response, preferred_school, decision, homework_response
     )
     streamer = stream_fn or stream_chat_completion
     assistant_chunks: List[str] = []
@@ -522,6 +559,9 @@ async def run_chat_turn(
             "persona": state.persona_routing,
             "profile_delta": profile_delta,
             "counseling_phase": phase_snapshot(state),
+            "suggest_tarot": should_suggest_tarot(state),
+            "tarot_blended": state.tarot_blended,
+            "homework": homework_package or None,
         },
     }
 

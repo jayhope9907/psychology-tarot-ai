@@ -92,6 +92,8 @@ DASHBOARD_CACHE = InMemoryTTLCache()
 ANALYTICS_CACHE = InMemoryTTLCache()
 
 from app.services.tarot import TAROT_ARCHETYPE_MAP, build_local_reading, draw_cards, list_deck_catalog, merge_reading_with_output
+from app.services.tarot_bridge import apply_tarot_handoff, build_tarot_handoff
+from app.services.homework import homework_snapshot, record_homework_submission
 
 
 def _get_fernet() -> Fernet:
@@ -171,7 +173,16 @@ class ChatStreamRequest(BaseModel):
     session_id: Optional[str] = None
     plan: str = "FREE"
     assessment_response: Optional[Dict[str, Any]] = None
+    homework_response: Optional[Dict[str, Any]] = None
     preferred_school: Optional[ClinicalSchool] = None
+
+
+class HomeworkSubmitRequest(BaseModel):
+    user_id: str
+    session_id: str
+    assignment_id: str
+    responses: Dict[str, Any] = {}
+    skipped: bool = False
 
 
 class AssessmentSubmitRequest(BaseModel):
@@ -203,6 +214,16 @@ class TarotReadingRequest(BaseModel):
     cards: Optional[List[Dict[str, Any]]] = None
     plan: str = "FREE"
     preferred_school: Optional[ClinicalSchool] = ClinicalSchool.ROGERIAN
+    session_id: Optional[str] = None
+    bridge_to_chat: bool = False
+
+
+class TarotBridgeRequest(BaseModel):
+    user_id: str = "anonymous"
+    session_id: Optional[str] = None
+    user_story: str = ""
+    draw: Dict[str, Any]
+    reading: Dict[str, Any]
 
 
 def _error_payload(message: str, status_code: int, error_code: str) -> Dict[str, Any]:
@@ -733,7 +754,53 @@ async def tarot_reading(request: TarotReadingRequest):
         "draw": draw_result,
         "reading": reading,
         "stored": True,
+        "handoff": _maybe_bridge_tarot(request, draw_result, reading),
     }
+
+
+def _maybe_bridge_tarot(
+    request: TarotReadingRequest,
+    draw_result: Dict[str, Any],
+    reading: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    if not request.bridge_to_chat:
+        return None
+    session = get_or_create_session(request.user_id, request.session_id, request.plan)
+    handoff = build_tarot_handoff(request.user_story, draw_result, reading)
+    return apply_tarot_handoff(session, handoff)
+
+
+@app.post("/api/v1/tarot/bridge")
+async def tarot_bridge(request: TarotBridgeRequest):
+    session = get_or_create_session(request.user_id, request.session_id)
+    handoff = build_tarot_handoff(request.user_story, request.draw, request.reading)
+    result = apply_tarot_handoff(session, handoff)
+    session.messages.append({"role": "assistant", "content": result["bridge_message"]})
+    return result
+
+
+@app.get("/api/v1/sessions/{session_id}/homework")
+async def session_homework(session_id: str):
+    session = CHAT_SESSIONS.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return homework_snapshot(session)
+
+
+@app.post("/api/v1/sessions/{session_id}/homework/submit")
+async def submit_homework(session_id: str, request: HomeworkSubmitRequest):
+    if request.session_id != session_id:
+        raise HTTPException(status_code=400, detail="Session mismatch")
+    session = CHAT_SESSIONS.get(session_id)
+    if not session or session.user_id != request.user_id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    result = record_homework_submission(
+        session,
+        request.assignment_id,
+        request.responses,
+        skipped=request.skipped,
+    )
+    return result
 
 
 @app.get("/api/v1/chat/sessions/{session_id}")
@@ -913,6 +980,7 @@ async def chat_stream(request: ChatStreamRequest):
                 client,
                 max_tokens=config["max_tokens"],
                 assessment_response=request.assessment_response,
+                homework_response=request.homework_response,
                 preferred_school=request.preferred_school,
             ):
                 if event["event"] == "done":

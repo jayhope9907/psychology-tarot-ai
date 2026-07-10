@@ -187,6 +187,8 @@ def _advance_phase(state: ChatSessionState, user_message: str) -> None:
             state.counseling_phase = PHASE_INTERVENTION
             if not state.phase_notes.get("goals"):
                 state.phase_notes["goals"] = _infer_goals(state)
+            if "intervention_start_turn" not in state.phase_notes:
+                state.phase_notes["intervention_start_turn"] = state.turn_count
         return
 
     if current == PHASE_INTERVENTION:

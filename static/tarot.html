@@ -180,6 +180,20 @@
     }
     .mini-card .sym { font-size: 1.4rem; display: block; margin-bottom: 4px; }
     .mini-card.reversed { opacity: 0.85; border-color: rgba(229,56,59,0.35); }
+    .status-line {
+      font-size: 0.84rem; color: var(--gold); min-height: 1.2em;
+      padding: 6px 0;
+    }
+    .fallback-cards {
+      display: none; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-top: 8px;
+    }
+    .fallback-cards.visible { display: grid; }
+    .blend-banner {
+      margin-top: 8px; padding: 12px; border-radius: 14px;
+      background: rgba(61,107,90,0.2); border: 1px solid rgba(90,143,120,0.3);
+      font-size: 0.84rem; line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -217,19 +231,24 @@
             <button type="button" class="spread-btn active" data-spread="three_card" data-count="3">3카드</button>
           </div>
           <div class="actions">
-            <button type="button" class="btn btn-primary" id="btnStart">카드 섞고 뽑기</button>
+            <button type="button" class="btn btn-primary" id="btnStart" disabled>카드 섞고 뽑기</button>
           </div>
+          <p class="status-line" id="statusLine"></p>
+          <div class="fallback-cards" id="fallbackCards"></div>
         </div>
 
         <div id="revealStep" style="display:none">
           <h2 class="step-title">카드가 펼쳐졌어요</h2>
-          <p class="step-desc">카드를 하나씩 뒤집어 메시지를 확인한 뒤, 심리 풀이를 받아 보세요.</p>
+          <p class="step-desc" id="revealDesc">카드를 뒤집는 중이에요. 잠시만 기다려 주세요…</p>
           <div class="mini-cards" id="miniCards"></div>
           <div class="actions">
-            <button type="button" class="btn btn-ghost" id="btnFlip">카드 뒤집기</button>
+            <button type="button" class="btn btn-ghost" id="btnFlip">카드 다시 뒤집기</button>
             <button type="button" class="btn btn-primary" id="btnReading">심리 풀이 받기</button>
           </div>
           <div class="loading" id="loadingReading"><span class="spinner"></span> 이서연 상담사가 풀이를 준비하고 있어요…</div>
+          <div class="blend-banner" id="blendBanner" style="display:none">
+            타로 풀이가 상담과 연결됩니다. 풀이 후 <strong>상담에서 이어 풀기</strong>를 누르면 이서연 상담사가 카드와 함께 대화를 이어갑니다.
+          </div>
         </div>
 
         <div class="reading-panel" id="readingPanel">
@@ -239,7 +258,7 @@
           <ul class="actions-list" id="actionList"></ul>
           <div class="actions">
             <button type="button" class="btn btn-ghost" id="btnReset">다시 뽑기</button>
-            <a class="btn btn-primary" href="/" style="text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">상담 이어가기</a>
+            <button type="button" class="btn btn-primary" id="btnToChat">상담에서 이어 풀기</button>
           </div>
         </div>
       </section>
@@ -265,12 +284,21 @@
       complete: "풀이를 받아 보세요",
     };
 
+    const TAROT_HANDOFF_KEY = "psychology_ai_tarot_handoff";
+    const userId = localStorage.getItem("psychology_ai_user_id") || `user-${crypto.randomUUID().slice(0, 8)}`;
+    localStorage.setItem("psychology_ai_user_id", userId);
+    const urlSession = new URLSearchParams(window.location.search).get("session_id");
+    const sessionId = urlSession || localStorage.getItem("psychology_ai_session_id") || null;
+
     let scene = null;
     let deckCatalog = [];
     let currentDraw = null;
+    let currentReading = null;
     let selectedSpread = "three_card";
     let selectedCount = 3;
     let flipIndex = 0;
+    let deckReady = false;
+    let use3d = true;
 
     const els = {
       canvas: document.getElementById("tarotCanvas"),
@@ -281,16 +309,25 @@
       btnFlip: document.getElementById("btnFlip"),
       btnReading: document.getElementById("btnReading"),
       btnReset: document.getElementById("btnReset"),
+      btnToChat: document.getElementById("btnToChat"),
       setupStep: document.getElementById("setupStep"),
       revealStep: document.getElementById("revealStep"),
+      revealDesc: document.getElementById("revealDesc"),
       miniCards: document.getElementById("miniCards"),
+      fallbackCards: document.getElementById("fallbackCards"),
+      statusLine: document.getElementById("statusLine"),
       loadingReading: document.getElementById("loadingReading"),
       readingPanel: document.getElementById("readingPanel"),
       readingSummary: document.getElementById("readingSummary"),
       cardReadings: document.getElementById("cardReadings"),
       aiAnalysis: document.getElementById("aiAnalysis"),
       actionList: document.getElementById("actionList"),
+      blendBanner: document.getElementById("blendBanner"),
     };
+
+    function setStatus(text) {
+      els.statusLine.textContent = text || "";
+    }
 
     document.querySelectorAll(".spread-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -301,16 +338,39 @@
       });
     });
 
+    function renderFallbackCards(cards) {
+      els.fallbackCards.innerHTML = cards.map((c) => `
+        <div class="mini-card ${c.reversed ? "reversed" : ""}">
+          <span class="sym">${c.symbol}</span>
+          <strong>${c.name_ko}</strong>
+        </div>
+      `).join("");
+      els.fallbackCards.classList.add("visible");
+    }
+
     async function loadDeck() {
-      const res = await fetch("/api/v1/tarot/deck");
-      const data = await res.json();
-      deckCatalog = data.cards || [];
-      scene = new TarotScene(els.canvas);
-      scene.onPhaseChange = (phase) => {
-        els.phaseLabel.textContent = PHASE_LABELS[phase] || phase;
-        els.stageHint.textContent = HINTS[phase] || "";
-      };
-      scene.buildDeck(deckCatalog);
+      try {
+        const res = await fetch("/api/v1/tarot/deck");
+        if (!res.ok) throw new Error("deck fetch failed");
+        const data = await res.json();
+        deckCatalog = data.cards || [];
+        if (typeof THREE !== "undefined" && typeof TarotScene !== "undefined") {
+          scene = new TarotScene(els.canvas);
+          scene.onPhaseChange = (phase) => {
+            els.phaseLabel.textContent = PHASE_LABELS[phase] || phase;
+            els.stageHint.textContent = HINTS[phase] || "";
+          };
+          scene.buildDeck(deckCatalog);
+        } else {
+          use3d = false;
+          els.stageHint.textContent = "3D 미리보기 대신 카드 풀이 모드로 진행합니다";
+        }
+        deckReady = true;
+        els.btnStart.disabled = false;
+        setStatus("준비 완료. 질문을 적고 카드를 뽑아 보세요.");
+      } catch (err) {
+        setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
+      }
     }
 
     function renderMiniCards(cards) {
@@ -321,9 +381,11 @@
           <span>${c.position}</span>
         </div>
       `).join("");
+      renderFallbackCards(cards);
     }
 
-  function renderReading(reading) {
+    function renderReading(reading) {
+      currentReading = reading;
       els.readingSummary.textContent = reading.summary || "";
       els.cardReadings.innerHTML = (reading.cards || []).map((c) => `
         <div class="card-reading">
@@ -336,80 +398,157 @@
       els.actionList.innerHTML = (reading.recommended_actions || reading.cbt_actions || [])
         .map((a) => `<li>${typeof a === "string" ? a : a.text || a}</li>`).join("");
       els.readingPanel.classList.add("visible");
+      els.blendBanner.style.display = "block";
+      els.btnToChat.disabled = false;
+    }
+
+    async function autoFlipAll() {
+      if (!use3d || !scene) return;
+      for (let i = 0; i < (currentDraw?.cards?.length || 0); i++) {
+        await scene.flipCard(i);
+        flipIndex = i + 1;
+        await new Promise((r) => setTimeout(r, 380));
+      }
+      scene.phase = "complete";
+      if (scene.onPhaseChange) scene.onPhaseChange("complete");
     }
 
     els.btnStart.addEventListener("click", async () => {
+      if (!deckReady) return;
       els.btnStart.disabled = true;
       flipIndex = 0;
       els.readingPanel.classList.remove("visible");
+      els.blendBanner.style.display = "none";
+      els.btnToChat.disabled = true;
+      els.revealStep.style.display = "none";
+
       try {
-        await scene.shuffle();
+        setStatus("카드를 섞는 중이에요…");
+        if (use3d && scene) await scene.shuffle();
+
+        setStatus("운명의 카드를 뽑는 중이에요…");
         const drawRes = await fetch("/api/v1/tarot/draw", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ spread: selectedSpread, count: selectedCount }),
         });
+        if (!drawRes.ok) throw new Error("draw failed");
         currentDraw = await drawRes.json();
-        await scene.spread(currentDraw.cards);
+        if (!currentDraw.cards?.length) throw new Error("empty draw");
+
+        setStatus("카드를 펼치는 중이에요…");
+        if (use3d && scene) {
+          await scene.spread(currentDraw.cards);
+        }
+
         renderMiniCards(currentDraw.cards);
         els.setupStep.style.display = "none";
         els.revealStep.style.display = "block";
-        els.btnFlip.disabled = false;
+        els.revealDesc.textContent = "카드를 뒤집고 있습니다…";
         els.btnReading.disabled = true;
+
+        await autoFlipAll();
+        els.revealDesc.textContent = "카드가 공개됐어요. 심리 풀이를 받아 보세요.";
+        els.btnReading.disabled = false;
+        setStatus("");
       } catch (err) {
-        alert("카드를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+        console.error(err);
+        setStatus("카드 진행 중 문제가 생겼어요. 다시 시도해 주세요.");
+        els.setupStep.style.display = "block";
+        els.revealStep.style.display = "none";
       } finally {
         els.btnStart.disabled = false;
       }
     });
 
     els.btnFlip.addEventListener("click", async () => {
-      if (!currentDraw || flipIndex >= currentDraw.cards.length) return;
-      els.btnFlip.disabled = true;
-      await scene.flipCard(flipIndex);
-      flipIndex += 1;
-      if (flipIndex >= currentDraw.cards.length) {
-        els.btnReading.disabled = false;
-        els.btnFlip.textContent = "모두 뒤집음";
-      } else {
-        els.btnFlip.disabled = false;
-      }
+      if (!currentDraw || !use3d || !scene || !scene.meshes?.length) return;
+      flipIndex = 0;
+      scene.meshes.forEach((mesh) => {
+        mesh.userData.flipped = false;
+        mesh.rotation.y = 0;
+      });
+      await autoFlipAll();
     });
 
     els.btnReading.addEventListener("click", async () => {
       els.btnReading.disabled = true;
       els.loadingReading.classList.add("visible");
+      setStatus("이서연 상담사가 카드와 마음을 연결하고 있어요…");
       try {
         const res = await fetch("/api/v1/tarot/reading", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            user_id: userId,
+            session_id: sessionId,
             user_story: els.userStory.value.trim(),
             spread: selectedSpread,
             count: selectedCount,
             cards: currentDraw.cards,
+            bridge_to_chat: false,
           }),
         });
+        if (!res.ok) throw new Error("reading failed");
         const data = await res.json();
         renderReading(data.reading || {});
+        setStatus("풀이가 준비됐어요. 상담과 이어가실 수 있어요.");
       } catch (err) {
         alert("풀이를 가져오지 못했어요.");
+        setStatus("");
       } finally {
         els.loadingReading.classList.remove("visible");
         els.btnReading.disabled = false;
       }
     });
 
+    els.btnToChat.addEventListener("click", async () => {
+      if (!currentDraw || !currentReading) {
+        alert("먼저 심리 풀이를 받아 주세요.");
+        return;
+      }
+      els.btnToChat.disabled = true;
+      try {
+        const res = await fetch("/api/v1/tarot/bridge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            session_id: sessionId,
+            user_story: els.userStory.value.trim(),
+            draw: currentDraw,
+            reading: currentReading,
+          }),
+        });
+        if (!res.ok) throw new Error("bridge failed");
+        const data = await res.json();
+        localStorage.setItem("psychology_ai_session_id", data.session_id);
+        localStorage.setItem(TAROT_HANDOFF_KEY, JSON.stringify({
+          session_id: data.session_id,
+          bridge_message: data.bridge_message,
+          draw: currentDraw,
+          reading: currentReading,
+        }));
+        window.location.href = "/?from_tarot=1";
+      } catch (err) {
+        alert("상담 연결에 실패했어요. 다시 시도해 주세요.");
+        els.btnToChat.disabled = false;
+      }
+    });
+
     els.btnReset.addEventListener("click", () => {
       currentDraw = null;
+      currentReading = null;
       flipIndex = 0;
       els.setupStep.style.display = "block";
       els.revealStep.style.display = "none";
       els.readingPanel.classList.remove("visible");
-      els.btnFlip.textContent = "카드 뒤집기";
-      els.btnFlip.disabled = false;
+      els.fallbackCards.classList.remove("visible");
+      els.blendBanner.style.display = "none";
       els.btnReading.disabled = true;
-      scene.buildDeck(deckCatalog);
+      els.btnToChat.disabled = true;
+      setStatus("다시 질문을 적고 카드를 뽑아 보세요.");
+      if (use3d && scene) scene.buildDeck(deckCatalog);
     });
 
     loadDeck();

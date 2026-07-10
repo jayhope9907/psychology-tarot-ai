@@ -188,8 +188,30 @@
       this.flippedCount = 0;
     }
 
+    _spreadSlots(count) {
+      if (count <= 1) return [{ x: 0, y: 0.2, z: 0.25 }];
+      if (count === 2) {
+        return [
+          { x: -1.5, y: 0.15, z: 0.1 },
+          { x: 1.5, y: 0.15, z: 0.1 },
+        ];
+      }
+      return [
+        { x: -2.4, y: 0.1, z: 0 },
+        { x: 0, y: 0.25, z: 0.3 },
+        { x: 2.4, y: 0.1, z: 0 },
+      ];
+    }
+
     async shuffle() {
-      if (!this.meshes.length) return;
+      if (!this.meshes.length) {
+        this.phase = "shuffling";
+        this._emitPhase();
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        this.phase = "ready";
+        this._emitPhase();
+        return;
+      }
       this.phase = "shuffling";
       this._emitPhase();
       const duration = 2200;
@@ -226,13 +248,12 @@
 
     async spread(drawnCards) {
       this.drawnCards = drawnCards || [];
+      if (!this.drawnCards.length) {
+        throw new Error("뽑힌 카드가 없습니다.");
+      }
       this.clear();
-      const slots = [
-        { x: -2.4, y: 0.1, z: 0 },
-        { x: 0, y: 0.25, z: 0.3 },
-        { x: 2.4, y: 0.1, z: 0 },
-      ];
-      const count = Math.min(this.drawnCards.length, 3);
+      const count = this.drawnCards.length;
+      const slots = this._spreadSlots(count);
 
       this.phase = "spreading";
       this._emitPhase();
@@ -240,9 +261,10 @@
       for (let i = 0; i < count; i++) {
         const card = this.drawnCards[i];
         const mesh = this._makeCardMesh(card, "back");
+        const slot = slots[i] || slots[slots.length - 1];
         mesh.position.set(0, 2.5, -2);
         mesh.rotation.x = -0.5;
-        mesh.userData.slot = slots[i];
+        mesh.userData.slot = slot;
         mesh.userData.index = i;
         this.scene.add(mesh);
         this.meshes.push(mesh);
@@ -261,7 +283,7 @@
           const t = Math.min((now - start) / duration, 1);
           const ease = 1 - Math.pow(1 - t, 3);
           this.meshes.forEach((mesh, i) => {
-            const slot = slots[i];
+            const slot = mesh.userData.slot || slots[i] || { x: 0, y: 0.2, z: 0 };
             mesh.position.x = THREE.MathUtils.lerp(0, slot.x, ease);
             mesh.position.y = THREE.MathUtils.lerp(2.5, slot.y, ease);
             mesh.position.z = THREE.MathUtils.lerp(-2, slot.z, ease);
@@ -320,7 +342,7 @@
         this.particles.rotation.y += 0.0008;
       }
       this.meshes.forEach((mesh, i) => {
-        if (this.phase === "reveal" && !mesh.userData.flipped) {
+        if (this.phase === "reveal" && mesh.userData.slot && !mesh.userData.flipped) {
           mesh.position.y = mesh.userData.slot.y + Math.sin(performance.now() * 0.002 + i) * 0.03;
         }
       });

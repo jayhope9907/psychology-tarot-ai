@@ -175,6 +175,45 @@
       flex-shrink: 0;
     }
 
+    .tarot-handoff-card, .tarot-suggest-banner {
+      margin: 8px 0 12px 52px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(196,165,116,0.14), rgba(61,107,90,0.12));
+      border: 1px solid rgba(196,165,116,0.28);
+      font-size: 0.84rem;
+      line-height: 1.65;
+    }
+
+    .tarot-handoff-card h4, .tarot-suggest-banner h4 {
+      margin: 0 0 8px;
+      font-size: 0.9rem;
+      color: var(--gold);
+    }
+
+    .tarot-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tarot-mini {
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.18);
+      text-align: center;
+      font-size: 0.75rem;
+    }
+
+    .tarot-suggest-banner a {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--accent-light);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
     .counselor-card {
       flex: 1;
       min-height: 0;
@@ -706,6 +745,107 @@
       color: var(--gold);
       font-size: 0.82rem;
       line-height: 1.5;
+    }
+
+    .homework-card {
+      background: linear-gradient(160deg, #f8fbf9 0%, #eef5f1 100%);
+      border: 1px solid rgba(61, 107, 90, 0.22);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .homework-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+    }
+
+    .homework-intro {
+      font-size: 0.86rem;
+      color: var(--text-soft);
+      line-height: 1.65;
+      margin: 0 0 14px;
+    }
+
+    .homework-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .homework-tab {
+      border: 1px solid rgba(61,107,90,0.2);
+      background: white;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .homework-tab.active {
+      background: rgba(61,107,90,0.15);
+      border-color: var(--accent-light);
+      font-weight: 600;
+    }
+
+    .homework-field {
+      margin-bottom: 12px;
+    }
+
+    .homework-field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .homework-field input,
+    .homework-field textarea {
+      width: 100%;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 0.86rem;
+      background: white;
+    }
+
+    .homework-field textarea { min-height: 72px; resize: vertical; }
+
+    .homework-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .homework-actions button {
+      flex: 1;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    .homework-submit {
+      background: linear-gradient(135deg, var(--accent-light), var(--accent));
+      color: white;
+    }
+
+    .homework-skip {
+      background: transparent;
+      border: 1px solid rgba(0,0,0,0.1) !important;
+      color: var(--text-soft);
     }
 
     .options {
@@ -1264,7 +1404,7 @@
           <h1 class="brand-name">마음쉼터</h1>
         </div>
         <p class="brand-tagline">조용히, 천천히 — 당신의 마음을 함께 살펴봅니다</p>
-        <a class="tarot-cta" href="/tarot">
+        <a class="tarot-cta" href="/tarot" id="tarotLink">
           <div>
             <strong>3D 타로 리딩</strong>
             <span>카드 애니메이션 · 심리 풀이</span>
@@ -1380,6 +1520,7 @@
   <script>
     const COUNSELOR_NAME = "이서연";
     const WELCOME_KEY = "psychology_ai_welcomed";
+    const TAROT_HANDOFF_KEY = "psychology_ai_tarot_handoff";
     const RING_CIRC = 251.2;
 
     const userId = localStorage.getItem("psychology_ai_user_id") || `user-${crypto.randomUUID().slice(0, 8)}`;
@@ -1387,6 +1528,7 @@
 
     let sessionId = localStorage.getItem("psychology_ai_session_id") || null;
     let pendingAssessment = null;
+    let pendingHomework = null;
     let pendingPackage = null;
     let assessmentPaid = false;
     let streaming = false;
@@ -1417,6 +1559,14 @@
     const sidebar = document.getElementById("sidebar");
     const sidebarOverlay = document.getElementById("sidebarOverlay");
     const sidebarToggle = document.getElementById("sidebarToggle");
+    const tarotLink = document.getElementById("tarotLink");
+
+    function syncTarotLink() {
+      if (!tarotLink) return;
+      const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
+      tarotLink.href = `/tarot${q}`;
+    }
+    syncTarotLink();
 
     function hideEmptyState() {
       if (emptyState) emptyState.remove();
@@ -1479,6 +1629,70 @@
       messagesEl.appendChild(row);
       scrollToBottom();
       return row.querySelector(".bubble");
+    }
+
+    function appendAssistantText(text) {
+      const bubble = createAssistantRow();
+      bubble.textContent = text;
+      return bubble;
+    }
+
+    function renderTarotHandoffCard(handoff) {
+      if (!handoff) return;
+      hideEmptyState();
+      const cards = handoff.draw?.cards || handoff.reading?.cards || [];
+      const wrap = document.createElement("div");
+      wrap.className = "tarot-handoff-card";
+      wrap.innerHTML = `
+        <h4>✦ 타로 × 상담 연결</h4>
+        <p>${(handoff.reading?.summary || "").slice(0, 180)}</p>
+        <div class="tarot-mini-grid">
+          ${cards.slice(0, 3).map((c) => `
+            <div class="tarot-mini">
+              <div>${c.symbol || "✦"}</div>
+              <strong>${c.name_ko || c.title || ""}</strong>
+              <div>${c.position || ""}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      messagesEl.appendChild(wrap);
+      scrollToBottom();
+    }
+
+    function renderTarotSuggestBanner() {
+      if (document.getElementById("tarotSuggestBanner")) return;
+      const banner = document.createElement("div");
+      banner.id = "tarotSuggestBanner";
+      banner.className = "tarot-suggest-banner";
+      banner.innerHTML = `
+        <h4>카드로 마음 비춰보기</h4>
+        <p>지금 이야기를 조금 더 정리할 때, 타로 카드가 마음의 패턴을 부드럽게 비춰줄 수 있어요.</p>
+        <a href="${tarotLink?.href || "/tarot"}">3D 타로 리딩 시작하기 →</a>
+      `;
+      messagesEl.appendChild(banner);
+      scrollToBottom();
+    }
+
+    async function processTarotHandoff() {
+      const raw = localStorage.getItem(TAROT_HANDOFF_KEY);
+      if (!raw) return;
+      localStorage.removeItem(TAROT_HANDOFF_KEY);
+      let handoff;
+      try { handoff = JSON.parse(raw); } catch { return; }
+
+      if (handoff.session_id) {
+        sessionId = handoff.session_id;
+        localStorage.setItem("psychology_ai_session_id", sessionId);
+        sessionChip.textContent = `상담 중 · ${sessionId.slice(0, 8)}`;
+        syncTarotLink();
+      }
+
+      renderTarotHandoffCard(handoff);
+      if (handoff.bridge_message) {
+        appendAssistantText(handoff.bridge_message);
+      }
+      refreshBatteryStatus(sessionId);
     }
 
     function appendUserMessage(text) {
@@ -1721,6 +1935,120 @@
       }
     }
 
+    function renderHomeworkCard(pkg) {
+      hideEmptyState();
+      if (!pkg?.assignments?.length) return;
+      pendingHomework = pkg;
+      const wrap = document.createElement("div");
+      wrap.className = "assessment-wrap homework-wrap";
+      wrap.innerHTML = `
+        <div class="homework-card">
+          <div class="assessment-head">
+            <div class="mini-avatar" aria-hidden="true">서</div>
+            <div>
+              <strong>${COUNSELOR_NAME} 상담사 · 후처리 과제</strong>
+              <span>약 ${pkg.assignments[0].duration_min || 5}분 · 일기·감정 기록</span>
+            </div>
+          </div>
+          <p class="homework-intro"></p>
+          <div class="homework-tabs"></div>
+          <div class="homework-form"></div>
+          <div class="homework-actions">
+            <button type="button" class="homework-submit">작성 완료</button>
+            <button type="button" class="homework-skip">나중에 할게요</button>
+          </div>
+        </div>
+      `;
+      wrap.querySelector(".homework-intro").textContent = pkg.intro_ko || "";
+      const tabsEl = wrap.querySelector(".homework-tabs");
+      const formEl = wrap.querySelector(".homework-form");
+      let activeIdx = 0;
+
+      function renderAssignment(idx) {
+        activeIdx = idx;
+        const assignment = pkg.assignments[idx];
+        tabsEl.querySelectorAll(".homework-tab").forEach((tab, i) => {
+          tab.classList.toggle("active", i === idx);
+        });
+        formEl.innerHTML = `
+          <p class="assessment-prompt">${assignment.title_ko}</p>
+          <p class="assessment-framing">${assignment.instruction_ko || ""}</p>
+          ${assignment.personal_note ? `<p class="assessment-note">${assignment.personal_note}</p>` : ""}
+        `;
+        assignment.fields.forEach((field) => {
+          const fieldWrap = document.createElement("div");
+          fieldWrap.className = "homework-field";
+          const label = document.createElement("label");
+          label.textContent = field.label;
+          label.setAttribute("for", `hw_${assignment.id}_${field.id}`);
+          fieldWrap.appendChild(label);
+          let input;
+          if (field.input === "textarea") {
+            input = document.createElement("textarea");
+          } else if (field.input === "scale") {
+            input = document.createElement("input");
+            input.type = "range";
+            input.min = field.min ?? 0;
+            input.max = field.max ?? 10;
+            input.value = "5";
+          } else {
+            input = document.createElement("input");
+            input.type = "text";
+          }
+          input.id = `hw_${assignment.id}_${field.id}`;
+          input.placeholder = field.placeholder || "";
+          input.dataset.fieldId = field.id;
+          fieldWrap.appendChild(input);
+          formEl.appendChild(fieldWrap);
+        });
+      }
+
+      pkg.assignments.forEach((assignment, idx) => {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = `homework-tab${idx === 0 ? " active" : ""}`;
+        tab.textContent = assignment.title_ko;
+        tab.addEventListener("click", () => renderAssignment(idx));
+        tabsEl.appendChild(tab);
+      });
+      renderAssignment(0);
+
+      wrap.querySelector(".homework-submit").addEventListener("click", async () => {
+        const assignment = pkg.assignments[activeIdx];
+        const responses = {};
+        formEl.querySelectorAll("[data-field-id]").forEach((el) => {
+          responses[el.dataset.fieldId] = el.value;
+        });
+        wrap.style.opacity = "0.65";
+        wrap.querySelectorAll("button").forEach((btn) => { btn.disabled = true; });
+        await submitHomework(assignment.id, responses, false);
+      });
+
+      wrap.querySelector(".homework-skip").addEventListener("click", async () => {
+        const assignment = pkg.assignments[activeIdx];
+        wrap.style.opacity = "0.65";
+        wrap.querySelectorAll("button").forEach((btn) => { btn.disabled = true; });
+        await submitHomework(assignment.id, {}, true);
+      });
+
+      messagesEl.appendChild(wrap);
+      scrollToBottom();
+    }
+
+    async function submitHomework(assignmentId, responses, skipped) {
+      if (!sessionId) return;
+      const message = skipped
+        ? "후처리 과제는 나중에 할게요."
+        : "방금 일기·감정 기록 과제를 작성했어요. 같이 살펴봐 주세요.";
+      appendUserMessage(message);
+      await submitMessage(message, null, {
+        assignment_id: assignmentId,
+        responses,
+        skipped,
+      });
+      pendingHomework = null;
+    }
+
     function renderAssessmentCard(assessment) {
       hideEmptyState();
       pendingAssessment = assessment;
@@ -1829,6 +2157,7 @@
           }
           if (event === "assessment_package") renderAssessmentPackageCard(data);
           if (event === "assessment") renderAssessmentCard(data);
+          if (event === "homework") renderHomeworkCard(data);
           if (event === "token") {
             if (!gotToken) {
               hideTyping();
@@ -1847,6 +2176,7 @@
             updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
             updateClinicalInsight(data.profile_delta?.clinical_insight);
             refreshBatteryStatus(sessionId);
+            if (data.suggest_tarot) renderTarotSuggestBanner();
             toggleSidebar(false);
           }
           if (event === "error") {
@@ -1871,14 +2201,15 @@
       return softMap[label] || `${label} 정도였어요`;
     }
 
-    async function submitMessage(message, assessmentResponse = null) {
-      if (!assessmentResponse) appendUserMessage(message);
+    async function submitMessage(message, assessmentResponse = null, homeworkResponse = null) {
+      if (!assessmentResponse && !homeworkResponse) appendUserMessage(message);
       await streamChat({
         user_id: userId,
         session_id: sessionId,
         message,
         plan: "BASIC",
         assessment_response: assessmentResponse,
+        homework_response: homeworkResponse,
         preferred_school: preferredSchool || null,
       });
     }
@@ -1951,6 +2282,7 @@
     });
 
     showWelcomeIfNeeded();
+    processTarotHandoff();
     autoResize();
     messageInput.focus();
   </script>
