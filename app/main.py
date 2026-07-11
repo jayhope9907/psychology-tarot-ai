@@ -232,7 +232,8 @@ class AssessmentSubmitRequest(BaseModel):
     session_id: str
     instrument: str
     item_id: str
-    value: Optional[int] = None
+    value: Optional[Any] = None
+    text: Optional[str] = None
     skipped: bool = False
 
 
@@ -281,7 +282,24 @@ class PictoCardRequest(BaseModel):
 class PictoCaregiverAlertRequest(BaseModel):
     user_id: str
     picto_ids: Optional[List[str]] = None
-    note: str = ""
+
+
+class PictureAssessmentStartRequest(BaseModel):
+    user_id: str
+    session_id: Optional[str] = None
+
+
+class PictureAssessmentSubmitRequest(BaseModel):
+    user_id: str
+    session_id: str
+    instrument: str
+    item_id: str
+    skipped: bool = False
+    text: Optional[str] = None
+    association: Optional[str] = None
+    drawing_data: Optional[str] = None
+    meta: Optional[Dict[str, Any]] = None
+    story: Optional[Dict[str, str]] = None
 
 
 class ReminderSettingsRequest(BaseModel):
@@ -829,6 +847,8 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "legal": "/legal",
         "associations": "/associations",
         "picto": "/picto",
+        "clinical": "/clinical",
+        "picture_assessment": "/picture-assessment",
         "health": "/health",
         "tarot_deck_api": "/api/v1/tarot/deck",
     }
@@ -854,6 +874,8 @@ async def health_check(request: Request):
             "AI 대화": urls.get("chat", "/chat"),
             "3D 타로": urls.get("tarot", "/tarot"),
             "그림 마음": urls.get("picto", "/picto"),
+            "임상검사": urls.get("clinical", "/clinical"),
+            "투영검사": urls.get("picture_assessment", "/picture-assessment"),
             "이용 안내": urls.get("legal", "/legal"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
@@ -874,6 +896,22 @@ async def picto_ui():
     if picto_path.exists():
         return FileResponse(str(picto_path))
     raise HTTPException(status_code=404, detail="Picto UI not found")
+
+
+@app.get("/picture-assessment")
+async def picture_assessment_ui():
+    path = STATIC_DIR / "picture-assessment.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Picture assessment UI not found")
+
+
+@app.get("/clinical")
+async def clinical_hub():
+    path = STATIC_DIR / "clinical.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Clinical hub not found")
 
 
 @app.get("/test")
@@ -936,13 +974,30 @@ async def tarot_pick(request: TarotPickRequest):
         spread=request.spread,
         reversed_flags=request.reversed_flags,
     )
-    record_tarot_draw(request.user_id, result)
+    draw_id = record_tarot_draw(request.user_id, result)
+    from app.services.maum_organism import sync_after_tarot_draw
+
+    sync_after_tarot_draw(request.user_id, result, draw_id=draw_id or None)
     return result
 
 
 @app.get("/api/v1/dashboard/{user_id}")
 async def user_dashboard(user_id: str):
-    return build_dashboard(user_id)
+    from app.services.maum_organism import build_organism_state
+
+    dash = build_dashboard(user_id)
+    dash["organism"] = {
+        "api": f"/api/v1/organism/{user_id}",
+        "next_actions": build_organism_state(user_id)["next_actions"][:3],
+    }
+    return dash
+
+
+@app.get("/api/v1/organism/{user_id}")
+async def maum_organism(user_id: str):
+    from app.services.maum_organism import build_organism_state
+
+    return build_organism_state(user_id)
 
 
 @app.get("/api/v1/chat/mood-context/{user_id}")
@@ -975,7 +1030,15 @@ async def mood_checkin(request: CheckinRequest):
         for key, value in dims.items():
             if value < 1 or value > 5:
                 raise HTTPException(status_code=400, detail=f"dimension {key} must be 1-5")
-    return record_checkin(request.user_id, request.mood_score, request.note, request.dimensions)
+    result = record_checkin(request.user_id, request.mood_score, request.note, request.dimensions)
+    _organism_after_checkin(request.user_id, result)
+    return result
+
+
+def _organism_after_checkin(user_id: str, checkin: Dict[str, Any], *, source: str = "checkin", picto_id: Optional[str] = None) -> None:
+    from app.services.maum_organism import sync_after_checkin
+
+    sync_after_checkin(user_id, checkin, source=source, picto_id=picto_id)
 
 
 @app.get("/api/v1/picto/catalog")
@@ -1004,6 +1067,7 @@ async def picto_checkin(request: PictoCheckinRequest):
     item = picto_item(request.mood_picto_id) or {}
     note = f"[그림기분] {item.get('emoji', '')} {item.get('phrase', '')}".strip()
     result = record_checkin(request.user_id, None, note, dims)
+    _organism_after_checkin(request.user_id, result, source="picto", picto_id=request.mood_picto_id)
     return {"checkin": result, "mood_picto_id": request.mood_picto_id, "emoji": item.get("emoji")}
 
 
@@ -1024,6 +1088,9 @@ async def _run_picto_chat(user_id: str, picto_ids: List[str], session_id: Option
         reply_text = "함께 있어요. 천천히 괜찮아질 거예요."
     save_session(session)
     sync_after_counseling(user_id, session)
+    from app.services.maum_organism import sync_after_picto_chat
+
+    sync_after_picto_chat(user_id, session.session_id, picto_ids)
     return {
         "session_id": session.session_id,
         "user_message": message,
@@ -1422,6 +1489,79 @@ async def list_association_orgs(request: Request, limit: int = 20):
     return {"organizations": list_organizations(min(max(limit, 1), 100))}
 
 
+@app.get("/api/v1/clinical/catalog")
+async def clinical_catalog_api():
+    from app.services.clinical_catalog import unified_clinical_catalog
+
+    return unified_clinical_catalog()
+
+
+@app.get("/api/v1/clinical/summary/{user_id}")
+async def clinical_summary_api(user_id: str):
+    from app.services.clinical_catalog import build_user_clinical_summary
+
+    return build_user_clinical_summary(user_id)
+
+
+@app.get("/api/v1/picture-assessment/catalog")
+async def picture_assessment_catalog_api():
+    from app.services.picture_assessment import picture_assessment_catalog
+
+    return picture_assessment_catalog()
+
+
+@app.post("/api/v1/picture-assessment/start")
+async def picture_assessment_start(request: PictureAssessmentStartRequest):
+    session = get_or_create_session(request.user_id, request.session_id, "PICTURE_ASSESSMENT_TEST")
+    from app.services.picture_assessment import picture_assessment_catalog
+
+    catalog = picture_assessment_catalog()
+    save_session(session)
+    return {
+        "session_id": session.session_id,
+        "user_id": session.user_id,
+        "instrument_count": catalog["instrument_count"],
+        "total_items": catalog["total_items"],
+    }
+
+
+@app.post("/api/v1/picture-assessment/submit")
+async def picture_assessment_submit(request: PictureAssessmentSubmitRequest):
+    session = get_session(request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != request.user_id:
+        raise HTTPException(status_code=403, detail="Session user mismatch")
+
+    from app.services.picture_assessment import record_projective_response
+
+    payload: Dict[str, Any] = {
+        "instrument": request.instrument,
+        "item_id": request.item_id,
+        "skipped": request.skipped,
+        "text": request.text,
+        "association": request.association,
+        "drawing_data": request.drawing_data,
+        "meta": request.meta,
+        "story": request.story,
+    }
+    recorded = record_projective_response(session, payload)
+    if recorded.get("error"):
+        raise HTTPException(status_code=400, detail=recorded["error"])
+    save_session(session)
+    return {"recorded": recorded}
+
+
+@app.get("/api/v1/picture-assessment/results/{session_id}")
+async def picture_assessment_results_api(session_id: str):
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    from app.services.picture_assessment import picture_assessment_results
+
+    return picture_assessment_results(session)
+
+
 @app.get("/api/v1/assessments/catalog")
 async def assessments_catalog():
     instruments = []
@@ -1544,11 +1684,13 @@ async def assessments_submit(request: AssessmentSubmitRequest):
             "instrument": request.instrument,
             "item_id": request.item_id,
             "value": request.value,
+            "text": request.text,
             "skipped": request.skipped,
         },
     )
     battery = sync_session_battery(session)
     insight = sync_session_insight(session)
+    save_session(session)
     return {
         "recorded": recorded,
         "battery_coverage": battery,

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#4a3f5c" />
+  <meta name="robots" content="noindex" />
+  <meta name="description" content="임상심리 투영검사 — HTP·로르샤흐·TAT·DAP·KFD·SCT" />
+  <title>마음쉼터 · 투영검사 (그림검사)</title>
+  <link rel="stylesheet" href="/static/css/embed.css" />
+  <script src="/static/js/embed-bridge.js"></script>
+  <script src="/static/js/maum-organism.js"></script>
+  <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
+  <style>
+    :root {
+      --bg: #f4f0f8;
+      --surface: #fff;
+      --accent: #4a3f5c;
+      --accent-soft: #e6dff0;
+      --ink: #2d2640;
+      --muted: #6b5f80;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+    .top-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; background: var(--surface);
+      border-bottom: 3px solid var(--accent-soft); flex-shrink: 0;
+    }
+    .top-bar h1 { margin: 0; font-size: 0.95rem; flex: 1; }
+    .icon-btn {
+      width: 42px; height: 42px; border: 2px solid var(--accent-soft);
+      border-radius: 12px; background: #fff; font-size: 1.1rem; cursor: pointer;
+    }
+    .progress-wrap { background: #fff; padding: 8px 14px; border-bottom: 1px solid var(--accent-soft); }
+    .progress-bar { height: 8px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #8b7aa8); transition: width 0.3s; }
+    .progress-text { font-size: 0.7rem; color: var(--muted); margin-top: 4px; text-align: center; }
+
+    main { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 90px; max-width: 560px; margin: 0 auto; width: 100%; }
+    .screen { display: none; animation: fade 0.25s ease; }
+    .screen.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .hero { text-align: center; padding: 8px 0 16px; }
+    .hero .big { font-size: 3rem; }
+    .hero p { margin: 8px 0 0; font-size: 0.85rem; color: var(--muted); line-height: 1.55; }
+    .disclaimer {
+      font-size: 0.72rem; color: #8a7da0; background: var(--accent-soft);
+      padding: 10px 12px; border-radius: 12px; line-height: 1.45; margin-bottom: 14px;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .tile {
+      border: 3px solid transparent; border-radius: var(--radius); background: var(--surface);
+      box-shadow: 0 4px 14px rgba(74,63,92,0.1); cursor: pointer; padding: 14px 10px;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+    }
+    .tile:active { transform: scale(0.96); }
+    .tile .emoji { font-size: 2.4rem; }
+    .tile .title { font-size: 0.78rem; font-weight: 800; margin-top: 6px; line-height: 1.25; }
+    .tile .meta { font-size: 0.65rem; color: var(--muted); margin-top: 4px; }
+    .tile.hero-tile { grid-column: span 2; flex-direction: row; gap: 12px; justify-content: center; min-height: 88px; }
+
+    .card {
+      background: var(--surface); border-radius: var(--radius); padding: 16px;
+      border: 2px solid var(--accent-soft); margin-bottom: 14px;
+    }
+    .card h2 { margin: 0 0 8px; font-size: 1.05rem; line-height: 1.4; }
+    .card p { margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    .badge {
+      display: inline-block; margin-top: 8px; padding: 3px 8px; border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700; background: var(--accent-soft); color: var(--accent);
+    }
+
+    .stimulus {
+      width: 100%; max-height: 220px; object-fit: contain; border-radius: 12px;
+      background: #faf8fc; border: 2px solid var(--accent-soft); margin: 12px 0;
+    }
+
+    .canvas-wrap {
+      position: relative; border: 3px solid var(--accent-soft); border-radius: 14px;
+      background: #fff; overflow: hidden; touch-action: none;
+    }
+    canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+    .canvas-tools { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+    .tool-btn {
+      border: 2px solid var(--accent-soft); background: #fff; border-radius: 10px;
+      padding: 8px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    }
+
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-size: 0.78rem; font-weight: 700; margin-bottom: 4px; color: var(--muted); }
+    .field input, .field textarea {
+      width: 100%; border: 2px solid var(--accent-soft); border-radius: 12px;
+      padding: 10px 12px; font-size: 0.95rem; font-family: inherit;
+    }
+    .field textarea { min-height: 72px; resize: vertical; }
+
+    .bottom-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
+      border-top: 3px solid var(--accent-soft);
+      padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+      display: flex; gap: 8px; z-index: 10; max-width: 560px; margin: 0 auto;
+    }
+    .btn {
+      flex: 1; border: none; border-radius: 14px; padding: 14px;
+      font-size: 0.92rem; font-weight: 800; cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-skip { background: #eee; color: #666; max-width: 88px; flex: 0 0 auto; }
+    .btn:disabled { opacity: 0.45; }
+
+    .result-card {
+      background: var(--surface); border-radius: var(--radius); padding: 14px;
+      border: 2px solid var(--accent-soft); margin-bottom: 10px;
+    }
+    .result-card h3 { margin: 0 0 6px; font-size: 0.9rem; }
+    .result-card pre {
+      margin: 0; font-size: 0.68rem; white-space: pre-wrap; word-break: break-all;
+      background: #faf8fc; padding: 8px; border-radius: 8px; max-height: 140px; overflow: auto;
+    }
+    .loading, .error { text-align: center; padding: 24px; color: var(--muted); }
+    .error { color: #c1121f; }
+  </style>
+</head>
+<body>
+  <header class="top-bar">
+    <button type="button" class="icon-btn" id="btnBack" title="뒤로">←</button>
+    <h1 id="pageTitle">투영검사 · 그림검사</h1>
+  </header>
+  <div class="progress-wrap" id="progressWrap" hidden>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text" id="progressText"></div>
+  </div>
+
+  <main>
+    <section class="screen active" id="screenHome">
+      <div class="hero">
+        <div class="big">🖼️</div>
+        <p>임상심리 <strong>투영검사</strong> 기법<br/>HTP · DAP · KFD · 로르샤흐 · TAT · SCT</p>
+      </div>
+      <div class="disclaimer" id="disclaimer"></div>
+      <div class="grid" style="margin-bottom:12px">
+        <button type="button" class="tile hero-tile" id="btnAll">
+          <span class="emoji">🧩</span>
+          <div>
+            <div class="title">전체 투영검사 배터리</div>
+            <div class="meta" id="batteryMeta">—</div>
+          </div>
+        </button>
+      </div>
+      <div class="grid" id="instrumentGrid"></div>
+    </section>
+
+    <section class="screen" id="screenIntro">
+      <div class="card" id="introBox"></div>
+      <button type="button" class="btn btn-primary" style="width:100%" id="btnStartInst">검사 시작</button>
+    </section>
+
+    <section class="screen" id="screenItem">
+      <div class="card" id="itemBox"></div>
+      <div id="stimulusBlock" hidden><img class="stimulus" id="stimulusImg" alt="검사 자극" /></div>
+      <div id="drawBlock" hidden>
+        <div class="canvas-wrap"><canvas id="drawCanvas" width="480" height="360"></canvas></div>
+        <div class="canvas-tools">
+          <button type="button" class="tool-btn" id="btnClear">지우기</button>
+          <button type="button" class="tool-btn" id="btnUndo">한 획 취소</button>
+        </div>
+        <div class="field" id="drawFollowUp" hidden>
+          <label id="followUpLabel">추가 질문</label>
+          <textarea id="associationInput" placeholder="느낌·연상을 적어 주세요…"></textarea>
+        </div>
+      </div>
+      <div id="inkblotBlock" hidden>
+        <div class="field">
+          <label>무엇이 보이나요? (여러 개도 OK)</label>
+          <textarea id="inkblotInput" placeholder="예: 나비, 두 사람, 괴물…"></textarea>
+        </div>
+      </div>
+      <div id="tatBlock" hidden>
+        <div class="field"><label>무슨 일이 일어나고 있나요?</label><textarea id="tatHappening"></textarea></div>
+        <div class="field"><label>그 사람(들)의 기분은?</label><textarea id="tatFeeling"></textarea></div>
+        <div class="field"><label>이후 어떻게 될까요?</label><textarea id="tatOutcome"></textarea></div>
+      </div>
+      <div id="textBlock" hidden>
+        <div class="field">
+          <label id="sctStem"></label>
+          <textarea id="sctInput" placeholder="문장을 이어 써 주세요…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screenResults">
+      <div class="hero"><div class="big">📋</div><p id="resultsSummary"></p></div>
+      <div class="disclaimer" id="resultsDisclaimer"></div>
+      <div id="resultsList"></div>
+      <button type="button" class="btn btn-primary" style="width:100%;margin-top:12px" id="btnHome">처음으로</button>
+    </section>
+
+    <div class="loading" id="loading">불러오는 중…</div>
+    <div class="error" id="errorBox" hidden></div>
+  </main>
+
+  <div class="bottom-bar" id="bottomBar" hidden>
+    <button type="button" class="btn btn-skip" id="btnSkip">넘기기</button>
+    <button type="button" class="btn btn-primary" id="btnNext">다음</button>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "psychology_ai_user_id";
+    const SESSION_KEY = "psychology_ai_session_id";
+
+    let catalog = null, userId = localStorage.getItem(STORAGE_KEY);
+    let sessionId = localStorage.getItem(SESSION_KEY);
+    let queue = [], queueIndex = 0, mode = "home";
+    let canvas, ctx, drawing = false, strokes = [], currentStroke = [];
+
+    if (!userId) {
+      userId = (window.MaumOrganism && MaumOrganism.userId()) || `user-${crypto.randomUUID().slice(0, 12)}`;
+      localStorage.setItem(STORAGE_KEY, userId);
+    }
+
+    const screens = {
+      home: document.getElementById("screenHome"),
+      intro: document.getElementById("screenIntro"),
+      item: document.getElementById("screenItem"),
+      results: document.getElementById("screenResults"),
+    };
+
+    function showScreen(name) {
+      Object.values(screens).forEach(s => s.classList.remove("active"));
+      screens[name]?.classList.add("active");
+      document.getElementById("loading").style.display = "none";
+      mode = name;
+      document.getElementById("bottomBar").hidden = name !== "item";
+      document.getElementById("progressWrap").hidden = !["intro", "item"].includes(name);
+      document.getElementById("btnBack").style.visibility = name === "home" ? "hidden" : "visible";
+    }
+
+    function setProgress(cur, total) {
+      const pct = total ? Math.round((cur / total) * 100) : 0;
+      document.getElementById("progressFill").style.width = pct + "%";
+      document.getElementById("progressText").textContent = `${cur} / ${total} (${pct}%)`;
+    }
+
+    function flatQueue(forms) {
+      const out = [];
+      forms.forEach(form => form.items.forEach(item => out.push({ form, item })));
+      return out;
+    }
+
+    function initCanvas() {
+      canvas = document.getElementById("drawCanvas");
+      ctx = canvas.getContext("2d");
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#1a1a1a";
+      ctx.lineWidth = 3;
+      strokes = [];
+      currentStroke = [];
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      redrawCanvas();
+
+      const pos = e => {
+        const r = canvas.getBoundingClientRect();
+        const sx = canvas.width / r.width, sy = canvas.height / r.height;
+        const src = e.touches ? e.touches[0] : e;
+        return { x: (src.clientX - r.left) * sx, y: (src.clientY - r.top) * sy };
+      };
+      const start = e => { e.preventDefault(); drawing = true; currentStroke = [pos(e)]; };
+      const move = e => {
+        if (!drawing) return;
+        e.preventDefault();
+        currentStroke.push(pos(e));
+        redrawCanvas();
+        if (currentStroke.length > 1) {
+          const a = currentStroke[currentStroke.length - 2], b = currentStroke[currentStroke.length - 1];
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      };
+      const end = e => {
+        if (!drawing) return;
+        e.preventDefault();
+        drawing = false;
+        if (currentStroke.length) strokes.push([...currentStroke]);
+        currentStroke = [];
+      };
+      canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
+      canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+    }
+
+    function redrawCanvas() {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#1a1a1a";
+      ctx.lineWidth = 3;
+      strokes.forEach(st => {
+        if (st.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(st[0].x, st[0].y);
+        for (let i = 1; i < st.length; i++) ctx.lineTo(st[i].x, st[i].y);
+        ctx.stroke();
+      });
+    }
+
+    function drawingMeta() {
+      let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0, count = 0;
+      strokes.forEach(st => st.forEach(p => {
+        minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); count++;
+      }));
+      return {
+        stroke_count: strokes.length,
+        point_count: count,
+        has_strokes: strokes.length > 0,
+        canvas_width: canvas.width,
+        canvas_height: canvas.height,
+        bbox_width: isFinite(minX) ? maxX - minX : 0,
+        bbox_height: isFinite(minY) ? maxY - minY : 0,
+      };
+    }
+
+    function renderHome() {
+      document.getElementById("disclaimer").textContent = catalog.disclaimer || "";
+      document.getElementById("batteryMeta").textContent =
+        `${catalog.instrument_count}종 · ${catalog.total_items}문항`;
+      const grid = document.getElementById("instrumentGrid");
+      grid.innerHTML = "";
+      catalog.instruments.forEach(form => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tile";
+        btn.innerHTML = `<span class="emoji">${form.emoji}</span>
+          <span class="title">${form.display_name}</span>
+          <span class="meta">${form.school}<br/>${form.item_count}문항</span>`;
+        btn.onclick = () => startInstrument(form.instrument_id);
+        grid.appendChild(btn);
+      });
+      showScreen("home");
+    }
+
+    async function ensureSession() {
+      const res = await fetch("/api/v1/picture-assessment/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, session_id: sessionId }),
+      });
+      if (!res.ok) throw new Error("세션 시작 실패");
+      const data = await res.json();
+      sessionId = data.session_id;
+      localStorage.setItem(SESSION_KEY, sessionId);
+    }
+
+    function startInstrument(id) {
+      queue = flatQueue([catalog.instruments.find(f => f.instrument_id === id)]);
+      queueIndex = 0;
+      showIntro();
+    }
+
+    function startAll() {
+      queue = flatQueue(catalog.instruments);
+      queueIndex = 0;
+      showIntro();
+    }
+
+    function showIntro() {
+      const { form } = queue[queueIndex];
+      document.getElementById("pageTitle").textContent = form.display_name;
+      document.getElementById("introBox").innerHTML = `
+        <div style="font-size:2.2rem;margin-bottom:8px">${form.emoji}</div>
+        <h2>${form.display_name}</h2>
+        <p>${form.intro}</p>
+        <span class="badge">${form.clinical_reference}</span>
+        <span class="badge">${form.item_count}문항</span>`;
+      setProgress(queueIndex, queue.length);
+      showScreen("intro");
+    }
+
+    function hideBlocks() {
+      ["stimulusBlock","drawBlock","inkblotBlock","tatBlock","textBlock"].forEach(id => {
+        document.getElementById(id).hidden = true;
+      });
+    }
+
+    function showItem() {
+      const { form, item } = queue[queueIndex];
+      document.getElementById("pageTitle").textContent = form.display_name;
+      setProgress(queueIndex + 1, queue.length);
+      hideBlocks();
+
+      document.getElementById("itemBox").innerHTML = `
+        <h2>${item.prompt}</h2>
+        <p>${item.framing || ""}</p>
+        ${item.clinical_note ? `<span class="badge">${item.clinical_note}</span>` : ""}`;
+
+      const rt = item.response_type;
+      if (item.stimulus_url) {
+        document.getElementById("stimulusBlock").hidden = false;
+        document.getElementById("stimulusImg").src = item.stimulus_url;
+      }
+
+      if (rt === "drawing") {
+        document.getElementById("drawBlock").hidden = false;
+        initCanvas();
+        const fu = document.getElementById("drawFollowUp");
+        if (item.follow_up) {
+          fu.hidden = false;
+          document.getElementById("followUpLabel").textContent = item.follow_up;
+          document.getElementById("associationInput").value = "";
+        } else fu.hidden = true;
+      } else if (rt === "inkblot") {
+        document.getElementById("inkblotBlock").hidden = false;
+        document.getElementById("inkblotInput").value = "";
+      } else if (rt === "tat_story") {
+        document.getElementById("tatBlock").hidden = false;
+        ["tatHappening","tatFeeling","tatOutcome"].forEach(id => document.getElementById(id).value = "");
+      } else {
+        document.getElementById("textBlock").hidden = false;
+        document.getElementById("sctStem").textContent = item.stem || item.prompt;
+        document.getElementById("sctInput").value = "";
+      }
+      showScreen("item");
+    }
+
+    function buildPayload(skipped) {
+      const { form, item } = queue[queueIndex];
+      const body = { user_id: userId, session_id: sessionId, instrument: form.instrument_id, item_id: item.item_id, skipped };
+      if (skipped) return body;
+
+      if (item.response_type === "drawing") {
+        if (!strokes.length) return null;
+        body.drawing_data = canvas.toDataURL("image/png").slice(0, 120000);
+        body.meta = drawingMeta();
+        body.association = document.getElementById("associationInput").value.trim();
+      } else if (item.response_type === "inkblot") {
+        const t = document.getElementById("inkblotInput").value.trim();
+        if (!t) return null;
+        body.association = t;
+      } else if (item.response_type === "tat_story") {
+        const story = {
+          happening: document.getElementById("tatHappening").value.trim(),
+          feeling: document.getElementById("tatFeeling").value.trim(),
+          outcome: document.getElementById("tatOutcome").value.trim(),
+        };
+        if (!story.happening && !story.feeling && !story.outcome) return null;
+        body.story = story;
+      } else {
+        const t = document.getElementById("sctInput").value.trim();
+        if (!t) return null;
+        body.text = t;
+      }
+      return body;
+    }
+
+    async function submit(skipped) {
+      const body = buildPayload(skipped);
+      if (!skipped && !body) {
+        document.getElementById("errorBox").hidden = false;
+        document.getElementById("errorBox").textContent = "응답을 입력하거나 그림을 그려 주세요.";
+        return false;
+      }
+      const res = await fetch("/api/v1/picture-assessment/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "제출 실패");
+      }
+      document.getElementById("errorBox").hidden = true;
+      if (window.MaumOrganism) MaumOrganism.broadcastRefresh("projective");
+      return true;
+    }
+
+    async function advance() {
+      try {
+        if (!(await submit(false))) return;
+      } catch (e) {
+        document.getElementById("errorBox").textContent = e.message;
+        document.getElementById("errorBox").hidden = false;
+        return;
+      }
+      queueIndex++;
+      if (queueIndex >= queue.length) { await showResults(); return; }
+      const prev = queue[queueIndex - 1].form.instrument_id;
+      const next = queue[queueIndex].form.instrument_id;
+      if (prev !== next && queue.length > catalog.instruments[0].item_count) showIntro();
+      else showItem();
+    }
+
+    async function skipItem() {
+      try { await submit(true); } catch (e) { return; }
+      queueIndex++;
+      if (queueIndex >= queue.length) await showResults();
+      else showItem();
+    }
+
+    async function showResults() {
+      document.getElementById("pageTitle").textContent = "투영검사 결과";
+      const res = await fetch(`/api/v1/picture-assessment/results/${sessionId}`);
+      const data = await res.json();
+      document.getElementById("resultsSummary").textContent =
+        `${data.answered_items}/${data.total_items} 문항 · ${Object.keys(data.progress).filter(k => data.progress[k].answered > 0).length}종 완료`;
+      document.getElementById("resultsDisclaimer").textContent = data.disclaimer || "";
+      const list = document.getElementById("resultsList");
+      list.innerHTML = "";
+      const global = data.projective_scores?.global_themes || {};
+      if (Object.keys(global).length) {
+        const g = document.createElement("div");
+        g.className = "result-card";
+        g.innerHTML = `<h3>🌐 전체 테마 (질적)</h3><pre>${JSON.stringify(global, null, 2)}</pre>
+          <p style="font-size:0.72rem;color:#8a7da0;margin:8px 0 0">${data.projective_scores?.interpretation_note || ""}</p>`;
+        list.appendChild(g);
+      }
+      catalog.instruments.forEach(form => {
+        const prog = data.progress[form.instrument_id] || { answered: 0, total: form.item_count };
+        const instScore = data.projective_scores?.instruments?.[form.instrument_id];
+        const card = document.createElement("div");
+        card.className = "result-card";
+        card.innerHTML = `<h3>${form.emoji} ${form.display_name} (${prog.answered}/${prog.total})</h3>
+          ${instScore ? `<pre>${JSON.stringify(instScore, null, 2)}</pre>` : `<p style="font-size:0.78rem;color:#8a7da0">응답 없음</p>`}`;
+        list.appendChild(card);
+      });
+      showScreen("results");
+    }
+
+    async function init() {
+      try {
+        const catRes = await fetch("/api/v1/picture-assessment/catalog");
+        if (!catRes.ok) throw new Error("카탈로그 로드 실패");
+        catalog = await catRes.json();
+        await ensureSession();
+        renderHome();
+      } catch (e) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("errorBox").hidden = false;
+        document.getElementById("errorBox").textContent = e.message;
+      }
+    }
+
+    document.getElementById("btnAll").onclick = startAll;
+    document.getElementById("btnStartInst").onclick = showItem;
+    document.getElementById("btnNext").onclick = advance;
+    document.getElementById("btnSkip").onclick = skipItem;
+    document.getElementById("btnHome").onclick = renderHome;
+    document.getElementById("btnBack").onclick = () => { if (mode !== "home") renderHome(); };
+    document.getElementById("btnClear").onclick = () => { strokes = []; redrawCanvas(); };
+    document.getElementById("btnUndo").onclick = () => { strokes.pop(); redrawCanvas(); };
+
+    init();
+  </script>
+</body>
+</html>

@@ -365,6 +365,7 @@
   </nav>
 
   <script src="/static/js/embed-bridge.js"></script>
+  <script src="/static/js/maum-organism.js"></script>
   <script src="/static/js/tarot-image-settings.js"></script>
   <script src="/static/js/tarot-offline.js"></script>
   <script src="/static/js/vendor/three.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js'"></script>
@@ -583,6 +584,7 @@
         flippedIndices = new Set();
         setTarotStep(3);
         setStatus(currentDraw.offline ? "오프라인 타로 — 카드를 눌러 확인하세요" : "카드를 눌러 그림을 확인하세요");
+        if (window.MaumEmbed) MaumEmbed.refreshOrganism("tarot_pick");
       } catch (err) {
         console.error(err);
         setStatus("카드 배치 중 문제가 생겼어요. 다시 선택해 주세요.");
@@ -763,6 +765,7 @@
         renderReading(reading);
         setTarotStep(4);
         setStatus(reading.offline ? "오프라인 풀이 준비됐어요. 연결되면 AI 대화로 이어갈 수 있어요." : "풀이가 준비됐어요. AI 대화와 이어가실 수 있어요.");
+        if (window.MaumEmbed) MaumEmbed.refreshOrganism("tarot_reading");
       } catch (err) {
         alert("풀이를 가져오지 못했어요.");
         setStatus("");

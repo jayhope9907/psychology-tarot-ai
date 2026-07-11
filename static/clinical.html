@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#3182F6" />
+  <meta name="description" content="임상심리학 검사 총정리 — 스크리닝·투영검사 통합" />
+  <title>마음쉼터 · 임상검사</title>
+  <link rel="stylesheet" href="/static/css/toss-ui.css" />
+  <link rel="stylesheet" href="/static/css/embed.css" />
+  <script src="/static/js/embed-bridge.js"></script>
+  <script src="/static/js/maum-organism.js"></script>
+  <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
+  <style>
+    body.clinical-hub { min-height: 100vh; padding: 16px 16px 100px; max-width: 720px; margin: 0 auto; }
+    .c-hero { margin-bottom: 16px; }
+    .c-hero h1 { margin: 0; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.04em; }
+    .c-hero p { margin: 6px 0 0; font-size: 0.85rem; color: var(--t-text-secondary); line-height: 1.5; }
+    .c-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0;
+    }
+    .c-stat {
+      background: var(--t-surface); border: 1px solid var(--t-border); border-radius: var(--t-radius);
+      padding: 12px 8px; text-align: center; box-shadow: var(--t-shadow);
+    }
+    .c-stat strong { display: block; font-size: 1.2rem; color: var(--t-blue); }
+    .c-stat span { font-size: 0.68rem; color: var(--t-text-secondary); }
+    .c-progress {
+      background: var(--t-surface); border-radius: var(--t-radius-lg); padding: 14px;
+      border: 1px solid var(--t-border); margin-bottom: 14px;
+    }
+    .c-progress-bar { height: 8px; background: var(--t-bg); border-radius: 999px; overflow: hidden; }
+    .c-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #3182f6, #2d6a4f); transition: width 0.3s; }
+    .c-section {
+      background: var(--t-surface); border: 1px solid var(--t-border);
+      border-radius: var(--t-radius-lg); padding: 16px; margin-bottom: 12px; box-shadow: var(--t-shadow);
+    }
+    .c-section h2 { margin: 0 0 4px; font-size: 1rem; font-weight: 800; }
+    .c-section .sub { margin: 0 0 12px; font-size: 0.78rem; color: var(--t-text-secondary); line-height: 1.45; }
+    .c-track-btn {
+      display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+      border: 2px solid var(--t-border); border-radius: var(--t-radius); padding: 14px;
+      background: #fff; cursor: pointer; margin-bottom: 8px;
+    }
+    .c-track-btn:active { transform: scale(0.99); background: var(--t-blue-soft); }
+    .c-track-btn .emoji { font-size: 2rem; }
+    .c-track-btn .title { font-weight: 800; font-size: 0.92rem; }
+    .c-track-btn .desc { font-size: 0.72rem; color: var(--t-text-secondary); margin-top: 2px; }
+    .c-domain {
+      border-top: 1px solid var(--t-border); padding: 10px 0; font-size: 0.8rem;
+    }
+    .c-domain:first-child { border-top: none; padding-top: 0; }
+    .c-domain strong { display: block; font-size: 0.85rem; }
+    .c-domain span { color: var(--t-text-secondary); font-size: 0.72rem; }
+    .c-screen { display: none; }
+    .c-screen.active { display: block; }
+    .c-item-card {
+      border: 1px solid var(--t-border); border-radius: var(--t-radius); padding: 14px; margin-bottom: 10px;
+    }
+    .c-options { display: grid; gap: 6px; margin-top: 10px; }
+    .c-opt {
+      border: 2px solid var(--t-border); border-radius: 10px; padding: 10px 12px;
+      background: #fff; cursor: pointer; font-size: 0.85rem; text-align: left;
+    }
+    .c-opt.selected { border-color: var(--t-blue); background: var(--t-blue-soft); }
+    .c-textarea {
+      width: 100%; min-height: 88px; border: 2px solid var(--t-border); border-radius: 12px;
+      padding: 10px; font: inherit; margin-top: 8px;
+    }
+    .c-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .c-btn {
+      flex: 1; border: none; border-radius: 12px; padding: 14px; font-weight: 800; cursor: pointer;
+    }
+    .c-btn-primary { background: var(--t-blue); color: #fff; }
+    .c-btn-ghost { background: var(--t-bg); color: var(--t-text-secondary); }
+    .c-disclaimer { font-size: 0.68rem; color: var(--t-text-tertiary); line-height: 1.45; margin-top: 12px; }
+    .c-back { border: none; background: none; font: inherit; font-weight: 700; color: var(--t-blue); cursor: pointer; margin-bottom: 10px; }
+  </style>
+</head>
+<body class="toss-ui clinical-hub">
+  <div id="viewHub" class="c-screen active">
+    <div class="c-hero">
+      <h1>임상심리 검사 총정리</h1>
+      <p>표준화 스크리닝 14종 + 투영검사 6종 · 학파별 통합 허브</p>
+    </div>
+    <div class="c-stats" id="statsGrid"></div>
+    <div class="c-progress" id="progressBox" hidden>
+      <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">나의 검사 진행</div>
+      <div class="c-progress-bar"><div class="c-progress-fill" id="progressFill"></div></div>
+      <div style="font-size:0.72rem;color:var(--t-text-secondary);margin-top:6px" id="progressLabel"></div>
+    </div>
+    <div class="c-section">
+      <h2>검사 트랙</h2>
+      <p class="sub">두 가지 임상심리 검사 체계를 하나의 앱에서 이용할 수 있습니다.</p>
+      <button type="button" class="c-track-btn" id="btnScreening">
+        <span class="emoji">📊</span>
+        <div><div class="title">임상 스크리닝·설문</div><div class="desc" id="screeningDesc">PHQ-9, GAD-7, ISI, PSS, PCL-5, RSES, 애착, CBT, BA, SCT…</div></div>
+      </button>
+      <button type="button" class="c-track-btn" id="btnProjective">
+        <span class="emoji">🖼️</span>
+        <div><div class="title">투영검사 (그림·잉크·TAT)</div><div class="desc" id="projectiveDesc">HTP, DAP, KFD, 로르샤흐, TAT, SCT</div></div>
+      </button>
+      <button type="button" class="c-track-btn" id="btnChatAssess">
+        <span class="emoji">💬</span>
+        <div><div class="title">AI 대화 속 맞춤 검사</div><div class="desc">상담 흐름에 맞춰 검사·숙제·인사이트 연결</div></div>
+      </button>
+    </div>
+    <div class="c-section">
+      <h2>학파·영역</h2>
+      <p class="sub">임상심리학 taxonomy — DSM 스크리닝, CBT, 정신동역, 투사검사 등</p>
+      <div id="domainList"></div>
+    </div>
+    <p class="c-disclaimer" id="disclaimer"></p>
+  </div>
+
+  <div id="viewScreening" class="c-screen">
+    <button type="button" class="c-back" id="backFromScreening">← 총정리</button>
+    <h2 style="margin:0 0 12px;font-size:1.1rem">임상 스크리닝·설문</h2>
+    <div id="formalList"></div>
+  </div>
+
+  <div id="viewFormalRun" class="c-screen">
+    <button type="button" class="c-back" id="backFromFormal">← 검사 목록</button>
+    <div id="formalRunner"></div>
+    <div class="c-actions">
+      <button type="button" class="c-btn c-btn-ghost" id="btnSkipFormal">넘기기</button>
+      <button type="button" class="c-btn c-btn-primary" id="btnNextFormal">다음</button>
+    </div>
+  </div>
+
+  <script>
+    const USER_KEY = "psychology_ai_user_id";
+    const SESSION_KEY = "psychology_ai_session_id";
+    let catalog = null, summary = null;
+    let userId = localStorage.getItem(USER_KEY);
+    let sessionId = localStorage.getItem(SESSION_KEY);
+    let formalQueue = [], formalIdx = 0, selectedValue = null;
+
+    if (!userId) {
+      userId = (window.MaumOrganism && MaumOrganism.userId()) || `user-${crypto.randomUUID().slice(0, 8)}`;
+      localStorage.setItem(USER_KEY, userId);
+    }
+
+    function showView(id) {
+      document.querySelectorAll(".c-screen").forEach(el => el.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
+    function navToChat() {
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: "maum-nav", tab: "chat" }, "*");
+      } else {
+        location.href = "/chat";
+      }
+    }
+
+    function navToProjective() {
+      const url = "/picture-assessment?embed=1";
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: "maum-nav", tab: "clinical", sub: "projective" }, "*");
+      }
+      location.href = url;
+    }
+
+    function renderStats() {
+      const c = catalog.counts;
+      document.getElementById("statsGrid").innerHTML = `
+        <div class="c-stat"><strong>${c.unique_instruments}</strong><span>검사 종류</span></div>
+        <div class="c-stat"><strong>${c.total_items}</strong><span>총 문항</span></div>
+        <div class="c-stat"><strong>${c.domains}</strong><span>학파·영역</span></div>`;
+      document.getElementById("disclaimer").textContent = catalog.disclaimer || "";
+      document.getElementById("screeningDesc").textContent = catalog.tracks[0].description;
+      document.getElementById("projectiveDesc").textContent = catalog.tracks[1].description;
+    }
+
+    function renderProgress() {
+      if (!summary || !summary.overall) return;
+      const o = summary.overall;
+      if (o.total_answered_items <= 0) return;
+      document.getElementById("progressBox").hidden = false;
+      const pct = Math.round(o.completion_rate * 100);
+      document.getElementById("progressFill").style.width = pct + "%";
+      document.getElementById("progressLabel").textContent =
+        `${o.total_answered_items} / ${o.total_catalog_items} 문항 (${pct}%) · 스크리닝 ${o.formal_answered_items} · 투영 ${o.projective_answered_items}`;
+    }
+
+    function renderDomains() {
+      const el = document.getElementById("domainList");
+      el.innerHTML = catalog.domains.map(d => `
+        <div class="c-domain">
+          <strong>${d.label}</strong>
+          <span>${d.school} · ${(d.instruments || []).join(", ")} · ${d.track === "projective" ? "투영" : "스크리닝"}</span>
+        </div>`).join("");
+    }
+
+    function renderFormalList() {
+      const el = document.getElementById("formalList");
+      el.innerHTML = catalog.formal_instruments.map(f => {
+        const prog = (summary?.formal_progress || {})[f.instrument_id];
+        const badge = prog ? `${prog.answered}/${prog.total}` : `${f.item_count}문항`;
+        return `<button type="button" class="c-track-btn" data-iid="${f.instrument_id}">
+          <span class="emoji">📋</span>
+          <div><div class="title">${f.user_title || f.display_name}</div>
+          <div class="desc">${f.domain_label || ""} · ${badge}</div></div></button>`;
+      }).join("");
+      el.querySelectorAll("[data-iid]").forEach(btn => {
+        btn.onclick = () => startFormal(btn.dataset.iid);
+      });
+    }
+
+    function startFormal(iid) {
+      const form = catalog.formal_instruments.find(f => f.instrument_id === iid);
+      formalQueue = form.items.map(item => ({ form, item }));
+      formalIdx = 0;
+      showFormalItem();
+      showView("viewFormalRun");
+    }
+
+    function startAllFormal() {
+      formalQueue = [];
+      catalog.formal_instruments.forEach(f => f.items.forEach(item => formalQueue.push({ form: f, item })));
+      formalIdx = 0;
+      if (!formalQueue.length) return;
+      showFormalItem();
+      showView("viewFormalRun");
+    }
+
+    function showFormalItem() {
+      const { form, item } = formalQueue[formalIdx];
+      selectedValue = null;
+      const box = document.getElementById("formalRunner");
+      let optionsHtml = "";
+      const rt = item.response_type;
+      if (rt === "open_text") {
+        optionsHtml = `<textarea class="c-textarea" id="formalText" placeholder="${item.placeholder || "입력…"}"></textarea>`;
+      } else {
+        const opts = item.options || [];
+        optionsHtml = `<div class="c-options" id="formalOpts">${opts.map(o =>
+          `<button type="button" class="c-opt" data-val="${o.value}">${o.label}</button>`).join("")}</div>`;
+      }
+      box.innerHTML = `
+        <div class="c-item-card">
+          <div style="font-size:0.72rem;color:var(--t-text-secondary)">${form.user_title} · ${formalIdx + 1}/${formalQueue.length}</div>
+          <h3 style="margin:8px 0;font-size:1rem">${item.prompt}</h3>
+          <p style="margin:0;font-size:0.8rem;color:var(--t-text-secondary)">${item.framing || ""}</p>
+          ${optionsHtml}
+        </div>`;
+      if (rt === "open_text") {
+        document.getElementById("formalText").oninput = e => { selectedValue = e.target.value.trim(); };
+      } else {
+        document.getElementById("formalOpts").querySelectorAll(".c-opt").forEach(btn => {
+          btn.onclick = () => {
+            document.querySelectorAll(".c-opt").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            selectedValue = isNaN(Number(btn.dataset.val)) ? btn.dataset.val : Number(btn.dataset.val);
+          };
+        });
+      }
+    }
+
+    async function ensureSession() {
+      const res = await fetch("/api/v1/picture-assessment/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, session_id: sessionId }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        sessionId = d.session_id;
+        localStorage.setItem(SESSION_KEY, sessionId);
+      }
+    }
+
+    async function submitFormal(skipped) {
+      await ensureSession();
+      const { form, item } = formalQueue[formalIdx];
+      const body = {
+        user_id: userId, session_id: sessionId,
+        instrument: form.instrument_id, item_id: item.item_id, skipped,
+      };
+      if (!skipped) {
+        if (item.response_type === "open_text") {
+          if (!selectedValue) return false;
+          body.text = selectedValue;
+        } else {
+          if (selectedValue === null) return false;
+          body.value = selectedValue;
+        }
+      }
+      const res = await fetch("/api/v1/assessments/submit", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return res.ok;
+    }
+
+    async function loadAll() {
+      const [catRes, sumRes] = await Promise.all([
+        fetch("/api/v1/clinical/catalog"),
+        fetch(`/api/v1/clinical/summary/${encodeURIComponent(userId)}`),
+      ]);
+      catalog = await catRes.json();
+      summary = await sumRes.json();
+      if (summary.session_id) {
+        sessionId = summary.session_id;
+        localStorage.setItem(SESSION_KEY, sessionId);
+      }
+      renderStats();
+      renderProgress();
+      renderDomains();
+      renderFormalList();
+    }
+
+    document.getElementById("btnScreening").onclick = () => { showView("viewScreening"); };
+    document.getElementById("btnProjective").onclick = navToProjective;
+    document.getElementById("btnChatAssess").onclick = navToChat;
+    document.getElementById("backFromScreening").onclick = () => showView("viewHub");
+    document.getElementById("backFromFormal").onclick = () => showView("viewScreening");
+    document.getElementById("btnSkipFormal").onclick = async () => {
+      await submitFormal(true);
+      formalIdx++;
+      if (formalIdx >= formalQueue.length) { await loadAll(); showView("viewScreening"); }
+      else showFormalItem();
+    };
+    document.getElementById("btnNextFormal").onclick = async () => {
+      if (!(await submitFormal(false))) return;
+      formalIdx++;
+      if (formalIdx >= formalQueue.length) {
+        await loadAll();
+        if (window.MaumOrganism) MaumOrganism.broadcastRefresh("assessment");
+        showView("viewScreening");
+      } else showFormalItem();
+    };
+
+    loadAll().catch(e => console.error(e));
+  </script>
+</body>
+</html>

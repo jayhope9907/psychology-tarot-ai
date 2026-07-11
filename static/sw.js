@@ -1,10 +1,12 @@
-const CACHE = "maum-cache-v5";
+const CACHE = "maum-cache-v6";
 const ASSETS = [
   "/",
   "/home",
   "/chat",
   "/tarot",
   "/picto",
+  "/clinical",
+  "/picture-assessment",
   "/legal",
   "/static/manifest.json",
   "/static/icons/icon.svg",
@@ -16,6 +18,7 @@ const ASSETS = [
   "/static/js/tarot-offline.js",
   "/static/js/tarot-image-settings.js",
   "/static/js/chat-offline.js",
+  "/static/js/maum-organism.js",
   "/static/js/vendor/three.min.js",
   "/static/picto-catalog.bundle.json",
   "/static/tarot-deck.bundle.json",

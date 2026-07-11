@@ -1953,6 +1953,7 @@
   </nav>
 
   <script src="/static/js/embed-bridge.js"></script>
+  <script src="/static/js/maum-organism.js"></script>
   <script src="/static/js/voice-engine.js"></script>
   <script src="/static/js/chat-offline.js"></script>
   <script>
@@ -3320,6 +3321,7 @@
             loadSessionList();
             if (data.suggest_tarot) renderTarotSuggestBanner();
             toggleSidebar(false);
+            if (window.MaumEmbed) MaumEmbed.refreshOrganism("chat_turn");
           }
           if (event === "error") {
             hideTyping();

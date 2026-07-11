@@ -9,6 +9,8 @@
   <link rel="prefetch" href="/static/picto-catalog.bundle.json" />
   <title>마음쉼터 · 그림 모드</title>
   <link rel="stylesheet" href="/static/css/embed.css" />
+  <script src="/static/js/embed-bridge.js"></script>
+  <script src="/static/js/maum-organism.js"></script>
   <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
   <style>
     :root {
@@ -319,9 +321,9 @@
   </div>
 
   <script>
-    const userId = localStorage.getItem("psychology_ai_user_id") || `picto-${crypto.randomUUID().slice(0, 8)}`;
+    const userId = (window.MaumOrganism && MaumOrganism.userId()) || localStorage.getItem("psychology_ai_user_id") || `picto-${crypto.randomUUID().slice(0, 8)}`;
     localStorage.setItem("psychology_ai_user_id", userId);
-    let sessionId = localStorage.getItem("psychology_ai_picto_session") || null;
+    let sessionId = (window.MaumOrganism && MaumOrganism.sessionId()) || localStorage.getItem("psychology_ai_session_id") || null;
     let catalog = null;
     let talkSelection = [];
     let lastSentIds = [];
@@ -746,6 +748,7 @@
       }
       if (!saved) queueCheckin({ user_id: userId, mood_picto_id: moodId });
       document.getElementById("moodDoneEmoji").textContent = item?.emoji || "💚";
+      if (window.MaumEmbed) MaumEmbed.refreshOrganism("picto_checkin");
       showScreen("moodDone");
     }
 
@@ -796,7 +799,8 @@
       if (!data) data = offlineChatReply(sentIds);
       if (data.session_id) {
         sessionId = data.session_id;
-        localStorage.setItem("psychology_ai_picto_session", sessionId);
+        if (window.MaumOrganism) MaumOrganism.setSession(sessionId);
+        if (window.MaumEmbed) MaumEmbed.refreshOrganism("picto_chat");
       }
       document.getElementById("talkLoading").hidden = true;
       renderReplyPictos("replyPictos", data.reply_pictos, true);

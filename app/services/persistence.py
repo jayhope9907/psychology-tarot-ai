@@ -211,16 +211,17 @@ def list_user_sessions(user_id: str, limit: int = 12) -> List[Dict[str, Any]]:
         conn.close()
 
 
-def record_tarot_draw(user_id: str, draw: Dict[str, Any]) -> None:
+def record_tarot_draw(user_id: str, draw: Dict[str, Any]) -> int:
     init_db()
     ensure_user(user_id)
     conn = get_connection()
     try:
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO tarot_draws (user_id, spread, draw_json) VALUES (?, ?, ?)",
             (user_id, draw.get("spread", "three_card"), json.dumps(draw, ensure_ascii=False)),
         )
         conn.commit()
+        return int(cur.lastrowid or 0)
     finally:
         conn.close()
 
