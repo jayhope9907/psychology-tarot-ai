@@ -106,6 +106,15 @@ def ensure_demo_onboarding() -> None:
                 pending.append(row["license_key"])
         if pending:
             _onboard_new_licenses(pending)
+        conn.execute(
+            """
+            UPDATE organization_licenses SET seats_used = (
+                SELECT COUNT(*) FROM organization_members
+                WHERE org_id = organization_licenses.org_id AND role != 'demo_case'
+            )
+            """
+        )
+        conn.commit()
     finally:
         conn.close()
 
@@ -319,7 +328,8 @@ def assign_member(org_id: str, user_id: str, role: str = "member") -> Dict[str, 
         conn.execute(
             """
             UPDATE organization_licenses SET seats_used = (
-                SELECT COUNT(*) FROM organization_members WHERE org_id = ?
+                SELECT COUNT(*) FROM organization_members
+                WHERE org_id = ? AND role != 'demo_case'
             ) WHERE org_id = ?
             """,
             (org_id, org_id),

@@ -164,12 +164,12 @@
 
     <section class="screen" id="screenIntro">
       <div class="card" id="introBox"></div>
-      <button type="button" class="btn btn-primary" style="width:100%" id="btnStartInst">검사 시작</button>
+      <button type="button" class="btn btn-primary" style="width:100%" id="btnStartInst">활동 시작</button>
     </section>
 
     <section class="screen" id="screenItem">
       <div class="card" id="itemBox"></div>
-      <div id="stimulusBlock" hidden><img class="stimulus" id="stimulusImg" alt="검사 자극" /></div>
+      <div id="stimulusBlock" hidden><img class="stimulus" id="stimulusImg" alt="그림 자극" /></div>
       <div id="drawBlock" hidden>
         <div class="canvas-wrap"><canvas id="drawCanvas" width="480" height="360"></canvas></div>
         <div class="canvas-tools">
@@ -333,12 +333,39 @@
       };
     }
 
+    const THEME_LABELS = {
+      anxiety: "불안", depression: "우울·무기력", hostility: "분노·적대",
+      dependency: "의존·외로움", hope: "희망·회복", isolation: "고립",
+      conflict: "갈등", security: "안전·안정",
+    };
+
+    function formatThemes(themes) {
+      if (!themes || !Object.keys(themes).length) return "";
+      return Object.entries(themes)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([k, v]) => `${THEME_LABELS[k] || k} ${Math.round(v * 100)}%`)
+        .join(" · ");
+    }
+
     function renderHome() {
       document.getElementById("disclaimer").textContent = catalog.disclaimer || "";
+      document.getElementById("totalItemsLabel").textContent = catalog.total_items || 0;
+      document.getElementById("totalInstLabel").textContent = catalog.instrument_count || 0;
       document.getElementById("batteryMeta").textContent =
-        `${catalog.instrument_count}가지 · ${catalog.total_items}활동`;
+        `${catalog.instrument_count || 0}가지 · ${catalog.total_items || 0}활동`;
       const grid = document.getElementById("instrumentGrid");
       grid.innerHTML = "";
+      if (!catalog.instruments || !catalog.instruments.length) {
+        grid.innerHTML = `<div class="card" style="grid-column:1/-1;text-align:center;padding:20px">
+          <p style="margin:0 0 8px">이 라이선스에는 그림·이야기 표현이 포함되지 않아요.</p>
+          <a href="/clinical" style="font-size:0.85rem;font-weight:700;color:var(--accent)">짧게 확인하기로 이동 →</a>
+        </div>`;
+        document.getElementById("btnAll").disabled = true;
+        showScreen("home");
+        return;
+      }
+      document.getElementById("btnAll").disabled = false;
       catalog.instruments.forEach(form => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -378,12 +405,12 @@
 
     function showIntro() {
       const { form } = queue[queueIndex];
-      document.getElementById("pageTitle").textContent = form.display_name;
+      const title = form.user_title || form.display_name;
+      document.getElementById("pageTitle").textContent = title;
       document.getElementById("introBox").innerHTML = `
         <div style="font-size:2.2rem;margin-bottom:8px">${form.emoji}</div>
-        <h2>${form.display_name}</h2>
-        <p>${form.intro}</p>
-        <span class="badge">${form.clinical_reference}</span>
+        <h2>${title}</h2>
+        <p>${form.user_intro || form.intro || ""}</p>
         <span class="badge">${form.item_count}활동</span>`;
       setProgress(queueIndex, queue.length);
       showScreen("intro");
@@ -522,17 +549,21 @@
       if (Object.keys(global).length) {
         const g = document.createElement("div");
         g.className = "result-card";
-        g.innerHTML = `<h3>🌐 전체 테마 (질적)</h3><pre>${JSON.stringify(global, null, 2)}</pre>
-          <p style="font-size:0.72rem;color:#8a7da0;margin:8px 0 0">${data.projective_scores?.interpretation_note || ""}</p>`;
+        const themeLine = formatThemes(global);
+        g.innerHTML = `<h3>🌐 마음에 닿은 테마</h3>
+          <p style="margin:0;font-size:0.88rem;line-height:1.5">${themeLine}</p>
+          <p style="font-size:0.72rem;color:#8a7da0;margin:8px 0 0">${data.projective_scores?.interpretation_note || "참고용 자기탐색이며 진단이 아닙니다."}</p>`;
         list.appendChild(g);
       }
       catalog.instruments.forEach(form => {
         const prog = data.progress[form.instrument_id] || { answered: 0, total: form.item_count };
         const instScore = data.projective_scores?.instruments?.[form.instrument_id];
+        const title = form.user_title || form.display_name;
         const card = document.createElement("div");
         card.className = "result-card";
-        card.innerHTML = `<h3>${form.emoji} ${form.display_name} (${prog.answered}/${prog.total})</h3>
-          ${instScore ? `<pre>${JSON.stringify(instScore, null, 2)}</pre>` : `<p style="font-size:0.78rem;color:#8a7da0">응답 없음</p>`}`;
+        const themes = instScore?.themes ? formatThemes(instScore.themes) : "";
+        card.innerHTML = `<h3>${form.emoji} ${title} (${prog.answered}/${prog.total})</h3>
+          ${themes ? `<p style="font-size:0.85rem;margin:0">${themes}</p>` : `<p style="font-size:0.78rem;color:#8a7da0">아직 응답이 없어요</p>`}`;
         list.appendChild(card);
       });
       showScreen("results");
@@ -540,10 +571,17 @@
 
     async function init() {
       try {
-        const licQ = licenseKey ? `?license_key=${encodeURIComponent(licenseKey)}&user_id=${encodeURIComponent(userId)}` : "";
+        const licQ = licenseKey
+          ? `?license_key=${encodeURIComponent(licenseKey)}&user_id=${encodeURIComponent(userId)}`
+          : `?user_id=${encodeURIComponent(userId)}`;
         const catRes = await fetch(`/api/v1/picture-assessment/catalog${licQ}`);
-        if (!catRes.ok) throw new Error("카탈로그 로드 실패");
+        if (!catRes.ok) throw new Error("불러오기에 실패했어요");
         catalog = await catRes.json();
+        if (catalog.license_invalid) {
+          localStorage.removeItem(LICENSE_KEY);
+          licenseKey = "";
+          throw new Error(catalog.license_reason_ko || "라이선스를 다시 확인해 주세요");
+        }
         await ensureSession();
         renderHome();
       } catch (e) {

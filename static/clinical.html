@@ -82,6 +82,7 @@
     <div class="c-hero">
       <h1 id="hubTitle">나를 알아가는 시간</h1>
       <p id="hubSubtitle">검사가 아니라, 지금 마음을 가볍게 들여다보는 공간이에요.</p>
+      <p id="licenseBanner" hidden style="margin:8px 0 0;padding:8px 10px;border-radius:10px;background:#fff3cd;font-size:0.78rem;color:#856404"></p>
     </div>
     <div class="c-stats" id="statsGrid"></div>
     <div class="c-progress" id="progressBox" hidden>
@@ -105,6 +106,15 @@
         <div><div class="title">AI 대화 속 맞춤 이야기</div><div class="desc">대화 흐름에 맞춰 가볍게 질문·숙제 연결</div></div>
       </button>
     </div>
+    <div class="c-section" id="dreamSeedBox">
+      <h2>🌱 꿈을 심는 시간</h2>
+      <p class="sub" id="dreamSeedSub">많은 사람이 생활비·돈 때문에 일해요. 그건 현실이고, 부끄러울 이유가 아니에요.</p>
+      <p style="font-size:0.78rem;color:var(--t-text-secondary);margin:0 0 10px" id="dreamSeedAck"></p>
+      <button type="button" class="c-track-btn" id="btnDreamChat">
+        <span class="emoji">🌱</span>
+        <div><div class="title">꿈 이야기 나누기</div><div class="desc">돈·일 현실을 인정하고, 작은 미래를 함께 그려요</div></div>
+      </button>
+    </div>
     <div class="c-section">
       <h2>마음 주제</h2>
       <p class="sub">기분·관계·생각·그림 표현 등 — 편한 것부터 시작해 보세요</p>
@@ -114,7 +124,7 @@
   </div>
 
   <div id="viewScreening" class="c-screen">
-    <button type="button" class="c-back" id="backFromScreening">← 총정리</button>
+    <button type="button" class="c-back" id="backFromScreening">← 마음 돌보기</button>
     <h2 style="margin:0 0 12px;font-size:1.1rem">짧게 확인하기</h2>
     <div id="formalList"></div>
   </div>
@@ -164,17 +174,30 @@
       location.href = url;
     }
 
+    function trackById(id) {
+      return (catalog.tracks || []).find(t => t.track_id === id);
+    }
+
     function renderStats() {
-      const c = catalog.counts;
+      const c = catalog.counts || {};
       document.getElementById("statsGrid").innerHTML = `
-        <div class="c-stat"><strong>${c.unique_instruments}</strong><span>마음 주제</span></div>
-        <div class="c-stat"><strong>${c.total_items}</strong><span>질문·활동</span></div>
-        <div class="c-stat"><strong>${c.domains}</strong><span>영역</span></div>`;
-      document.getElementById("hubTitle").textContent = catalog.user_title || catalog.title;
+        <div class="c-stat"><strong>${c.unique_instruments || 0}</strong><span>마음 주제</span></div>
+        <div class="c-stat"><strong>${c.total_items || 0}</strong><span>질문·활동</span></div>
+        <div class="c-stat"><strong>${c.domains || 0}</strong><span>영역</span></div>`;
+      document.getElementById("hubTitle").textContent = catalog.user_title || catalog.title || "마음 돌보기";
       document.getElementById("hubSubtitle").textContent = catalog.user_subtitle || catalog.subtitle || "";
       document.getElementById("disclaimer").textContent = catalog.user_disclaimer || catalog.disclaimer || "";
-      document.getElementById("screeningDesc").textContent = catalog.tracks[0].description;
-      document.getElementById("projectiveDesc").textContent = catalog.tracks[1].description;
+      const screening = trackById("screening");
+      const projective = trackById("projective");
+      document.getElementById("screeningDesc").textContent = screening?.description || "기분·걱정·잠·관계 등 대화처럼 가볍게";
+      document.getElementById("projectiveDesc").textContent = projective?.description || "그림·상상·이야기·문장으로 마음 표현";
+      document.getElementById("btnProjective").style.display = projective ? "" : "none";
+      const dream = catalog.dream_seed_hub || {};
+      if (dream.headline) {
+        document.querySelector("#dreamSeedBox h2").textContent = `🌱 ${dream.headline}`;
+        document.getElementById("dreamSeedSub").textContent = dream.subheadline || dream.acknowledgment || "";
+        document.getElementById("dreamSeedAck").textContent = dream.acknowledgment || "";
+      }
     }
 
     function renderProgress() {
@@ -306,6 +329,15 @@
       ]);
       catalog = await catRes.json();
       summary = await sumRes.json();
+      const banner = document.getElementById("licenseBanner");
+      if (catalog.license_invalid) {
+        localStorage.removeItem(LICENSE_KEY);
+        licenseKey = "";
+        banner.hidden = false;
+        banner.textContent = catalog.license_reason_ko || "라이선스를 다시 확인해 주세요.";
+      } else {
+        banner.hidden = true;
+      }
       if (summary.session_id) {
         sessionId = summary.session_id;
         localStorage.setItem(SESSION_KEY, sessionId);
@@ -319,6 +351,7 @@
     document.getElementById("btnScreening").onclick = () => { showView("viewScreening"); };
     document.getElementById("btnProjective").onclick = navToProjective;
     document.getElementById("btnChatAssess").onclick = navToChat;
+    document.getElementById("btnDreamChat").onclick = navToChat;
     document.getElementById("backFromScreening").onclick = () => showView("viewHub");
     document.getElementById("backFromFormal").onclick = () => showView("viewScreening");
     document.getElementById("btnSkipFormal").onclick = async () => {

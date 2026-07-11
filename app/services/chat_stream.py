@@ -422,6 +422,14 @@ def build_chat_messages(
             "감정을 먼저 반영하고, 필요하면 마음 체크·전문 기관 안내도 자연스럽게 언급하세요."
         )
 
+    from app.services.dream_seed import build_dream_seed
+
+    dream = build_dream_seed(state, user_message)
+    if dream.get("active"):
+        system_prompt += "\n\n" + dream.get("chat_directive", "")
+        if dream.get("acknowledgment"):
+            system_prompt += f"\n참고 톤: {dream['acknowledgment']}"
+
     if decision and decision.action == "inject_assessment":
         instrument_id = (decision.selection or {}).get("instrument_id", "")
         system_prompt += (

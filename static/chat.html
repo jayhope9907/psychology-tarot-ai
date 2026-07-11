@@ -326,6 +326,16 @@
     .mood-chip.has-checkin { background: rgba(90, 143, 120, 0.12); color: var(--accent); }
     .mood-chip.low { background: rgba(196, 165, 116, 0.18); color: #8a6d3b; }
     .mood-chip.high { background: rgba(90, 143, 120, 0.2); color: #3d6b55; }
+    .license-chip {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      background: rgba(49, 130, 246, 0.12);
+      color: #2563eb;
+    }
 
     .package-mood-intro {
       margin: 0 0 14px;
@@ -1776,6 +1786,7 @@
         <p class="role" id="counselorRole">AI 웰니스 가이드<br/>대화 속 마음 돌봄 (비의료)</p>
         <span class="session-chip" id="sessionChip">대화 준비 중</span>
         <span class="mood-chip" id="moodChip" hidden>오늘 기분</span>
+        <span class="license-chip" id="licenseChip" hidden></span>
 
         <div class="session-tools">
           <h3>내 대화</h3>
@@ -1984,6 +1995,24 @@
     const sendButton = document.getElementById("sendButton");
     const sessionChip = document.getElementById("sessionChip");
     const moodChip = document.getElementById("moodChip");
+    const licenseChip = document.getElementById("licenseChip");
+
+    function updateLicenseChip(association) {
+      if (!licenseChip) return;
+      if (!association || !association.discipline_label) {
+        if (associationLicense) {
+          licenseChip.hidden = false;
+          licenseChip.textContent = "학회 라이선스 적용";
+        } else {
+          licenseChip.hidden = true;
+        }
+        return;
+      }
+      licenseChip.hidden = false;
+      licenseChip.textContent = `${association.discipline_label}${association.org_name ? " · " + association.org_name : ""}`;
+    }
+    updateLicenseChip(null);
+
     const phaseCurrent = document.getElementById("phaseCurrent");
     const phaseDesc = document.getElementById("phaseDesc");
     const phaseSteps = document.getElementById("phaseSteps");
@@ -2849,6 +2878,19 @@
 
       const futureHtml = (preview.future_vision || []).map((item) => `<li>${item}</li>`).join("");
       const defenseHtml = (preview.defense_points || []).map((item) => `<li>${item}</li>`).join("");
+      const dream = pkg.dream_seed || preview.dream_seed || {};
+      const dreamPromptsHtml = (dream.dream_prompts || []).map((item) => `<li>${item}</li>`).join("");
+      const microSeedsHtml = (dream.micro_seeds || []).map((s) =>
+        `<li><strong>${s.seed}</strong><br/><span style="font-size:0.75rem;color:var(--text-muted)">${s.why || ""}</span></li>`
+      ).join("");
+      const dreamBlock = dream.active ? `
+          <div class="value-block dream-seed">
+            <h4>🌱 ${dream.headline || "꿈을 심는 시간"}</h4>
+            <p class="sub">${dream.acknowledgment || ""}</p>
+            <p class="sub">${dream.subheadline || ""}</p>
+            ${dreamPromptsHtml ? `<p class="sub" style="margin-top:8px">함께 떠올려볼 질문</p><ul>${dreamPromptsHtml}</ul>` : ""}
+            ${microSeedsHtml ? `<p class="sub">오늘 심을 작은 씨앗</p><ul>${microSeedsHtml}</ul>` : ""}
+          </div>` : "";
 
       const timelineHtml = (pkg.process_timeline || []).map((step) => `
         <div class="timeline-step ${step.status || ""}">
@@ -2886,6 +2928,8 @@
             ${preview.comorbidity_note ? `<p class="case-summary" style="font-size:0.78rem;color:var(--text-muted)">${preview.comorbidity_note}</p>` : ""}
             <p class="package-disclaimer" style="margin:0">${preview.disclaimer || ""}</p>
           </div>
+
+          ${dreamBlock}
 
           <div class="value-block">
             <h4>${vp.headline || "이 검사로 그릴 수 있는 미래"}</h4>
@@ -3299,6 +3343,7 @@
             sessionChip.textContent = `대화 중 · ${sessionId.slice(0, 8)}`;
             if (data.today_mood) updateMoodChip(data.today_mood, data.today_mood.agent);
             if (data.counseling_style) applyCounselorUi(data.counseling_style);
+            if (data.association) updateLicenseChip(data.association);
             if (data.assistant_message && assistantBubble) {
               assistantBubble.textContent = data.assistant_message;
             } else if (data.assistant_message && !gotToken) {

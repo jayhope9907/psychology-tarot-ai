@@ -16,6 +16,19 @@ HUB = {
     "progress_label": "나의 마음 돌보기 진행",
 }
 
+DREAM_SEED_HUB = {
+    "headline": "꿈을 심는 시간",
+    "acknowledgment": (
+        "많은 사람이 생활비·돈 때문에 일해요. 그건 현실이고, 부끄러울 이유가 아니에요."
+    ),
+    "subheadline": (
+        "지금 버티는 하루도, 꿈을 키우는 하루가 될 수 있어요. "
+        "마음을 돌보며 작은 미래를 함께 그려봐요."
+    ),
+    "cta": "대화에서 꿈 이야기하기",
+    "route": "/chat",
+}
+
 TRACKS = {
     "screening": {
         "track_id": "screening",
@@ -98,6 +111,7 @@ def apply_user_voice_to_catalog(catalog: Dict[str, Any]) -> Dict[str, Any]:
     out["user_subtitle"] = HUB["subtitle"]
     out["user_disclaimer"] = HUB["disclaimer"]
     out["tab_label"] = HUB["tab_label"]
+    out["dream_seed_hub"] = DREAM_SEED_HUB
 
     tracks = []
     for t in out.get("tracks") or []:

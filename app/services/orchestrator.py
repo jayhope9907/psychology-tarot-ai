@@ -304,7 +304,11 @@ def record_assessment_answer(state: ChatSessionState, assessment_response: Dict[
 
     skipped = bool(assessment_response.get("skipped"))
 
+    if not skipped and instrument and state.org_entitlements:
+        from app.services.association_licensing import instrument_allowed
 
+        if not instrument_allowed(instrument, state.org_entitlements):
+            return {"recorded": False, "error": "not_licensed"}
 
     if skipped:
 

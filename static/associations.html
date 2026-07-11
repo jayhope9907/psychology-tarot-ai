@@ -291,6 +291,17 @@
       });
     }
 
+    const REASON_KO = {
+      empty_key: "키가 비어 있어요",
+      not_found: "등록되지 않은 키예요",
+      inactive: "비활성화된 라이선스예요",
+      expired: "만료된 라이선스예요",
+    };
+
+    function stripMd(text) {
+      return (text || "").replace(/\*\*/g, "");
+    }
+
     async function validateKey() {
       const key = document.getElementById("licenseInput").value.trim();
       const box = document.getElementById("validateResult");
@@ -305,13 +316,14 @@
           body: JSON.stringify({ license_key: key }),
         });
         const data = await res.json();
-        if (!data.valid) {
+        if (!res.ok || !data.valid) {
           box.className = "validate-result err";
-          box.innerHTML = `유효하지 않음 · ${data.reason || "unknown"}`;
+          box.innerHTML = `유효하지 않음 · ${REASON_KO[data.reason] || data.reason || "확인 실패"}`;
           return;
         }
         const e = data.entitlements || {};
         const inst = (e.allowed_instruments || []).slice(0, 8).join(", ");
+        const proj = (e.allowed_projective || []).join(", ");
         const agent = data.agent_profile || {};
         const cases = (data.demo_cases || []).slice(0, 3);
         const caseLines = cases.map(c =>
@@ -319,14 +331,19 @@
         ).join("<br/>");
         box.className = "validate-result ok";
         box.innerHTML = `
-          <strong>${data.org_name}</strong><br/>
+          <strong>✓ 적용됨 · ${data.org_name}</strong><br/>
           ${e.discipline_label} · ${e.tier_label}<br/>
           렌즈: ${e.primary_lens}<br/>
           ${agent.agent_name ? `에이전트: ${agent.agent_name} (${agent.counselor_name || ""})<br/>` : ""}
           플랜: ${e.plan_override} · 좌석 ${data.seats_used}/${data.seats_total}<br/>
-          검사: ${inst}${(e.allowed_instruments || []).length > 8 ? " …" : ""}<br/>
+          짧게 확인: ${inst}${(e.allowed_instruments || []).length > 8 ? " …" : ""}<br/>
+          ${proj ? `그림·이야기: ${proj}<br/>` : ""}
           ${cases.length ? `<div style="margin-top:8px;font-size:0.82rem"><strong>데모 사례 ${cases.length}건</strong><br/>${caseLines}</div>` : ""}
-          <span style="font-size:0.75rem;color:var(--muted)">${e.legal_framing_ko || ""}</span>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <a href="/chat" style="font-size:0.78rem;font-weight:700">💬 대화 시작</a>
+            <a href="/clinical" style="font-size:0.78rem;font-weight:700">💚 마음 돌보기</a>
+          </div>
+          <span style="font-size:0.75rem;color:var(--muted);display:block;margin-top:8px">${stripMd(e.legal_framing_ko || "")}</span>
         `;
         localStorage.setItem("psychology_ai_association_license", data.license_key);
       } catch (_) {
@@ -336,6 +353,9 @@
     }
 
     document.getElementById("btnValidate").addEventListener("click", validateKey);
+    document.getElementById("licenseInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") validateKey();
+    });
     document.getElementById("btnScrollValidate").addEventListener("click", () => {
       document.getElementById("validate").scrollIntoView({ behavior: "smooth" });
     });

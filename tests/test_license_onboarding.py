@@ -93,3 +93,51 @@ def test_demo_license_gets_onboarded_on_init():
     assert result["valid"] is True
     assert result.get("agent_profile")
     assert len(result.get("demo_cases") or []) >= 2
+
+
+def test_invalid_license_catalog_blocked():
+    reset_db()
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+    res = client.get("/api/v1/clinical/catalog", params={"license_key": "MSHT-INVALID-KEY"})
+    data = res.json()
+    assert data.get("license_invalid") is True
+    assert data["counts"]["total_items"] == 0
+
+
+def test_assessment_submit_not_licensed_under_psychiatry():
+    reset_db()
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.services.association_context import bind_license_to_session
+    from app.services.chat_session import ChatSessionState
+    from app.services.persistence import save_session
+
+    session = ChatSessionState(user_id="u-lic-block", session_id="s-lic-block")
+    bind_license_to_session(session, "MSHT-PSYCHIATRY-DEMO-2026", assign_user=False)
+    save_session(session)
+
+    client = TestClient(app)
+    res = client.post(
+        "/api/v1/assessments/submit",
+        json={
+            "user_id": session.user_id,
+            "session_id": session.session_id,
+            "instrument": "tarot_reflect",
+            "item_id": "tarot_reflect_1",
+            "value": 2,
+            "skipped": False,
+        },
+    )
+    assert res.status_code == 403
+    assert "not_licensed" in str(res.json())
+
+
+def test_bind_invalid_license_returns_reason_ko():
+    reset_db()
+    session = ChatSessionState(user_id="u-bad", session_id="s-bad")
+    result = bind_license_to_session(session, "MSHT-NO-SUCH-KEY", assign_user=False)
+    assert result["bound"] is False
+    assert result.get("reason_ko")

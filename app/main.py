@@ -878,7 +878,6 @@ async def health_check(request: Request):
             "AI 대화": urls.get("chat", "/chat"),
             "3D 타로": urls.get("tarot", "/tarot"),
             "그림 마음": urls.get("picto", "/picto"),
-            "임상검사": urls.get("clinical", "/clinical"),
             "마음 돌보기": urls.get("clinical", "/clinical"),
             "그림 표현": urls.get("picture_assessment", "/picture-assessment"),
             "이용 안내": urls.get("legal", "/legal"),
@@ -1500,23 +1499,32 @@ async def list_association_orgs(request: Request, limit: int = 20):
 @app.get("/api/v1/clinical/catalog")
 async def clinical_catalog_api(license_key: Optional[str] = None, user_id: Optional[str] = None):
     from app.services.clinical_catalog import unified_clinical_catalog
-    from app.services.association_context import bind_license_to_session
-    from app.services.persistence import load_latest_session_for_user
+    from app.services.clinical_user_voice import HUB
+    from app.services.association_context import resolve_api_license
 
-    entitlements = None
-    if license_key:
-        from app.services.license_store import validate_license
-
-        lic = validate_license(license_key)
-        if lic.get("valid"):
-            entitlements = lic.get("entitlements")
-            entitlements = {**(entitlements or {}), "org_name": lic.get("org_name")}
-    elif user_id:
-        session = load_latest_session_for_user(user_id)
-        if session and session.org_entitlements:
-            entitlements = {**session.org_entitlements, "org_name": session.org_name}
-
-    return unified_clinical_catalog(entitlements)
+    ctx = resolve_api_license(license_key, user_id)
+    if ctx["license_valid"] is False:
+        return {
+            "license_invalid": True,
+            "license_reason": ctx["license_reason"],
+            "license_reason_ko": ctx["license_reason_ko"],
+            "user_title": HUB["title"],
+            "user_subtitle": "라이선스를 다시 확인해 주세요.",
+            "tracks": [],
+            "domains": [],
+            "formal_instruments": [],
+            "projective_instruments": [],
+            "counts": {
+                "formal_instruments": 0,
+                "projective_instruments": 0,
+                "unique_instruments": 0,
+                "formal_items": 0,
+                "projective_items": 0,
+                "total_items": 0,
+                "domains": 0,
+            },
+        }
+    return unified_clinical_catalog(ctx["entitlements"])
 
 
 @app.get("/api/v1/clinical/summary/{user_id}")
@@ -1536,21 +1544,23 @@ async def clinical_summary_api(user_id: str, license_key: Optional[str] = None):
 @app.get("/api/v1/picture-assessment/catalog")
 async def picture_assessment_catalog_api(license_key: Optional[str] = None, user_id: Optional[str] = None):
     from app.services.picture_assessment import picture_assessment_catalog
-    from app.services.persistence import load_latest_session_for_user
+    from app.services.clinical_user_voice import PICTURE_HUB
+    from app.services.association_context import resolve_api_license
 
-    entitlements = None
-    if license_key:
-        from app.services.license_store import validate_license
-
-        lic = validate_license(license_key)
-        if lic.get("valid"):
-            entitlements = lic.get("entitlements")
-    elif user_id:
-        session = load_latest_session_for_user(user_id)
-        if session and session.org_entitlements:
-            entitlements = session.org_entitlements
-
-    return picture_assessment_catalog(entitlements)
+    ctx = resolve_api_license(license_key, user_id)
+    if ctx["license_valid"] is False:
+        return {
+            "license_invalid": True,
+            "license_reason": ctx["license_reason"],
+            "license_reason_ko": ctx["license_reason_ko"],
+            "title": PICTURE_HUB["title"],
+            "subtitle": "라이선스를 다시 확인해 주세요.",
+            "instruments": [],
+            "instrument_count": 0,
+            "total_items": 0,
+            "disclaimer": "",
+        }
+    return picture_assessment_catalog(ctx["entitlements"])
 
 
 @app.post("/api/v1/picture-assessment/start")
@@ -1725,6 +1735,10 @@ async def assessments_submit(request: AssessmentSubmitRequest):
     if session.user_id != request.user_id:
         raise HTTPException(status_code=403, detail="Session user mismatch")
 
+    from app.services.association_context import ensure_session_entitlements
+
+    ensure_session_entitlements(session)
+
     recorded = record_assessment_answer(
         session,
         {
@@ -1735,6 +1749,8 @@ async def assessments_submit(request: AssessmentSubmitRequest):
             "skipped": request.skipped,
         },
     )
+    if recorded.get("error") == "not_licensed":
+        raise HTTPException(status_code=403, detail="not_licensed")
     battery = sync_session_battery(session)
     insight = sync_session_insight(session)
     save_session(session)

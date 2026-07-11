@@ -25,7 +25,7 @@ DISCIPLINE_AGENT_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "counselor_name": "민재",
         "preferred_school": ClinicalSchool.BECK_CBT.value,
         "tone": "차분하고 구조화",
-        "focus": "심리측정 · 패턴 · 종단 데이터 · 검사 연결",
+        "focus": "심리측정 · 패턴 · 종단 데이터 · 마음 돌보기 연결",
         "case_bias": ["depressive", "anxiety", "cognitive_behavioral"],
         "directive": (
             "심리학회 라이선스 맥락입니다. 대화와 짧은 확인(스크리닝)을 연결해 "

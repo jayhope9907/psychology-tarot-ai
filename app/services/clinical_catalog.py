@@ -137,7 +137,6 @@ def unified_clinical_catalog(entitlements: Optional[Dict[str, Any]] = None) -> D
         catalog = apply_user_voice_to_catalog(catalog)
     return catalog
 
-
 def build_user_clinical_summary(user_id: str) -> Dict[str, Any]:
     session = load_latest_session_for_user(user_id)
     entitlements = session.org_entitlements if session else None

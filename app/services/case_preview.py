@@ -258,7 +258,10 @@ def build_case_preview(
 
     chief_display = state.phase_notes.get("chief_complaint") or "지금까지 나눈 마음"
 
-    return {
+    from app.services.dream_seed import build_dream_seed, enrich_case_preview_with_dream
+
+    dream = build_dream_seed(state, user_message)
+    payload = {
         "primary_case_type": primary["case_type"],
         "primary_label": primary["label"],
         "classification_summary": (
@@ -283,6 +286,7 @@ def build_case_preview(
         ),
         "preview_confidence": _preview_confidence(state, combined),
     }
+    return enrich_case_preview_with_dream(payload, dream)
 
 
 def _confidence_band(probability: int) -> str:

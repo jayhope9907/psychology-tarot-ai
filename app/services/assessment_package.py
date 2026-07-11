@@ -184,6 +184,7 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
 
     chief = state.phase_notes.get("chief_complaint") or "지금까지 나눈 마음"
     case_preview = build_case_preview(state, user_message, ranked_instruments=ranked)
+    dream_seed = case_preview.get("dream_seed") or {}
 
     from app.services.mood_assistant import enrich_package_with_mood, resolve_mood_context
 
@@ -196,6 +197,7 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
         "price_label": tier["price_label"],
         "chief_complaint": chief,
         "case_preview": case_preview,
+        "dream_seed": dream_seed,
         "recommended_instruments": selected,
         "instrument_steps": instrument_steps,
         "total_instruments": len(selected),

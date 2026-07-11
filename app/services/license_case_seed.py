@@ -389,7 +389,9 @@ def update_license_metadata(license_key: str, patch: Dict[str, Any]) -> None:
             "SELECT metadata_json FROM organization_licenses WHERE license_key = ?",
             (license_key.upper(),),
         ).fetchone()
-        meta = json.loads(row["metadata_json"] or "{}") if row else {}
+        if not row:
+            raise ValueError(f"license not found: {license_key}")
+        meta = json.loads(row["metadata_json"] or "{}")
         meta.update(patch)
         conn.execute(
             "UPDATE organization_licenses SET metadata_json = ? WHERE license_key = ?",
