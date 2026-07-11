@@ -14,5 +14,14 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "그림 마음",
+      "short_name": "그림",
+      "description": "그림으로만 마음 표현",
+      "url": "/picto",
+      "icons": [{ "src": "/static/icons/icon.svg", "sizes": "any" }]
+    }
   ]
 }

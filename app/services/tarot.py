@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 _DECK_PATH = Path(__file__).resolve().parent.parent / "data" / "tarot_deck.json"
+_MINOR_PATH = Path(__file__).resolve().parent.parent / "data" / "minor_arcana.json"
 _DECK_CACHE: Optional[Dict[str, Any]] = None
+_MINOR_CACHE: Optional[List[Dict[str, Any]]] = None
+_FULL_DECK_CACHE: Optional[List[Dict[str, Any]]] = None
 
 # Rider–Waite Major Arcana (public domain, Wikimedia Commons)
 _TAROT_IMAGE_PATHS: Dict[str, str] = {
@@ -35,11 +39,14 @@ _TAROT_IMAGE_PATHS: Dict[str, str] = {
 }
 
 
-def card_image_url(card_id: str) -> str:
+def card_image_url(card_id: str, image_file: Optional[str] = None) -> str:
     path = _TAROT_IMAGE_PATHS.get(card_id)
-    if not path:
-        return ""
-    return f"https://upload.wikimedia.org/wikipedia/commons/{path}"
+    if path:
+        return f"https://upload.wikimedia.org/wikipedia/commons/{path}"
+    if image_file:
+        digest = hashlib.md5(image_file.encode()).hexdigest()
+        return f"https://upload.wikimedia.org/wikipedia/commons/{digest[0]}/{digest[:2]}/{image_file}"
+    return ""
 
 
 def _load_deck() -> Dict[str, Any]:
@@ -51,11 +58,26 @@ def _load_deck() -> Dict[str, Any]:
 
 
 def get_major_arcana() -> List[Dict[str, Any]]:
-    return list(_load_deck()["major_arcana"])
+    return [dict(card, arcana="major") for card in _load_deck()["major_arcana"]]
+
+
+def get_minor_arcana() -> List[Dict[str, Any]]:
+    global _MINOR_CACHE
+    if _MINOR_CACHE is None:
+        with _MINOR_PATH.open(encoding="utf-8") as handle:
+            _MINOR_CACHE = json.load(handle)
+    return [dict(card) for card in _MINOR_CACHE]
+
+
+def get_full_deck() -> List[Dict[str, Any]]:
+    global _FULL_DECK_CACHE
+    if _FULL_DECK_CACHE is None:
+        _FULL_DECK_CACHE = get_major_arcana() + get_minor_arcana()
+    return [dict(card) for card in _FULL_DECK_CACHE]
 
 
 def get_card_by_id(card_id: str) -> Optional[Dict[str, Any]]:
-    for card in get_major_arcana():
+    for card in get_full_deck():
         if card["id"] == card_id:
             return dict(card)
     return None
@@ -63,7 +85,7 @@ def get_card_by_id(card_id: str) -> Optional[Dict[str, Any]]:
 
 def get_card_by_name(name: str) -> Optional[Dict[str, Any]]:
     normalized = (name or "").strip().lower()
-    for card in get_major_arcana():
+    for card in get_full_deck():
         if card["name_en"].lower() == normalized or card["name_ko"] == name:
             return dict(card)
     return None
@@ -71,7 +93,7 @@ def get_card_by_name(name: str) -> Optional[Dict[str, Any]]:
 
 def build_archetype_map() -> Dict[str, Dict[str, Any]]:
     mapping: Dict[str, Dict[str, Any]] = {}
-    for card in get_major_arcana():
+    for card in get_full_deck():
         mapping[card["name_en"]] = {
             "archetype": card["archetype"],
             "psychiatric_stress_weight": card["psychiatric_stress_weight"],
@@ -84,25 +106,35 @@ def build_archetype_map() -> Dict[str, Dict[str, Any]]:
 TAROT_ARCHETYPE_MAP = build_archetype_map()
 
 
+def _catalog_entry(card: Dict[str, Any]) -> Dict[str, Any]:
+    image_file = card.get("image_file")
+    return {
+        "id": card["id"],
+        "number": card["number"],
+        "arcana": card.get("arcana", "major"),
+        "suit": card.get("suit"),
+        "rank": card.get("rank"),
+        "name_en": card["name_en"],
+        "name_ko": card["name_ko"],
+        "symbol": card["symbol"],
+        "keywords_ko": card["keywords_ko"],
+        "gradient": card["gradient"],
+        "image_url": card_image_url(card["id"], image_file),
+        "upright_ko": card["upright_ko"],
+        "reversed_ko": card["reversed_ko"],
+        "psychology_theme": card["psychology_theme"],
+    }
+
+
 def list_deck_catalog() -> Dict[str, Any]:
-    cards = []
-    for card in get_major_arcana():
-        cards.append(
-            {
-                "id": card["id"],
-                "number": card["number"],
-                "name_en": card["name_en"],
-                "name_ko": card["name_ko"],
-                "symbol": card["symbol"],
-                "keywords_ko": card["keywords_ko"],
-                "gradient": card["gradient"],
-                "image_url": card_image_url(card["id"]),
-                "upright_ko": card["upright_ko"],
-                "reversed_ko": card["reversed_ko"],
-                "psychology_theme": card["psychology_theme"],
-            }
-        )
-    return {"cards": cards, "spreads": _load_deck()["spreads"]}
+    cards = [_catalog_entry(card) for card in get_full_deck()]
+    return {
+        "cards": cards,
+        "spreads": _load_deck()["spreads"],
+        "total": len(cards),
+        "major_count": len(get_major_arcana()),
+        "minor_count": len(get_minor_arcana()),
+    }
 
 
 def build_draw_from_picks(
@@ -128,12 +160,15 @@ def build_draw_from_picks(
             {
                 "id": card["id"],
                 "number": card["number"],
+                "arcana": card.get("arcana", "major"),
+                "suit": card.get("suit"),
+                "rank": card.get("rank"),
                 "name_en": card["name_en"],
                 "name_ko": card["name_ko"],
                 "symbol": card["symbol"],
                 "keywords_ko": card["keywords_ko"],
                 "gradient": card["gradient"],
-                "image_url": card_image_url(card["id"]),
+                "image_url": card_image_url(card["id"], card.get("image_file")),
                 "position": position,
                 "reversed": reversed_card,
                 "meaning_ko": card["reversed_ko"] if reversed_card else card["upright_ko"],
@@ -155,7 +190,7 @@ def draw_cards(
     spread: str = "three_card",
     seed: Optional[int] = None,
 ) -> Dict[str, Any]:
-    deck = get_major_arcana()
+    deck = get_full_deck()
     spread_meta = _load_deck()["spreads"].get(spread) or _load_deck()["spreads"]["three_card"]
     positions = spread_meta["positions"]
     draw_count = min(max(count, 1), len(deck), len(positions) if spread != "single" else count)
@@ -171,12 +206,15 @@ def draw_cards(
             {
                 "id": card["id"],
                 "number": card["number"],
+                "arcana": card.get("arcana", "major"),
+                "suit": card.get("suit"),
+                "rank": card.get("rank"),
                 "name_en": card["name_en"],
                 "name_ko": card["name_ko"],
                 "symbol": card["symbol"],
                 "keywords_ko": card["keywords_ko"],
                 "gradient": card["gradient"],
-                "image_url": card_image_url(card["id"]),
+                "image_url": card_image_url(card["id"], card.get("image_file")),
                 "position": position,
                 "reversed": reversed_card,
                 "meaning_ko": card["reversed_ko"] if reversed_card else card["upright_ko"],

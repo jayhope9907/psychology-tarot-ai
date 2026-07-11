@@ -507,6 +507,78 @@
       color: var(--accent);
     }
 
+    .psych-track-card {
+      width: 100%;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.52);
+      border: 1px solid rgba(90, 143, 120, 0.22);
+      text-align: left;
+      margin-bottom: 12px;
+    }
+
+    .psych-track-card h3 {
+      margin: 0 0 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .psych-pipeline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .psych-pipeline span {
+      font-size: 0.62rem;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: #eef0f2;
+      color: #5c6670;
+    }
+
+    .psych-pipeline span.done {
+      background: #e8f2ec;
+      color: #2d5a45;
+      font-weight: 600;
+    }
+
+    .psych-spectrum-list,
+    .psych-rec-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      color: var(--text-soft);
+    }
+
+    .psych-spectrum-list li,
+    .psych-rec-list li {
+      margin-bottom: 4px;
+    }
+
+    .psych-disclaimer {
+      margin: 8px 0 0;
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .psych-rebuild-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(90, 143, 120, 0.35);
+      background: rgba(255,255,255,0.7);
+      font-size: 0.68rem;
+      cursor: pointer;
+      color: var(--accent);
+    }
+
     .pace-bar {
       height: 4px;
       border-radius: 999px;
@@ -892,6 +964,38 @@
       color: var(--gold);
       font-size: 0.82rem;
       line-height: 1.5;
+    }
+
+    .assessment-example {
+      margin: 0 0 10px;
+      font-size: 0.78rem;
+      color: var(--accent);
+      line-height: 1.45;
+      font-style: italic;
+    }
+
+    .assessment-text-input {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.45);
+      background: rgba(0,0,0,0.18);
+      color: var(--text);
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      margin-bottom: 8px;
+    }
+
+    .assessment-text-input:focus {
+      outline: 2px solid rgba(90,143,120,0.45);
+    }
+
+    .assessment-submit-text {
+      width: 100%;
+      margin-bottom: 6px;
     }
 
     .homework-card {
@@ -1486,6 +1590,69 @@
       z-index: 90;
     }
 
+    .session-tools {
+      margin-top: 12px; padding: 12px; border-radius: 14px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    }
+    .session-tools h3 { margin: 0 0 8px; font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.04em; }
+    .session-tool-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .session-tool-row button {
+      flex: 1; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.15);
+      color: var(--text-on-dark); border-radius: 10px; padding: 8px 6px; font: inherit;
+      font-size: 0.72rem; font-weight: 600; cursor: pointer;
+    }
+    .session-tool-row button:hover { border-color: var(--gold); color: var(--gold); }
+    .session-list { display: grid; gap: 6px; max-height: 160px; overflow-y: auto; }
+    .session-item {
+      text-align: left; border: 1px solid transparent; background: rgba(0,0,0,0.12);
+      border-radius: 10px; padding: 8px 10px; cursor: pointer; color: var(--text-on-dark); font: inherit;
+    }
+    .session-item.active { border-color: var(--gold); background: rgba(196,165,116,0.12); }
+    .session-item .meta { font-size: 0.62rem; color: var(--text-muted); margin-bottom: 2px; }
+    .session-item .preview { font-size: 0.72rem; line-height: 1.35; opacity: 0.9; }
+
+    .consent-overlay-chat {
+      position: fixed; inset: 0; z-index: 2000; background: rgba(15,23,20,0.72);
+      display: grid; place-items: center; padding: 16px;
+    }
+    .consent-overlay-chat[hidden] { display: none; }
+    .consent-card-chat {
+      max-width: 420px; width: 100%; background: #faf8f4; border-radius: 18px;
+      padding: 20px; box-shadow: var(--shadow-lg); color: var(--text);
+    }
+    .consent-card-chat h2 { margin: 0 0 8px; font-size: 1.05rem; }
+    .consent-card-chat p, .consent-card-chat li { font-size: 0.82rem; line-height: 1.55; color: var(--text-soft); }
+    .consent-card-chat ul { margin: 0 0 12px; padding-left: 18px; }
+    .consent-actions-chat { display: flex; gap: 8px; }
+    .consent-actions-chat button {
+      flex: 1; border: none; border-radius: 10px; padding: 12px; font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .consent-actions-chat .primary { background: var(--accent); color: #fff; }
+    .consent-actions-chat .secondary { background: #e8ece9; color: var(--text-soft); }
+
+    .crisis-overlay {
+      position: fixed; inset: 0; z-index: 2100; background: rgba(80, 10, 10, 0.55);
+      display: grid; place-items: center; padding: 16px;
+    }
+    .crisis-overlay[hidden] { display: none; }
+    .crisis-card {
+      max-width: 420px; width: 100%; background: #fff5f5; border: 2px solid #e5383b;
+      border-radius: 18px; padding: 20px; color: #1c2420;
+    }
+    .crisis-card h2 { margin: 0 0 8px; color: #ba181b; font-size: 1.05rem; }
+    .crisis-card p { margin: 0 0 10px; font-size: 0.84rem; line-height: 1.55; }
+    .crisis-hotlines { display: grid; gap: 8px; margin: 12px 0; }
+    .crisis-hotline {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; border-radius: 10px; background: #fff; border: 1px solid #f5c2c7;
+      text-decoration: none; color: inherit; font-weight: 700;
+    }
+    .crisis-hotline span { font-size: 0.72rem; color: #6b756f; font-weight: 500; }
+    .crisis-card button {
+      width: 100%; margin-top: 8px; border: none; border-radius: 10px; padding: 12px;
+      background: #ba181b; color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+    }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -1542,6 +1709,27 @@
   <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
 </head>
 <body class="toss-ui">
+  <div class="consent-overlay-chat" id="consentOverlayChat" hidden>
+    <div class="consent-card-chat" role="dialog" aria-labelledby="consentChatTitle">
+      <h2 id="consentChatTitle">AI 마음 대화 이용 안내</h2>
+      <p id="consentChatSummary">불러오는 중…</p>
+      <ul id="consentChatList"></ul>
+      <div class="consent-actions-chat">
+        <button type="button" class="secondary" id="consentChatDetail">자세히 보기</button>
+        <button type="button" class="primary" id="consentChatAccept">이해했어요 · 대화 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="crisis-overlay" id="crisisOverlay" hidden>
+    <div class="crisis-card" role="alertdialog" aria-labelledby="crisisTitle">
+      <h2 id="crisisTitle">지금은 전문 도움이 필요할 수 있어요</h2>
+      <p>이 서비스는 응급·의료·정신과 진료가 아닙니다. 혼자 버티지 않으셔도 됩니다.</p>
+      <div class="crisis-hotlines" id="crisisHotlines"></div>
+      <button type="button" id="crisisDismiss">확인했어요 (대화는 이어갈 수 있어요)</button>
+    </div>
+  </div>
+
   <div class="ambient" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -1554,6 +1742,13 @@
           <h1 class="brand-name">마음쉼터</h1>
         </div>
         <p class="brand-tagline">조용히, 천천히 — 당신의 마음을 함께 살펴봅니다</p>
+        <a class="tarot-cta" href="/associations" style="margin-top:8px;background:rgba(196,165,116,0.12);border-color:rgba(196,165,116,0.35)">
+          <div>
+            <strong>학회 · Association License</strong>
+            <span>상담·심리·정신의학 제휴</span>
+          </div>
+          <span class="tarot-icon" aria-hidden="true">◈</span>
+        </a>
         <a class="tarot-cta" href="/tarot" id="tarotLink">
           <div>
             <strong>3D 타로 리딩</strong>
@@ -1582,6 +1777,15 @@
         <span class="session-chip" id="sessionChip">대화 준비 중</span>
         <span class="mood-chip" id="moodChip" hidden>오늘 기분</span>
 
+        <div class="session-tools">
+          <h3>내 대화</h3>
+          <div class="session-tool-row">
+            <button type="button" id="btnNewSession">＋ 새 대화</button>
+            <button type="button" id="btnExportSummary">요약 저장</button>
+          </div>
+          <div class="session-list" id="sessionList"></div>
+        </div>
+
         <div class="phase-progress" id="phaseProgress" aria-live="polite">
           <div class="phase-progress-label">대화 진행 단계</div>
           <div class="phase-current" id="phaseCurrent">관계 형성</div>
@@ -1606,6 +1810,22 @@
           </div>
           <p class="insight-summary" id="insightSummary">대화와 참고용 체크를 진행하면, 마음 패턴을 웰니스 관점에서 안내해 드려요. (의료 진단 아님)</p>
           <p class="insight-rec" id="insightRec"></p>
+        </div>
+
+        <div class="psych-track-card" id="psychTrackCard">
+          <h3>임상·심리 추적 (DSM-5 스크리닝)</h3>
+          <div class="psych-pipeline" id="psychPipeline" aria-live="polite">
+            <span data-stage="tarot">① 타로 탐색</span>
+            <span data-stage="counseling">② 상담</span>
+            <span data-stage="recommendations">③ 검사·기법</span>
+            <span data-stage="tracking">④ 추적</span>
+          </div>
+          <ul class="psych-spectrum-list" id="psychSpectrumList">
+            <li>타로·상담·체크인 후 관찰 영역이 표시됩니다.</li>
+          </ul>
+          <ul class="psych-rec-list" id="psychRecList"></ul>
+          <p class="psych-disclaimer">웰니스·스크리닝 참고용이며 DSM-5 진단·의료행위가 아닙니다.</p>
+          <button type="button" class="psych-rebuild-btn" id="btnPsychRebuild">과거 데이터 백필 · 프로필 재구성</button>
         </div>
 
         <div class="stats">
@@ -1734,14 +1954,17 @@
 
   <script src="/static/js/embed-bridge.js"></script>
   <script src="/static/js/voice-engine.js"></script>
+  <script src="/static/js/chat-offline.js"></script>
   <script>
     let COUNSELOR_NAME = "이서연";
     const WELCOME_KEY = "psychology_ai_welcomed";
+    const CONSENT_KEY = "psychology_ai_consent_v1";
     const TAROT_HANDOFF_KEY = "psychology_ai_tarot_handoff";
-    const RING_CIRC = 251.2;
+    const isEmbed = new URLSearchParams(location.search).get("embed") === "1";
 
     const userId = localStorage.getItem("psychology_ai_user_id") || `user-${crypto.randomUUID().slice(0, 8)}`;
     localStorage.setItem("psychology_ai_user_id", userId);
+    const associationLicense = localStorage.getItem("psychology_ai_association_license") || "";
 
     let sessionId = localStorage.getItem("psychology_ai_session_id") || null;
     let pendingAssessment = null;
@@ -1772,6 +1995,10 @@
     const insightProbFill = document.getElementById("insightProbFill");
     const insightSummary = document.getElementById("insightSummary");
     const insightRec = document.getElementById("insightRec");
+    const psychPipeline = document.getElementById("psychPipeline");
+    const psychSpectrumList = document.getElementById("psychSpectrumList");
+    const psychRecList = document.getElementById("psychRecList");
+    const btnPsychRebuild = document.getElementById("btnPsychRebuild");
     const personaOptions = document.getElementById("personaOptions");
     const personaStatus = document.getElementById("personaStatus");
     const sidebar = document.getElementById("sidebar");
@@ -1787,6 +2014,10 @@
     const dashPhase = document.getElementById("dashPhase");
     const dashTarot = document.getElementById("dashTarot");
     const navStatus = document.getElementById("navStatus");
+    const sessionList = document.getElementById("sessionList");
+    const crisisOverlay = document.getElementById("crisisOverlay");
+    const crisisHotlines = document.getElementById("crisisHotlines");
+    const RING_CIRC = 251.2;
 
     function syncTarotLink() {
       if (!tarotLink) return;
@@ -2100,7 +2331,7 @@
       messageInput.style.height = `${Math.min(messageInput.scrollHeight, 140)}px`;
     }
 
-    function createAssistantRow() {
+    function createAssistantRow(skipScroll = false) {
       hideEmptyState();
       const row = document.createElement("div");
       row.className = "message-row assistant";
@@ -2123,7 +2354,7 @@
         btn.addEventListener("click", () => VoiceEngine.speak(bubble.textContent, counselingStyle.voice));
         row.querySelector(".sender").appendChild(btn);
       }
-      scrollToBottom();
+      if (!skipScroll) scrollToBottom();
       return bubble;
     }
 
@@ -2189,9 +2420,10 @@
         appendAssistantText(handoff.bridge_message);
       }
       refreshBatteryStatus(sessionId);
+      refreshPsychProfile();
     }
 
-    function appendUserMessage(text) {
+    function appendUserMessage(text, skipScroll = false) {
       hideEmptyState();
       const row = document.createElement("div");
       row.className = "message-row user";
@@ -2203,7 +2435,195 @@
       `;
       row.querySelector(".bubble").textContent = text;
       messagesEl.appendChild(row);
-      scrollToBottom();
+      if (!skipScroll) scrollToBottom();
+    }
+
+    function appendAssistantMessage(text, skipScroll = false) {
+      const bubble = createAssistantRow(skipScroll);
+      bubble.textContent = text;
+      return bubble;
+    }
+
+    function showCrisisModal(resources) {
+      if (!crisisOverlay || !crisisHotlines) return;
+      const items = resources || [
+        { label: "자살예방 상담전화", number: "1393", note: "24시간" },
+        { label: "응급", number: "119", note: "생명 위험" },
+        { label: "정신건강 위기상담", number: "129", note: "" },
+        { label: "청소년 전화", number: "1577-0199", note: "" },
+      ];
+      crisisHotlines.innerHTML = items.map((item) => `
+        <a class="crisis-hotline" href="tel:${item.number.replace(/-/g, "")}">
+          <strong>${item.label} ${item.number}</strong>
+          <span>${item.note || ""}</span>
+        </a>
+      `).join("");
+      crisisOverlay.hidden = false;
+    }
+
+    document.getElementById("crisisDismiss")?.addEventListener("click", () => {
+      if (crisisOverlay) crisisOverlay.hidden = true;
+    });
+
+    async function loadConsentGate() {
+      if (isEmbed || localStorage.getItem(CONSENT_KEY) === "1") return;
+      const overlay = document.getElementById("consentOverlayChat");
+      try {
+        const res = await fetch("/api/v1/legal/consent");
+        const data = await res.json();
+        document.getElementById("consentChatSummary").textContent = data.summary || "";
+        document.getElementById("consentChatList").innerHTML = (data.points || [])
+          .map((p) => `<li>${p}</li>`).join("");
+        overlay.hidden = false;
+      } catch (_) {
+        overlay.hidden = false;
+        document.getElementById("consentChatSummary").textContent =
+          "AI 웰니스·자기성찰 도구이며 의료·응급 서비스가 아닙니다.";
+      }
+      document.getElementById("consentChatDetail")?.addEventListener("click", () => {
+        window.open("/legal#disclaimer", "_blank");
+      });
+      document.getElementById("consentChatAccept")?.addEventListener("click", () => {
+        localStorage.setItem(CONSENT_KEY, "1");
+        overlay.hidden = true;
+      });
+    }
+
+    async function loadSessionList() {
+      if (!sessionList) return;
+      try {
+        const res = await fetch(`/api/v1/chat/sessions/user/${encodeURIComponent(userId)}?limit=10`);
+        const data = await res.json();
+        const sessions = data.sessions || [];
+        if (!sessions.length) {
+          sessionList.innerHTML = '<p style="margin:0;font-size:0.68rem;color:var(--text-muted)">아직 저장된 대화가 없어요</p>';
+          return;
+        }
+        sessionList.innerHTML = sessions.map((s) => {
+          const active = s.session_id === sessionId ? " active" : "";
+          const date = (s.updated_at || "").slice(0, 10);
+          return `
+            <button type="button" class="session-item${active}" data-session-id="${s.session_id}">
+              <div class="meta">${date} · ${s.turn_count || 0}턴 · ${s.counseling_phase || "rapport"}</div>
+              <div class="preview">${s.preview || "대화 기록"}</div>
+            </button>`;
+        }).join("");
+        sessionList.querySelectorAll(".session-item").forEach((btn) => {
+          btn.addEventListener("click", () => switchToSession(btn.dataset.sessionId));
+        });
+      } catch (_) {
+        sessionList.innerHTML = "";
+      }
+    }
+
+    async function switchToSession(id) {
+      if (!id || streaming) return;
+      sessionId = id;
+      localStorage.setItem("psychology_ai_session_id", sessionId);
+      await restoreSession(id);
+      loadSessionList();
+      toggleSidebar(false);
+    }
+
+    async function startNewSession() {
+      if (streaming) return;
+      try {
+        const res = await fetch(`/api/v1/chat/sessions/new?user_id=${encodeURIComponent(userId)}`, { method: "POST" });
+        const data = await res.json();
+        sessionId = data.session_id;
+      } catch (_) {
+        sessionId = `sess-${crypto.randomUUID().slice(0, 12)}`;
+      }
+      localStorage.setItem("psychology_ai_session_id", sessionId);
+      localStorage.removeItem(WELCOME_KEY);
+      messagesEl.innerHTML = "";
+      const empty = document.createElement("div");
+      empty.id = "emptyState";
+      empty.className = "empty-state";
+      empty.innerHTML = "<p>새 대화를 시작해요. 편한 만큼만 이야기해 주세요.</p>";
+      messagesEl.appendChild(empty);
+      sessionChip.textContent = "새 대화";
+      syncTarotLink();
+      loadMoodWelcome();
+      loadSessionList();
+      toggleSidebar(false);
+    }
+
+    document.getElementById("btnNewSession")?.addEventListener("click", startNewSession);
+
+    async function exportSessionSummary() {
+      if (!sessionId) {
+        alert("먼저 대화를 시작해 주세요.");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/v1/insights/${encodeURIComponent(sessionId)}`);
+        if (!res.ok) throw new Error("insight");
+        const insight = await res.json();
+        const lines = [
+          "마음쉼터 · 대화 요약 (참고용, 의료 진단 아님)",
+          `세션: ${sessionId}`,
+          `날짜: ${new Date().toLocaleString("ko-KR")}`,
+          "",
+          insight.summary_ko || insight.overall_zone_label || "",
+          insight.recommendation_label ? `권장: ${insight.recommendation_label}` : "",
+          "",
+          "※ 위기 시 1393 · 119 · 129 · 1577-0199",
+        ].filter(Boolean);
+        const text = lines.join("\n");
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          alert("요약이 클립보드에 복사됐어요.");
+        } else {
+          const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `maum-summary-${sessionId.slice(0, 8)}.txt`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      } catch (_) {
+        alert("아직 요약을 만들기엔 대화가 짧아요. 조금 더 이야기해 주세요.");
+      }
+    }
+
+    document.getElementById("btnExportSummary")?.addEventListener("click", exportSessionSummary);
+
+    async function restoreSession(forcedId) {
+      const id = forcedId || sessionId || new URLSearchParams(location.search).get("session_id");
+      if (!id) return false;
+      try {
+        const res = await fetch(`/api/v1/chat/sessions/${encodeURIComponent(id)}/transcript`);
+        if (!res.ok) {
+          if (!forcedId) {
+            sessionId = null;
+            localStorage.removeItem("psychology_ai_session_id");
+          }
+          return false;
+        }
+        const data = await res.json();
+        if (!data.messages?.length) return false;
+        sessionId = data.session_id;
+        localStorage.setItem("psychology_ai_session_id", sessionId);
+        messagesEl.innerHTML = "";
+        data.messages.forEach((msg) => {
+          if (msg.role === "user") appendUserMessage(msg.content, true);
+          else if (msg.role === "assistant") appendAssistantMessage(msg.content, true);
+        });
+        hideEmptyState();
+        sessionChip.textContent = `대화 중 · ${sessionId.slice(0, 8)}`;
+        if (data.counseling_phase_info) updateCounselingPhase(data.counseling_phase_info);
+        if (data.clinical_insight && Object.keys(data.clinical_insight).length) {
+          updateClinicalInsight(data.clinical_insight);
+        }
+        syncTarotLink();
+        refreshBatteryStatus(sessionId);
+        scrollToBottom();
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
 
     function showTyping() {
@@ -2284,6 +2704,60 @@
       insightRec.textContent = insight.recommendation_label ? `→ ${insight.recommendation_label}` : "";
     }
 
+    function updatePsychProfile(profile) {
+      if (!profile || !psychPipeline) return;
+      const status = profile.pipeline_status || profile;
+      psychPipeline.querySelectorAll("[data-stage]").forEach((el) => {
+        const key = el.getAttribute("data-stage");
+        el.classList.toggle("done", Boolean(status[key]));
+      });
+
+      const spectra = (profile.recommendations?.top_spectra || profile.top_spectra || []).slice(0, 4);
+      if (psychSpectrumList) {
+        psychSpectrumList.innerHTML = spectra.length
+          ? spectra.map((s) => `<li>${s.label_ko || s.spectrum_id} · ${Math.round((s.score || 0) * 100)}%</li>`).join("")
+          : "<li>아직 관찰 영역 신호가 적어요. 타로·대화·체크인을 이어가 주세요.</li>";
+      }
+
+      const inst = profile.recommendations?.instruments || profile.instruments || [];
+      const tech = profile.recommendations?.techniques || profile.techniques || [];
+      if (psychRecList) {
+        const lines = [];
+        const INST_USER_LABELS = {
+        phq9: "요즘 마음 기분", gad7: "걱정·불안", isi: "잠·수면", pss: "스트레스",
+        pcl5: "힘든 기억", rses: "나 자신", attachment_ecr: "관계·가까움",
+        cbt_thought: "자주 드는 생각", psychodynamic: "반복 패턴", behavioral: "미루기·즐거움",
+        htp: "집·나무·사람 상상", tarot_reflect: "마음 상징", micro_emotion: "지금 마음 무게",
+        sct: "문장 이어쓰기",
+      };
+      inst.slice(0, 3).forEach((i) => {
+        const name = INST_USER_LABELS[i.instrument_id] || i.instrument_id;
+        lines.push(`<li>들어볼 질문 · ${name} — ${i.reason || ""}</li>`);
+      });
+        tech.slice(0, 2).forEach((t) => lines.push(`<li>기법 · ${t.technique}</li>`));
+        psychRecList.innerHTML = lines.join("");
+      }
+    }
+
+    async function refreshPsychProfile() {
+      try {
+        const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/psych-profile?auto_backfill=true`);
+        if (!res.ok) return;
+        updatePsychProfile(await res.json());
+      } catch (_) {}
+    }
+
+    btnPsychRebuild?.addEventListener("click", async () => {
+      btnPsychRebuild.disabled = true;
+      btnPsychRebuild.textContent = "재구성 중…";
+      try {
+        const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/psych-profile/rebuild`, { method: "POST" });
+        if (res.ok) updatePsychProfile(await res.json());
+      } catch (_) {}
+      btnPsychRebuild.disabled = false;
+      btnPsychRebuild.textContent = "과거 데이터 백필 · 프로필 재구성";
+    });
+
     async function refreshBatteryStatus(activeSessionId) {
       if (!activeSessionId) return;
       try {
@@ -2319,7 +2793,30 @@
         : `오늘 기분 · ${summary}`;
     }
 
+    function renderOfflineAssessmentBlocked() {
+      hideEmptyState();
+      const notice = (typeof ChatOffline !== "undefined" && ChatOffline.assessmentBlockedNotice)
+        ? ChatOffline.assessmentBlockedNotice()
+        : "지금은 오프라인이라 마음 검사를 할 수 없어요. 연결되면 이어서 진행할 수 있습니다.";
+      const wrap = document.createElement("div");
+      wrap.className = "assessment-wrap";
+      wrap.innerHTML = `
+        <div class="assessment-card">
+          <div class="assessment-head">
+            <div class="mini-avatar" aria-hidden="true">📴</div>
+            <div><strong>오프라인 안내</strong><span>검사 일시 중지</span></div>
+          </div>
+          <p class="assessment-prompt">${notice}</p>
+        </div>`;
+      messagesEl.appendChild(wrap);
+      scrollToBottom();
+    }
+
     function renderAssessmentPackageCard(pkg) {
+      if (navigator.onLine === false) {
+        renderOfflineAssessmentBlocked();
+        return;
+      }
       hideEmptyState();
       pendingPackage = pkg;
       const preview = pkg.case_preview || {};
@@ -2587,8 +3084,13 @@
     }
 
     function renderAssessmentCard(assessment) {
+      if (navigator.onLine === false) {
+        renderOfflineAssessmentBlocked();
+        return;
+      }
       hideEmptyState();
       pendingAssessment = assessment;
+      const titleTag = assessment.user_title ? `<span>${assessment.user_title}</span>` : "<span>가볍게 여쭤볼게요</span>";
       const wrap = document.createElement("div");
       wrap.className = "assessment-wrap";
       wrap.innerHTML = `
@@ -2597,11 +3099,12 @@
             <div class="mini-avatar" aria-hidden="true">서</div>
             <div>
               <strong>${COUNSELOR_NAME} AI 가이드</strong>
-              <span>가볍게 여쭤볼게요</span>
+              ${titleTag}
             </div>
           </div>
           <p class="assessment-framing"></p>
           <p class="assessment-prompt"></p>
+          <p class="assessment-example"></p>
           <p class="assessment-note"></p>
           <div class="options"></div>
         </div>
@@ -2609,20 +3112,50 @@
 
       wrap.querySelector(".assessment-framing").textContent = assessment.framing || "";
       wrap.querySelector(".assessment-prompt").textContent = assessment.prompt || "";
+      const exampleEl = wrap.querySelector(".assessment-example");
+      if (assessment.example) {
+        exampleEl.textContent = assessment.example;
+      } else {
+        exampleEl.remove();
+      }
       const note = assessment.selection?.rationale
         ? `${assessment.counselor_note || ""} · ${assessment.selection.rationale}`
         : (assessment.counselor_note || "편한 만큼만 답해 주셔도 괜찮아요.");
       wrap.querySelector(".assessment-note").textContent = note;
 
       const optionsEl = wrap.querySelector(".options");
-      assessment.options.forEach((option) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "option";
-        button.textContent = option.label;
-        button.addEventListener("click", () => submitAssessmentAnswer(option.value, option.label));
-        optionsEl.appendChild(button);
-      });
+      const isOpenText = assessment.response_type === "open_text";
+
+      if (isOpenText) {
+        const textarea = document.createElement("textarea");
+        textarea.className = "assessment-text-input";
+        textarea.placeholder = assessment.placeholder || "지금 마음을 이어서 써 주세요…";
+        textarea.setAttribute("aria-label", assessment.prompt || "마음 글씨");
+        optionsEl.appendChild(textarea);
+
+        const submitText = document.createElement("button");
+        submitText.type = "button";
+        submitText.className = "option assessment-submit-text";
+        submitText.textContent = "이렇게 적어서 보낼게요";
+        submitText.addEventListener("click", () => {
+          const text = textarea.value.trim();
+          if (!text) {
+            textarea.focus();
+            return;
+          }
+          submitAssessmentAnswer(text, text, false, true);
+        });
+        optionsEl.appendChild(submitText);
+      } else {
+        (assessment.options || []).forEach((option) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "option";
+          button.textContent = option.label;
+          button.addEventListener("click", () => submitAssessmentAnswer(option.value, option.label));
+          optionsEl.appendChild(button);
+        });
+      }
 
       const skip = document.createElement("button");
       skip.type = "button";
@@ -2655,20 +3188,57 @@
       return { events, remainder: remainder || "" };
     }
 
+    async function streamChatOffline(payload) {
+      streaming = true;
+      sendButton.disabled = true;
+      showTyping();
+      if (typeof ChatOffline !== "undefined") await ChatOffline.loadBundle();
+      if (typeof ChatOffline !== "undefined") ChatOffline.queueMessage(payload);
+      const match = (typeof ChatOffline !== "undefined")
+        ? ChatOffline.matchReply(payload.message)
+        : { reply_text: "말씀해 주셔서 고마워요. 연결되면 더 깊은 대화를 이어갈 수 있어요.", crisis: false };
+      hideTyping();
+      const bubble = createAssistantRow();
+      bubble.textContent = match.reply_text;
+      if (match.crisis && typeof showCrisisModal === "function") {
+        showCrisisModal(
+          (typeof ChatOffline !== "undefined" ? ChatOffline.crisisResources() : [])
+            .map((r) => ({ name: r.label, phone: r.tel }))
+        );
+      }
+      sessionChip.textContent = "오프라인 · 짧은 답변";
+      streaming = false;
+      sendButton.disabled = false;
+      scrollToBottom();
+    }
+
     async function streamChat(payload) {
+      if (navigator.onLine === false) {
+        return streamChatOffline(payload);
+      }
       streaming = true;
       sendButton.disabled = true;
       showTyping();
 
-      const response = await fetch("/api/v1/chat/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-        body: JSON.stringify(payload),
-      });
+      let response;
+      try {
+        response = await fetch("/api/v1/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          body: JSON.stringify(payload),
+        });
+      } catch (_) {
+        hideTyping();
+        streaming = false;
+        sendButton.disabled = false;
+        return streamChatOffline(payload);
+      }
 
       if (!response.ok || !response.body) {
         hideTyping();
-        throw new Error("대화 연결에 잠시 문제가 생겼어요. 잠시 후 다시 시도해 주세요.");
+        streaming = false;
+        sendButton.disabled = false;
+        return streamChatOffline(payload);
       }
 
       const reader = response.body.getReader();
@@ -2692,7 +3262,10 @@
               personaStatus.textContent = data.persona.persona_label;
             }
           }
-          if (event === "assessment_package") renderAssessmentPackageCard(data);
+          if (event === "assessment_package") {
+            if (navigator.onLine === false) renderOfflineAssessmentBlocked();
+            else renderAssessmentPackageCard(data);
+          }
           if (event === "mood_briefing") {
             if (data.mood) updateMoodChip(data.mood, data.mood);
             if (data.message && !gotToken) {
@@ -2703,8 +3276,12 @@
               scrollToBottom();
             }
           }
-          if (event === "assessment") renderAssessmentCard(data);
+          if (event === "assessment") {
+            if (navigator.onLine === false) renderOfflineAssessmentBlocked();
+            else renderAssessmentCard(data);
+          }
           if (event === "homework") renderHomeworkCard(data);
+          if (event === "crisis") showCrisisModal(data.resources);
           if (event === "token") {
             if (!gotToken) {
               hideTyping();
@@ -2737,7 +3314,10 @@
             updatePace(data.profile_delta?.fatigue);
             updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
             updateClinicalInsight(data.profile_delta?.clinical_insight);
+            updatePsychProfile(data.psych_profile);
             refreshBatteryStatus(sessionId);
+            refreshPsychProfile();
+            loadSessionList();
             if (data.suggest_tarot) renderTarotSuggestBanner();
             toggleSidebar(false);
           }
@@ -2754,13 +3334,16 @@
 
     function naturalAssessmentMessage(label, skipped) {
       if (skipped) return "지금은 이 질문은 넘어갈게요.";
+      if (label && label.length > 20) return label;
       const softMap = {
-        "전혀 없음": "전혀 없었어요", "전혀 없어요": "전혀 없었어요",
-        "며칠": "며칠 정도 그랬어요", "조금": "조금 그랬어요", "보통": "보통 정도예요",
-        "절반 이상": "절반 이상의 날 그랬어요", "거의 매일": "거의 매일 그랬어요",
+        "전혀 없음": "전혀 없었어요", "전혀 없어요": "전혀 없었어요", "전혀 없었어요": "전혀 없었어요",
+        "며칠": "며칠 정도 그랬어요", "며칠 정도 그랬어요": "며칠 정도 그랬어요",
+        "조금": "조금 그랬어요", "보통": "보통 정도예요", "보통이에요": "보통 정도예요",
+        "절반 이상": "절반 이상의 날 그랬어요", "절반 넘는 날 그랬어요": "절반 넘는 날 그랬어요",
+        "거의 매일": "거의 매일 그랬어요", "거의 매일 그랬어요": "거의 매일 그랬어요",
         "꽤 무거워요": "마음이 꽤 무거워요", "매우 힘들어요": "지금 매우 힘들어요",
       };
-      return softMap[label] || `${label} 정도였어요`;
+      return softMap[label] || (label ? `${label}` : "답해 주셔서 고마워요.");
     }
 
     async function submitMessage(message, assessmentResponse = null, homeworkResponse = null) {
@@ -2773,10 +3356,15 @@
         assessment_response: assessmentResponse,
         homework_response: homeworkResponse,
         preferred_school: preferredSchool || null,
+        association_license: associationLicense || null,
       });
     }
 
-    async function submitAssessmentAnswer(value, label, skipped = false) {
+    async function submitAssessmentAnswer(value, label, skipped = false, isText = false) {
+      if (navigator.onLine === false) {
+        renderOfflineAssessmentBlocked();
+        return;
+      }
       if (!pendingAssessment) return;
       const assessment = pendingAssessment;
       pendingAssessment = null;
@@ -2784,17 +3372,22 @@
       const card = messagesEl.querySelector(".assessment-wrap:last-of-type");
       if (card) {
         card.style.opacity = "0.65";
-        card.querySelectorAll("button").forEach((btn) => { btn.disabled = true; });
+        card.querySelectorAll("button, textarea").forEach((el) => { el.disabled = true; });
       }
 
       const message = naturalAssessmentMessage(label, skipped);
       appendUserMessage(message);
-      await submitMessage(message, {
+      const responsePayload = {
         instrument: assessment.instrument,
         item_id: assessment.item_id,
-        value,
         skipped,
-      });
+      };
+      if (isText && value) {
+        responsePayload.text = String(value);
+      } else if (value !== null && value !== undefined) {
+        responsePayload.value = value;
+      }
+      await submitMessage(message, responsePayload);
     }
 
     async function loadMoodWelcome() {
@@ -2869,9 +3462,30 @@
       }
     });
 
-    loadMoodWelcome();
-    loadCounselingStyle();
-    processTarotHandoff();
+    async function bootstrapChat() {
+      await loadConsentGate();
+      if (typeof ChatOffline !== "undefined") await ChatOffline.loadBundle();
+      window.addEventListener("online", () => {
+        if (typeof ChatOffline !== "undefined") {
+          ChatOffline.flushQueue(async (item) => {
+            await fetch("/api/v1/chat/stream", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(item),
+            });
+          });
+        }
+      });
+      await loadCounselingStyle();
+      const restored = await restoreSession();
+      if (!restored) await loadMoodWelcome();
+      processTarotHandoff();
+      loadPersonaCatalog();
+      loadSessionList();
+      refreshPsychProfile();
+    }
+
+    bootstrapChat().catch(() => loadMoodWelcome());
     window.addEventListener("message", (event) => {
       if (event.data?.type === "maum-tarot-handoff") processTarotHandoff();
     });

@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 from uuid import uuid4
 
 from app.assessments import ALL_INSTRUMENTS, ASSESSMENT_DOMAINS, INSTRUMENT_PROFILES
+from app.assessments.user_voice import enrich_instrument_step, user_instrument_delivery, user_instrument_title
 from app.services.case_preview import build_case_preview
 from app.services.assessment_selector import _conversation_text, _score_instrument
 from app.services.chat_session import ChatSessionState
@@ -46,6 +47,7 @@ INSTRUMENT_LABELS_KO = {
     "micro_emotion": "감정 온도 · 전반 기분",
     "htp": "HTP · 투사 검사",
     "tarot_reflect": "타로 · 상징 탐색",
+    "sct": "문장 이어쓰기 · 마음 글씨",
 }
 
 PROCESS_TIMELINE_TEMPLATE: List[Dict[str, str]] = [
@@ -97,6 +99,10 @@ def _rank_instruments(state: ChatSessionState, user_message: str) -> List[Dict[s
     for instrument_id, profile in INSTRUMENT_PROFILES.items():
         if instrument_id not in ALL_INSTRUMENTS:
             continue
+        from app.services.association_licensing import instrument_allowed
+
+        if not instrument_allowed(instrument_id, state.org_entitlements):
+            continue
         score = _score_instrument(instrument_id, combined)
         if score <= 0 and instrument_id == "micro_emotion":
             score = 0.5
@@ -105,7 +111,8 @@ def _rank_instruments(state: ChatSessionState, user_message: str) -> List[Dict[s
         ranked.append(
             {
                 "instrument_id": instrument_id,
-                "display_name": INSTRUMENT_LABELS_KO.get(instrument_id, profile.get("display_name", instrument_id)),
+                "display_name": user_instrument_title(instrument_id)
+                or INSTRUMENT_LABELS_KO.get(instrument_id, profile.get("display_name", instrument_id)),
                 "domain_label": domain.get("label", ""),
                 "school": domain.get("school", ""),
                 "focus": profile.get("focus", ""),
@@ -161,15 +168,17 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
     timeline = [dict(step) for step in PROCESS_TIMELINE_TEMPLATE]
 
     instrument_steps = [
-        {
-            "order": index,
-            "instrument_id": item["instrument_id"],
-            "title": item["display_name"],
-            "subtitle": item["domain_label"],
-            "focus": item["focus"],
-            "estimated_minutes": item["estimated_minutes"],
-            "delivery": "대화 중 1문항씩 · 부담 없이 건너뛰기 가능",
-        }
+        enrich_instrument_step(
+            {
+                "order": index,
+                "instrument_id": item["instrument_id"],
+                "title": item["display_name"],
+                "subtitle": item["domain_label"],
+                "focus": item["focus"],
+                "estimated_minutes": item["estimated_minutes"],
+                "delivery": user_instrument_delivery(),
+            }
+        )
         for index, item in enumerate(selected, start=1)
     ]
 
@@ -211,15 +220,17 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
         package["price_label"] = tier["price_label"]
         package["recommended_instruments"] = selected
         package["instrument_steps"] = [
-            {
-                "order": index,
-                "instrument_id": item["instrument_id"],
-                "title": item["display_name"],
-                "subtitle": item["domain_label"],
-                "focus": item["focus"],
-                "estimated_minutes": item["estimated_minutes"],
-                "delivery": "대화 중 1문항씩 · 부담 없이 건너뛰기 가능",
-            }
+            enrich_instrument_step(
+                {
+                    "order": index,
+                    "instrument_id": item["instrument_id"],
+                    "title": item["display_name"],
+                    "subtitle": item["domain_label"],
+                    "focus": item["focus"],
+                    "estimated_minutes": item["estimated_minutes"],
+                    "delivery": user_instrument_delivery(),
+                }
+            )
             for index, item in enumerate(selected, start=1)
         ]
         package["total_instruments"] = len(selected)
@@ -244,15 +255,17 @@ def complete_checkout(state: ChatSessionState, tier_id: str | None = None) -> Di
         package["tier_id"] = tier_id
         package["recommended_instruments"] = selected
         package["instrument_steps"] = [
-            {
-                "order": index,
-                "instrument_id": item["instrument_id"],
-                "title": item["display_name"],
-                "subtitle": item["domain_label"],
-                "focus": item["focus"],
-                "estimated_minutes": item["estimated_minutes"],
-                "delivery": "대화 중 1문항씩 · 부담 없이 건너뛰기 가능",
-            }
+            enrich_instrument_step(
+                {
+                    "order": index,
+                    "instrument_id": item["instrument_id"],
+                    "title": item["display_name"],
+                    "subtitle": item["domain_label"],
+                    "focus": item["focus"],
+                    "estimated_minutes": item["estimated_minutes"],
+                    "delivery": user_instrument_delivery(),
+                }
+            )
             for index, item in enumerate(selected, start=1)
         ]
         package["price_krw"] = tier["price_krw"]

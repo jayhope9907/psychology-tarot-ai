@@ -1,10 +1,18 @@
 /**
- * Three.js tarot — user shuffle, pick, and flip with card artwork.
+ * Three.js tarot — circular spread, human-like shuffle & draw.
  */
 (function (global) {
-  const CARD_W = 0.72;
-  const CARD_H = 1.15;
-  const CARD_DEPTH = 0.035;
+  const CARD_W = 0.54;
+  const CARD_H = 0.87;
+  const CARD_DEPTH = 0.028;
+  const CIRCLE_RADIUS_OUTER = 4.55;
+  const CIRCLE_RADIUS_INNER = 2.85;
+  const INNER_RING_SCALE = 0.76;
+  const CIRCLE_Y = 0.1;
+  const CIRCLE_CENTER_Z = 0.55;
+  const CAMERA_FOV = 48;
+  const CAMERA_BASE = { x: 0, y: 4.4, z: 6.4 };
+  const CAMERA_LOOK = { x: 0, y: 0.12, z: CIRCLE_CENTER_Z };
   const textureCache = new Map();
 
   function drawFallbackFace(ctx, card) {
@@ -60,7 +68,9 @@
     const key = `${card?.id || "unknown"}_${card?.reversed ? "rev" : "up"}`;
     if (textureCache.has(key)) return Promise.resolve(textureCache.get(key));
 
-    if (!card?.image_url) {
+    const hidden = global.TarotImageSettings?.getMode?.() === "hidden";
+
+    if (hidden || !card?.image_url) {
       const tex = createCanvasTexture((ctx) => drawFallbackFace(ctx, card));
       textureCache.set(key, tex);
       return Promise.resolve(tex);
@@ -115,6 +125,10 @@
     return textureCache.get("__back__");
   }
 
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
   class TarotScene {
     constructor(container) {
       this.container = container;
@@ -132,14 +146,17 @@
       this.maxPicks = 3;
       this.selectedMeshes = [];
       this.pickedCardIds = [];
+      this.hoveredMesh = null;
+      this.circleRotation = 0;
+      this.circleRadiusScale = 1;
+      this._animToken = 0;
 
       this.raycaster = new THREE.Raycaster();
       this.pointer = new THREE.Vector2();
 
       this.scene = new THREE.Scene();
-      this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-      this.camera.position.set(0, 3.8, 9.5);
-      this.camera.lookAt(0, 0.4, 0);
+      this.camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 100);
+      this._updateCamera();
 
       this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -147,23 +164,67 @@
       this.renderer.shadowMap.enabled = true;
       container.appendChild(this.renderer.domElement);
 
-      this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.6));
-      const key = new THREE.DirectionalLight(0xffffff, 0.95);
-      key.position.set(4, 10, 6);
+      this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.62));
+      const key = new THREE.DirectionalLight(0xffffff, 0.9);
+      key.position.set(2, 12, 8);
       key.castShadow = true;
       this.scene.add(key);
-      const rim = new THREE.PointLight(0xc4a574, 0.55, 24);
-      rim.position.set(-3, 3, 5);
+      const rim = new THREE.PointLight(0xc4a574, 0.45, 28);
+      rim.position.set(-2, 4, 6);
       this.scene.add(rim);
 
+      this._addTableRing();
       this._addParticles();
       this._resize();
       this._onResize = () => this._resize();
       this._onPointerDown = (e) => this._handlePointer(e);
+      this._onPointerMove = (e) => this._handlePointerMove(e);
       window.addEventListener("resize", this._onResize);
       this.renderer.domElement.addEventListener("pointerdown", this._onPointerDown);
+      this.renderer.domElement.addEventListener("pointermove", this._onPointerMove);
       this._animate = this._animate.bind(this);
       requestAnimationFrame(this._animate);
+    }
+
+    _addTableRing() {
+      for (const [radius, opacity] of [[CIRCLE_RADIUS_OUTER, 0.14], [CIRCLE_RADIUS_INNER, 0.1]]) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(radius - 0.05, radius + 0.05, 120),
+          new THREE.MeshBasicMaterial({
+            color: 0xc4a574,
+            transparent: true,
+            opacity,
+            side: THREE.DoubleSide,
+          })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(0, 0.02, CIRCLE_CENTER_Z);
+        this.scene.add(ring);
+      }
+
+      const inner = new THREE.Mesh(
+        new THREE.CircleGeometry(CIRCLE_RADIUS_INNER - 0.06, 120),
+        new THREE.MeshBasicMaterial({
+          color: 0x0f1714,
+          transparent: true,
+          opacity: 0.32,
+          side: THREE.DoubleSide,
+        })
+      );
+      inner.rotation.x = -Math.PI / 2;
+      inner.position.set(0, 0.015, CIRCLE_CENTER_Z);
+      this.scene.add(inner);
+    }
+
+    _updateCamera() {
+      const w = this.container.clientWidth || 640;
+      const h = this.container.clientHeight || 480;
+      const aspect = w / h;
+      const narrow = aspect < 0.92;
+      const z = narrow ? CAMERA_BASE.z * 0.88 : CAMERA_BASE.z;
+      const y = narrow ? CAMERA_BASE.y * 0.92 : CAMERA_BASE.y + (aspect > 1.2 ? 0.35 : 0);
+      this.camera.position.set(CAMERA_BASE.x, y, z);
+      this.camera.lookAt(CAMERA_LOOK.x, CAMERA_LOOK.y, CAMERA_LOOK.z);
     }
 
     _resize() {
@@ -171,22 +232,25 @@
       const h = this.container.clientHeight || 480;
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
+      this._updateCamera();
       this.renderer.setSize(w, h);
     }
 
     _addParticles() {
-      const count = 160;
+      const count = 80;
       const geo = new THREE.BufferGeometry();
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * 24;
-        positions[i * 3 + 1] = Math.random() * 10 - 1;
-        positions[i * 3 + 2] = (Math.random() - 0.5) * 16 - 4;
+        const a = (i / count) * Math.PI * 2;
+        const r = CIRCLE_RADIUS_OUTER + 0.25 + Math.random() * 0.35;
+        positions[i * 3] = Math.sin(a) * r;
+        positions[i * 3 + 1] = 0.05 + Math.random() * 0.12;
+        positions[i * 3 + 2] = Math.cos(a) * r + CIRCLE_CENTER_Z;
       }
       geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
       this.particles = new THREE.Points(
         geo,
-        new THREE.PointsMaterial({ color: 0xc4a574, size: 0.035, transparent: true, opacity: 0.5 })
+        new THREE.PointsMaterial({ color: 0xc4a574, size: 0.028, transparent: true, opacity: 0.35 })
       );
       this.scene.add(this.particles);
     }
@@ -201,7 +265,7 @@
         new THREE.MeshStandardMaterial({ color: 0x222222 }),
         new THREE.MeshStandardMaterial({ color: 0x222222 }),
         new THREE.MeshStandardMaterial({ map: frontTex }),
-        new THREE.MeshStandardMaterial({ map: backTex }),
+        new THREE.MeshStandardMaterial({ map: backTex, emissive: 0x000000, emissiveIntensity: 0 }),
       ];
       const mesh = new THREE.Mesh(geo, mats);
       mesh.castShadow = true;
@@ -209,7 +273,8 @@
       mesh.userData.flipped = false;
       mesh.userData.selected = false;
       mesh.userData.selectable = true;
-      mesh.rotation.x = -0.15;
+      mesh.userData.baseAngle = 0;
+      mesh.userData.circleIndex = 0;
       return mesh;
     }
 
@@ -219,31 +284,84 @@
       mesh.material[4].needsUpdate = true;
     }
 
+    _circleAngleFor(mesh) {
+      return mesh.userData.baseAngle + this.circleRotation;
+    }
+
+    _circlePose(angle, radius, lift) {
+      const r = radius;
+      return {
+        x: Math.sin(angle) * r,
+        y: CIRCLE_Y + lift,
+        z: Math.cos(angle) * r + CIRCLE_CENTER_Z,
+        ry: -angle + Math.PI,
+        rx: -0.05,
+      };
+    }
+
+    _applyCirclePose(mesh, radiusScale, lift) {
+      if (mesh.userData.selected && mesh.userData.drawPose) {
+        const p = mesh.userData.drawPose;
+        mesh.position.set(p.x, p.y, p.z);
+        mesh.rotation.y = p.ry;
+        mesh.rotation.x = p.rx ?? -0.08;
+        return;
+      }
+      const baseRadius = mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER;
+      const hoverLift = mesh.userData.hoverLift || 0;
+      const pose = this._circlePose(
+        this._circleAngleFor(mesh),
+        baseRadius * radiusScale,
+        lift + hoverLift
+      );
+      mesh.position.set(pose.x, pose.y, pose.z);
+      mesh.rotation.y = pose.ry;
+      mesh.rotation.x = pose.rx;
+    }
+
+    _layoutCircle() {
+      const majorMeshes = this.meshes.filter((m) => !m.userData.card?.suit);
+      const minorMeshes = this.meshes.filter((m) => m.userData.card?.suit);
+
+      const placeRing = (ringMeshes, radius, innerRing) => {
+        ringMeshes.forEach((mesh, i) => {
+          mesh.userData.ringRadius = radius;
+          mesh.userData.innerRing = innerRing;
+          mesh.userData.baseAngle = (i / ringMeshes.length) * Math.PI * 2 - Math.PI / 2;
+          mesh.userData.circleIndex = i;
+          mesh.userData.drawPose = null;
+          mesh.userData.selected = false;
+          mesh.userData.selectable = true;
+          mesh.userData.hoverLift = 0;
+          const ringScale = innerRing ? INNER_RING_SCALE : 1;
+          mesh.scale.set(ringScale, ringScale, 1);
+          mesh.material[5].emissive.setHex(0x000000);
+          mesh.material[5].emissiveIntensity = 0;
+          mesh.material.forEach((mat) => {
+            mat.transparent = false;
+            mat.opacity = 1;
+          });
+          this._applyCirclePose(mesh, this.circleRadiusScale, 0);
+        });
+      };
+
+      placeRing(majorMeshes, CIRCLE_RADIUS_OUTER, false);
+      placeRing(minorMeshes, CIRCLE_RADIUS_INNER, true);
+    }
+
     buildDeck(catalog) {
       this.clear();
       this.deckData = (catalog || []).slice();
-      this._layoutFan();
-      this.phase = "ready";
-      this._emitPhase();
-    }
-
-    _layoutFan() {
-      const total = this.deckData.length;
-      const arc = Math.PI * 1.35;
-      const start = -arc / 2;
-      const radius = 5.2;
-      this.deckData.forEach((card, i) => {
+      this.deckData.forEach((card) => {
         const mesh = this._makeCardMesh(card);
-        const t = total <= 1 ? 0.5 : i / (total - 1);
-        const angle = start + arc * t;
-        mesh.position.set(Math.sin(angle) * radius, 0.15, Math.cos(angle) * radius - 2.8);
-        mesh.rotation.y = -angle;
-        mesh.userData.fanIndex = i;
-        mesh.userData.fanAngle = angle;
-        mesh.userData.fanRadius = radius;
         this.scene.add(mesh);
         this.meshes.push(mesh);
       });
+      this.circleRotation = 0;
+      this.circleRadiusScale = 1;
+      this._layoutCircle();
+      this.phase = "ready";
+      this._emitPhase();
     }
 
     clear() {
@@ -254,21 +372,33 @@
       this.pickedCardIds = [];
       this.flippedCount = 0;
       this.pickMode = false;
+      this.hoveredMesh = null;
+      this.circleRotation = 0;
+      this.circleRadiusScale = 1;
     }
 
     _spreadSlots(count) {
-      if (count <= 1) return [{ x: 0, y: 0.35, z: 0.6 }];
+      if (count <= 1) return [{ x: 0, y: 0.48, z: 1.55, ry: 0 }];
       if (count === 2) {
         return [
-          { x: -1.1, y: 0.3, z: 0.45 },
-          { x: 1.1, y: 0.3, z: 0.45 },
+          { x: -1.05, y: 0.44, z: 1.35, ry: 0.12 },
+          { x: 1.05, y: 0.44, z: 1.35, ry: -0.12 },
         ];
       }
       return [
-        { x: -1.8, y: 0.25, z: 0.2 },
-        { x: 0, y: 0.4, z: 0.7 },
-        { x: 1.8, y: 0.25, z: 0.2 },
+        { x: -1.65, y: 0.38, z: 1.15, ry: 0.18 },
+        { x: 0, y: 0.52, z: 1.65, ry: 0 },
+        { x: 1.65, y: 0.38, z: 1.15, ry: -0.18 },
       ];
+    }
+
+    _drawHoldPose(pickIndex) {
+      const slots = [
+        { x: 0, y: 0.62, z: 1.45, ry: 0, rx: -0.1 },
+        { x: -0.92, y: 0.56, z: 1.52, ry: 0.14, rx: -0.1 },
+        { x: 0.92, y: 0.56, z: 1.52, ry: -0.14, rx: -0.1 },
+      ];
+      return slots[pickIndex] || slots[0];
     }
 
     async shuffle() {
@@ -280,32 +410,36 @@
         this._emitPhase();
         return;
       }
+
       this.phase = "shuffling";
       this._emitPhase();
-      const duration = 2000;
+      const token = ++this._animToken;
+      const startRot = this.circleRotation;
+      const endRot = startRot + Math.PI * 2 * 2.2;
+      const duration = 3200;
       const start = performance.now();
-      const origins = this.meshes.map((m) => ({
-        pos: m.position.clone(),
-        rotY: m.rotation.y,
-      }));
 
       await new Promise((resolve) => {
         const tick = (now) => {
+          if (token !== this._animToken) {
+            resolve();
+            return;
+          }
           const t = Math.min((now - start) / duration, 1);
-          const ease = 1 - Math.pow(1 - t, 3);
-          this.meshes.forEach((mesh, i) => {
-            const angle = ease * Math.PI * 5 + i * 0.35;
-            const radius = 2.2 * Math.sin(ease * Math.PI);
-            mesh.position.x = Math.cos(angle) * radius;
-            mesh.position.z = Math.sin(angle) * radius - 2;
-            mesh.position.y = 0.4 + Math.sin(angle * 2) * 0.25;
-            mesh.rotation.y = angle;
+          const ease = easeInOutCubic(t);
+          this.circleRotation = THREE.MathUtils.lerp(startRot, endRot, ease);
+          this.circleRadiusScale = 1 - Math.sin(ease * Math.PI) * 0.07;
+          this.meshes.forEach((mesh) => {
+            if (!mesh.userData.selected) {
+              const wobble = Math.sin(this._circleAngleFor(mesh) * 3 + ease * Math.PI * 4) * 0.012 * (1 - t);
+              this._applyCirclePose(mesh, this.circleRadiusScale, wobble);
+            }
           });
           if (t < 1) requestAnimationFrame(tick);
           else {
-            this.meshes.forEach((mesh, i) => {
-              mesh.position.copy(origins[i].pos);
-              mesh.rotation.y = origins[i].rotY;
+            this.circleRadiusScale = 1;
+            this.meshes.forEach((mesh) => {
+              if (!mesh.userData.selected) this._applyCirclePose(mesh, 1, 0);
             });
             this.phase = "ready";
             this._emitPhase();
@@ -324,9 +458,40 @@
       this.phase = "picking";
       this._emitPhase();
       this.meshes.forEach((m) => {
-        m.userData.selectable = true;
-        m.userData.selected = false;
+        m.userData.selectable = !m.userData.selected;
       });
+    }
+
+    _setHover(mesh) {
+      if (this.hoveredMesh && this.hoveredMesh !== mesh) {
+        this.hoveredMesh.userData.hoverLift = 0;
+        if (!this.hoveredMesh.userData.selected) {
+          this.hoveredMesh.material[5].emissive.setHex(0x000000);
+          this.hoveredMesh.material[5].emissiveIntensity = 0;
+        }
+      }
+      this.hoveredMesh = mesh;
+      if (mesh && this.pickMode && !mesh.userData.selected) {
+        mesh.userData.hoverLift = 0.1;
+        mesh.material[5].emissive.setHex(0x8a7348);
+        mesh.material[5].emissiveIntensity = 0.22;
+      }
+    }
+
+    _handlePointerMove(event) {
+      if (!this.pickMode) {
+        this._setHover(null);
+        return;
+      }
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const hits = this.raycaster.intersectObjects(
+        this.meshes.filter((m) => m.userData.selectable && !m.userData.selected),
+        false
+      );
+      this._setHover(hits.length ? hits[0].object : null);
     }
 
     _handlePointer(event) {
@@ -344,35 +509,98 @@
       }
 
       if (this.phase === "reveal" && mesh.userData.slot && !mesh.userData.flipped) {
-        const idx = mesh.userData.index;
-        this.flipCard(idx);
+        this.flipCard(mesh.userData.index);
       }
+    }
+
+    _animateMeshTo(mesh, target, duration) {
+      const token = this._animToken;
+      const start = performance.now();
+      const from = {
+        x: mesh.position.x,
+        y: mesh.position.y,
+        z: mesh.position.z,
+        ry: mesh.rotation.y,
+        rx: mesh.rotation.x,
+      };
+      return new Promise((resolve) => {
+        const tick = (now) => {
+          if (token !== this._animToken) {
+            resolve();
+            return;
+          }
+          const t = Math.min((now - start) / duration, 1);
+          const ease = easeInOutCubic(t);
+          mesh.position.x = THREE.MathUtils.lerp(from.x, target.x, ease);
+          mesh.position.y = THREE.MathUtils.lerp(from.y, target.y, ease);
+          mesh.position.z = THREE.MathUtils.lerp(from.z, target.z, ease);
+          mesh.rotation.y = THREE.MathUtils.lerp(from.ry, target.ry, ease);
+          mesh.rotation.x = THREE.MathUtils.lerp(from.rx, target.rx ?? -0.08, ease);
+          if (t < 1) requestAnimationFrame(tick);
+          else resolve();
+        };
+        requestAnimationFrame(tick);
+      });
+    }
+
+    async _drawCardFromCircle(mesh, pickIndex) {
+      const startAngle = this._circleAngleFor(mesh);
+      const midR = (mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER) * 0.55;
+      const mid = {
+        x: Math.sin(startAngle) * midR,
+        y: CIRCLE_Y + 0.35,
+        z: Math.cos(startAngle) * midR + CIRCLE_CENTER_Z,
+        ry: -startAngle + Math.PI,
+        rx: -0.12,
+      };
+      const hold = this._drawHoldPose(pickIndex);
+      mesh.userData.drawPose = null;
+      await this._animateMeshTo(mesh, mid, 420);
+      await this._animateMeshTo(mesh, hold, 520);
+      mesh.userData.drawPose = { ...hold };
+      mesh.material[5].emissive.setHex(0xc4a574);
+      mesh.material[5].emissiveIntensity = 0.38;
+    }
+
+    async _returnCardToCircle(mesh) {
+      mesh.userData.drawPose = null;
+      const pose = this._circlePose(
+        this._circleAngleFor(mesh),
+        mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER,
+        0
+      );
+      await this._animateMeshTo(mesh, pose, 480);
+      mesh.material[5].emissive.setHex(0x000000);
+      mesh.material[5].emissiveIntensity = 0;
     }
 
     _togglePick(mesh) {
       if (mesh.userData.selected) {
         mesh.userData.selected = false;
-        mesh.position.y -= 0.25;
-        mesh.material[5].emissive = new THREE.Color(0x000000);
+        mesh.userData.selectable = true;
         this.selectedMeshes = this.selectedMeshes.filter((m) => m !== mesh);
         this.pickedCardIds = this.selectedMeshes.map((m) => m.userData.card.id);
-        if (this.onPick) this.onPick(this.pickedCardIds.length, this.maxPicks);
+        this._returnCardToCircle(mesh).then(() => {
+          if (this.onPick) this.onPick(this.pickedCardIds.length, this.maxPicks);
+        });
         return;
       }
       if (this.selectedMeshes.length >= this.maxPicks) return;
 
       mesh.userData.selected = true;
-      mesh.position.y += 0.25;
-      mesh.material[5].emissive = new THREE.Color(0xc4a574);
-      mesh.material[5].emissiveIntensity = 0.35;
+      mesh.userData.selectable = false;
+      const pickIndex = this.selectedMeshes.length;
       this.selectedMeshes.push(mesh);
       this.pickedCardIds = this.selectedMeshes.map((m) => m.userData.card.id);
       if (this.onPick) this.onPick(this.pickedCardIds.length, this.maxPicks);
 
-      if (this.selectedMeshes.length >= this.maxPicks) {
-        this.pickMode = false;
-        if (this.onPickComplete) this.onPickComplete(this.pickedCardIds.slice());
-      }
+      this._drawCardFromCircle(mesh, pickIndex).then(() => {
+        if (this.selectedMeshes.length >= this.maxPicks) {
+          this.pickMode = false;
+          this._setHover(null);
+          if (this.onPickComplete) this.onPickComplete(this.pickedCardIds.slice());
+        }
+      });
     }
 
     pickCardById(cardId) {
@@ -382,54 +610,61 @@
 
     async layoutSelected(cards) {
       this.drawnCards = cards || [];
+      const token = ++this._animToken;
       const unselected = this.meshes.filter((m) => !m.userData.selected);
+
       unselected.forEach((mesh) => {
         mesh.userData.selectable = false;
-        mesh.position.y -= 0.6;
-        mesh.material.forEach((mat) => {
-          mat.transparent = true;
-          mat.opacity = 0.15;
-        });
       });
 
-      const slots = this._spreadSlots(this.selectedMeshes.length);
-      this.phase = "spreading";
-      this._emitPhase();
-
-      this.selectedMeshes.forEach((mesh, i) => {
-        mesh.userData.slot = slots[i];
-        mesh.userData.index = i;
-        mesh.userData.card = this.drawnCards[i] || mesh.userData.card;
-        mesh.rotation.y = 0;
-        this._applyFrontTexture(mesh, mesh.userData.card);
-      });
-
-      await this._animateToSlots(this.selectedMeshes, slots);
-      this.meshes = this.selectedMeshes.slice();
-      this.phase = "reveal";
-      this._emitPhase();
-    }
-
-    _animateToSlots(meshes, slots) {
-      const duration = 1200;
-      const start = performance.now();
-      const origins = meshes.map((m) => m.position.clone());
-      return new Promise((resolve) => {
+      const fadeStart = performance.now();
+      const fadeDuration = 700;
+      await new Promise((resolve) => {
         const tick = (now) => {
-          const t = Math.min((now - start) / duration, 1);
-          const ease = 1 - Math.pow(1 - t, 3);
-          meshes.forEach((mesh, i) => {
-            const slot = slots[i];
-            mesh.position.x = THREE.MathUtils.lerp(origins[i].x, slot.x, ease);
-            mesh.position.y = THREE.MathUtils.lerp(origins[i].y, slot.y, ease);
-            mesh.position.z = THREE.MathUtils.lerp(origins[i].z, slot.z, ease);
-            mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, -0.12, ease);
+          if (token !== this._animToken) {
+            resolve();
+            return;
+          }
+          const t = Math.min((now - fadeStart) / fadeDuration, 1);
+          unselected.forEach((mesh) => {
+            mesh.material.forEach((mat) => {
+              mat.transparent = true;
+              mat.opacity = 1 - t * 0.88;
+            });
+            mesh.position.y = CIRCLE_Y - t * 0.35;
           });
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
         };
         requestAnimationFrame(tick);
       });
+
+      unselected.forEach((mesh) => this.scene.remove(mesh));
+
+      const slots = this._spreadSlots(this.selectedMeshes.length);
+      this.phase = "spreading";
+      this._emitPhase();
+
+      const anims = this.selectedMeshes.map((mesh, i) => {
+        mesh.userData.drawPose = null;
+        mesh.userData.slot = slots[i];
+        mesh.userData.index = i;
+        mesh.userData.card = this.drawnCards[i] || mesh.userData.card;
+        this._applyFrontTexture(mesh, mesh.userData.card);
+        const slot = slots[i];
+        return this._animateMeshTo(mesh, {
+          x: slot.x,
+          y: slot.y,
+          z: slot.z,
+          ry: slot.ry,
+          rx: -0.1,
+        }, 900);
+      });
+
+      await Promise.all(anims);
+      this.meshes = this.selectedMeshes.slice();
+      this.phase = "reveal";
+      this._emitPhase();
     }
 
     flipCard(index) {
@@ -439,7 +674,7 @@
       this.flippedCount += 1;
       const card = mesh.userData.card;
       if (this.onCardFlip) this.onCardFlip(card, index);
-      return this._animateFlip(mesh).then(() => {
+      return this._applyFrontTexture(mesh, card).then(() => this._animateFlip(mesh)).then(() => {
         if (this.flippedCount >= this.meshes.length) {
           this.phase = "complete";
           this._emitPhase();
@@ -447,14 +682,24 @@
       });
     }
 
+    refreshImageMode() {
+      textureCache.clear();
+      createBackTexture();
+      this.meshes.forEach((mesh) => {
+        if (mesh.userData.flipped && mesh.userData.card) {
+          this._applyFrontTexture(mesh, mesh.userData.card);
+        }
+      });
+    }
+
     _animateFlip(mesh) {
-      const duration = 650;
+      const duration = 680;
       const start = performance.now();
       const startY = mesh.rotation.y;
       return new Promise((resolve) => {
         const tick = (now) => {
           const t = Math.min((now - start) / duration, 1);
-          const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+          const ease = easeInOutCubic(t);
           mesh.rotation.y = THREE.MathUtils.lerp(startY, Math.PI, ease);
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
@@ -469,18 +714,31 @@
 
     _animate() {
       requestAnimationFrame(this._animate);
-      if (this.particles) this.particles.rotation.y += 0.0007;
+      const now = performance.now();
+      if (this.particles) this.particles.rotation.y += 0.0004;
+
+      if (this.phase === "picking" && this.pickMode) {
+        this.meshes.forEach((mesh) => {
+          if (!mesh.userData.selected && !mesh.userData.drawPose) {
+            const lift = Math.sin(now * 0.0018 + mesh.userData.circleIndex * 0.4) * 0.008;
+            this._applyCirclePose(mesh, this.circleRadiusScale, lift);
+          }
+        });
+      }
+
       this.meshes.forEach((mesh, i) => {
         if (this.phase === "reveal" && mesh.userData.slot && !mesh.userData.flipped) {
-          mesh.position.y = mesh.userData.slot.y + Math.sin(performance.now() * 0.002 + i) * 0.025;
+          mesh.position.y = mesh.userData.slot.y + Math.sin(now * 0.002 + i) * 0.018;
         }
       });
+
       this.renderer.render(this.scene, this.camera);
     }
 
     dispose() {
       window.removeEventListener("resize", this._onResize);
       this.renderer.domElement.removeEventListener("pointerdown", this._onPointerDown);
+      this.renderer.domElement.removeEventListener("pointermove", this._onPointerMove);
       this.renderer.dispose();
     }
   }

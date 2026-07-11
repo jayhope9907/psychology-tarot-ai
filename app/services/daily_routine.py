@@ -5,11 +5,13 @@ from typing import Any, Dict, List, Optional
 
 from app.db.database import get_connection, init_db
 from app.services.mood_dimensions import (
-    MOOD_DIMENSION_META,
     build_mood_agent_profile,
+    build_mood_portrait,
     build_sphere_visual,
     composite_mood_score,
+    compute_dimension_trends,
     default_dimensions_from_score,
+    dimension_meta_for_client,
     dimension_summary,
     dimensions_from_json,
     dimensions_to_json,
@@ -43,6 +45,7 @@ def _checkin_payload(
 ) -> Dict[str, Any]:
     dims = normalize_dimensions(dimensions)
     agent = build_mood_agent_profile(dims, mood_score)
+    portrait = build_mood_portrait(dims)
     return {
         "mood_score": mood_score,
         "mood_label": MOOD_LABELS.get(mood_score, "보통"),
@@ -50,6 +53,7 @@ def _checkin_payload(
         "checkin_date": checkin_date,
         "dimensions": dims,
         "dimension_summary": dimension_summary(dims),
+        "mood_portrait": portrait,
         "agent": agent.to_dict(),
         "sphere": build_sphere_visual(dims),
     }
@@ -204,16 +208,20 @@ def build_dashboard(user_id: str) -> Dict[str, Any]:
     session = load_latest_session_for_user(user_id)
     tarot = list_tarot_draws(user_id, 3)
     weekly = build_weekly_report(user_id)
+    dimension_trends = compute_dimension_trends(checkins)
 
     greeting = "오늘도 잠깐, 마음을 입체적으로 들여다볼까요?"
     if today:
         agent_label = (today.get("agent") or {}).get("label", "")
-        if today["mood_score"] <= 2:
+        portrait = today.get("mood_portrait") or {}
+        if portrait.get("narrative"):
+            greeting = portrait["narrative"].replace("**", "")
+        elif today["mood_score"] <= 2:
             greeting = f"힘든 하루일 수 있어요. {agent_label or '위로'} 모드로 천천히 함께해요."
         elif today["mood_score"] >= 4:
             greeting = f"오늘 마음이 조금 가벼워 보여요. {agent_label or '성장'} 모드로 이어가 봐요."
         elif agent_label:
-            greeting = f"오늘은 **{agent_label}** 모드로 맞춰 드릴게요."
+            greeting = f"오늘은 {agent_label} 모드로 맞춰 드릴게요."
 
     return {
         "user_id": user_id,
@@ -221,7 +229,8 @@ def build_dashboard(user_id: str) -> Dict[str, Any]:
         "today_checkin": today,
         "streak": streak,
         "recent_checkins": checkins,
-        "dimension_meta": MOOD_DIMENSION_META,
+        "dimension_meta": dimension_meta_for_client(),
+        "dimension_trends": dimension_trends,
         "session_id": session.session_id if session else None,
         "counseling_phase": session.counseling_phase if session else None,
         "homework_pending": bool(session and session.pending_homework),
@@ -240,6 +249,11 @@ def build_daily_context_block(user_id: str) -> str:
             f"- 오늘 입체 체크인: {today.get('dimension_summary') or today['mood_score']}"
             + (f" — \"{today['note']}\"" if today.get("note") else "")
         )
+        portrait = today.get("mood_portrait") or {}
+        if portrait.get("narrative"):
+            lines.append(f"- 마음 초상: {portrait['narrative'].replace('**', '')}")
+        if portrait.get("highlights"):
+            lines.append(f"- 눈에 띄는 축: {', '.join(portrait['highlights'][:3])}")
         agent = today.get("agent") or {}
         if agent.get("label"):
             lines.append(f"- 맞춤 AI 에이전트: {agent['label']} ({agent.get('focus', '')})")

@@ -26,6 +26,13 @@ from app.prompt_config import (
 from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
 from app.services.assessment_package import PACKAGE_TIERS, build_assessment_package, complete_checkout, mark_package_presented
 from app.services.clinical_insight import build_clinical_insight, sync_session_insight
+from app.services.clinical_pipeline import (
+    backfill_user_profile,
+    get_user_psych_profile,
+    sync_after_counseling,
+    sync_after_tarot,
+)
+from app.services.dsm5_framework import list_dsm5_catalog
 from app.services.chat_session import CHAT_SESSIONS, get_or_create_session, get_session
 from app.services.chat_stream import format_sse, run_chat_turn
 from app.services.orchestrator import record_assessment_answer
@@ -196,6 +203,20 @@ class ChatStreamRequest(BaseModel):
     assessment_response: Optional[Dict[str, Any]] = None
     homework_response: Optional[Dict[str, Any]] = None
     preferred_school: Optional[ClinicalSchool] = None
+    association_license: Optional[str] = None
+
+
+class AssociationLicenseRequest(BaseModel):
+    license_key: str
+
+
+class AssociationProvisionRequest(BaseModel):
+    org_name: str
+    discipline_id: str = "counseling_society"
+    tier_id: str = "society"
+    secondary_discipline: Optional[str] = None
+    seats: Optional[int] = None
+    days_valid: int = 365
 
 
 class HomeworkSubmitRequest(BaseModel):
@@ -239,6 +260,28 @@ class CheckinRequest(BaseModel):
     mood_score: Optional[int] = None
     note: str = ""
     dimensions: Optional[Dict[str, int]] = None
+
+
+class PictoCheckinRequest(BaseModel):
+    user_id: str
+    mood_picto_id: str
+
+
+class PictoChatRequest(BaseModel):
+    user_id: str
+    picto_ids: List[str]
+    session_id: Optional[str] = None
+
+
+class PictoCardRequest(BaseModel):
+    user_id: str
+    card_picto_id: str
+
+
+class PictoCaregiverAlertRequest(BaseModel):
+    user_id: str
+    picto_ids: Optional[List[str]] = None
+    note: str = ""
 
 
 class ReminderSettingsRequest(BaseModel):
@@ -784,6 +827,8 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "tarot": "/tarot",
         "test": "/test",
         "legal": "/legal",
+        "associations": "/associations",
+        "picto": "/picto",
         "health": "/health",
         "tarot_deck_api": "/api/v1/tarot/deck",
     }
@@ -808,6 +853,7 @@ async def health_check(request: Request):
             "홈": urls.get("home", "/home"),
             "AI 대화": urls.get("chat", "/chat"),
             "3D 타로": urls.get("tarot", "/tarot"),
+            "그림 마음": urls.get("picto", "/picto"),
             "이용 안내": urls.get("legal", "/legal"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
@@ -820,6 +866,14 @@ async def tarot_ui():
     if tarot_path.exists():
         return FileResponse(str(tarot_path))
     raise HTTPException(status_code=404, detail="Tarot UI not found")
+
+
+@app.get("/picto")
+async def picto_ui():
+    picto_path = STATIC_DIR / "picto.html"
+    if picto_path.exists():
+        return FileResponse(str(picto_path))
+    raise HTTPException(status_code=404, detail="Picto UI not found")
 
 
 @app.get("/test")
@@ -836,6 +890,14 @@ async def legal_ui():
     if legal_path.exists():
         return FileResponse(str(legal_path))
     raise HTTPException(status_code=404, detail="Legal page not found")
+
+
+@app.get("/associations")
+async def associations_ui():
+    path = STATIC_DIR / "associations.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Associations page not found")
 
 
 @app.get("/api/v1/legal/consent")
@@ -886,7 +948,7 @@ async def user_dashboard(user_id: str):
 @app.get("/api/v1/chat/mood-context/{user_id}")
 async def chat_mood_context(user_id: str):
     from app.services.mood_assistant import get_mood_welcome_message, resolve_mood_context
-    from app.services.mood_dimensions import MOOD_DIMENSION_META, build_sphere_visual
+    from app.services.mood_dimensions import build_sphere_visual, dimension_meta_for_client
 
     ctx = resolve_mood_context(user_id)
     sphere = build_sphere_visual(ctx.dimensions) if ctx.has_checkin else None
@@ -895,7 +957,7 @@ async def chat_mood_context(user_id: str):
         "mood": ctx.to_dict(),
         "agent": ctx.agent,
         "sphere": sphere,
-        "dimension_meta": MOOD_DIMENSION_META,
+        "dimension_meta": dimension_meta_for_client(),
         "welcome_message": get_mood_welcome_message(ctx),
     }
 
@@ -916,16 +978,137 @@ async def mood_checkin(request: CheckinRequest):
     return record_checkin(request.user_id, request.mood_score, request.note, request.dimensions)
 
 
+@app.get("/api/v1/picto/catalog")
+async def picto_catalog_api(full: bool = False):
+    from app.services.picto_vocabulary import picto_catalog, picto_offline_bundle
+
+    if full:
+        return picto_offline_bundle()
+    return picto_catalog()
+
+
+@app.get("/api/v1/counsel/offline-bundle")
+async def counsel_offline_bundle_api():
+    from app.services.counsel_offline import counsel_offline_bundle
+
+    return counsel_offline_bundle()
+
+
+@app.post("/api/v1/picto/checkin")
+async def picto_checkin(request: PictoCheckinRequest):
+    from app.services.picto_vocabulary import mood_dimensions_from_picto, picto_item
+
+    dims = mood_dimensions_from_picto(request.mood_picto_id)
+    if not dims:
+        raise HTTPException(status_code=400, detail="invalid mood_picto_id")
+    item = picto_item(request.mood_picto_id) or {}
+    note = f"[그림기분] {item.get('emoji', '')} {item.get('phrase', '')}".strip()
+    result = record_checkin(request.user_id, None, note, dims)
+    return {"checkin": result, "mood_picto_id": request.mood_picto_id, "emoji": item.get("emoji")}
+
+
+async def _run_picto_chat(user_id: str, picto_ids: List[str], session_id: Optional[str]) -> Dict[str, Any]:
+    from app.services.picto_vocabulary import compose_picto_message, suggest_reply_pictos
+
+    if not picto_ids:
+        raise HTTPException(status_code=400, detail="picto_ids required")
+    message = compose_picto_message(picto_ids)
+    message += "\n[그림 AAC 모드: 답변은 짧고 쉬운 말 2~3문장만.]"
+
+    session = get_or_create_session(user_id, session_id, "FREE")
+    reply_text = ""
+    async for event in run_chat_turn(session, message, client, max_tokens=180):
+        if event["event"] == "done":
+            reply_text = (event["data"].get("assistant_message") or "").strip()
+    if not reply_text:
+        reply_text = "함께 있어요. 천천히 괜찮아질 거예요."
+    save_session(session)
+    sync_after_counseling(user_id, session)
+    return {
+        "session_id": session.session_id,
+        "user_message": message,
+        "reply_text": reply_text,
+        "reply_pictos": suggest_reply_pictos(reply_text, 4),
+    }
+
+
+@app.post("/api/v1/picto/chat")
+async def picto_chat(request: PictoChatRequest):
+    return await _run_picto_chat(request.user_id, request.picto_ids, request.session_id)
+
+
+@app.post("/api/v1/picto/card")
+async def picto_card(request: PictoCardRequest):
+    from app.services.picto_vocabulary import picto_card_reply, picto_item
+
+    item = picto_item(request.card_picto_id)
+    if not item:
+        raise HTTPException(status_code=400, detail="invalid card_picto_id")
+    payload = picto_card_reply(request.card_picto_id)
+    return {
+        "user_id": request.user_id,
+        "card_picto_id": request.card_picto_id,
+        "emoji": item.get("emoji"),
+        **payload,
+    }
+
+
+@app.get("/api/v1/picto/mood-timeline/{user_id}")
+async def picto_mood_timeline(user_id: str, days: int = 7):
+    from app.services.daily_routine import recent_checkins, today_checkin
+    from app.services.picto_vocabulary import build_picto_mood_timeline, infer_mood_picto_from_checkin
+
+    checkins = recent_checkins(user_id, max(1, min(days, 30)))
+    today = today_checkin(user_id)
+    today_picto = None
+    if today:
+        today_picto = infer_mood_picto_from_checkin(today)
+        today_picto["date"] = today.get("checkin_date")
+    return {
+        "user_id": user_id,
+        "days": days,
+        "today": today_picto,
+        "timeline": build_picto_mood_timeline(checkins),
+    }
+
+
+@app.post("/api/v1/picto/caregiver-alert")
+async def picto_caregiver_alert(request: PictoCaregiverAlertRequest):
+    from app.services.picto_vocabulary import compose_picto_message, picto_item
+    from app.services.psych_timeline import record_event
+
+    message = compose_picto_message(request.picto_ids or ["help_caregiver"])
+    if request.note:
+        message = f"{message} · {request.note}"
+    record_event(
+        request.user_id,
+        "picto_caregiver_alert",
+        {
+            "message": message,
+            "picto_ids": request.picto_ids or ["help_caregiver"],
+            "urgency": "caregiver",
+        },
+    )
+    item = picto_item("help_caregiver") or {}
+    return {
+        "status": "recorded",
+        "user_id": request.user_id,
+        "emoji": item.get("emoji", "👨‍👩‍👧"),
+        "message": message,
+    }
+
+
 @app.get("/api/v1/history/{user_id}")
 async def user_history(user_id: str):
     from app.services.daily_routine import recent_checkins
     from app.services.insights import build_weekly_report
-    from app.services.persistence import load_latest_session_for_user
+    from app.services.persistence import list_user_sessions, load_latest_session_for_user
 
     session = load_latest_session_for_user(user_id)
     return {
         "user_id": user_id,
         "session_id": session.session_id if session else None,
+        "sessions": list_user_sessions(user_id, 10),
         "checkins": recent_checkins(user_id, 14),
         "tarot_draws": list_tarot_draws(user_id, 10),
         "weekly_report": build_weekly_report(user_id),
@@ -1048,7 +1231,10 @@ def _maybe_bridge_tarot(
         return None
     session = get_or_create_session(request.user_id, request.session_id, request.plan)
     handoff = build_tarot_handoff(request.user_story, draw_result, reading)
-    return apply_tarot_handoff(session, handoff)
+    result = apply_tarot_handoff(session, handoff)
+    save_session(session)
+    sync_after_tarot(request.user_id, session.session_id, handoff)
+    return result
 
 
 @app.post("/api/v1/tarot/bridge")
@@ -1058,6 +1244,16 @@ async def tarot_bridge(request: TarotBridgeRequest):
     result = apply_tarot_handoff(session, handoff)
     session.messages.append({"role": "assistant", "content": result["bridge_message"]})
     save_session(session)
+    psych_profile = sync_after_tarot(
+        request.user_id,
+        session.session_id,
+        handoff,
+    )
+    result["psych_profile"] = {
+        "pipeline_status": psych_profile.get("pipeline_status"),
+        "top_spectra": (psych_profile.get("recommendations") or {}).get("top_spectra", [])[:3],
+        "instruments": (psych_profile.get("recommendations") or {}).get("instruments", [])[:4],
+    }
     return result
 
 
@@ -1086,11 +1282,53 @@ async def submit_homework(session_id: str, request: HomeworkSubmitRequest):
 
 
 @app.get("/api/v1/chat/sessions/{session_id}")
-async def chat_session_state(session_id: str):
+async def chat_session_state(session_id: str, include_messages: bool = False):
     session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    return session.to_dict()
+    payload = session.to_dict()
+    if include_messages:
+        payload["messages"] = session.messages
+    return payload
+
+
+@app.get("/api/v1/chat/sessions/{session_id}/transcript")
+async def chat_session_transcript(session_id: str):
+    from app.services.counseling_phase import phase_snapshot
+
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {
+        "session_id": session.session_id,
+        "user_id": session.user_id,
+        "messages": session.messages,
+        "turn_count": session.turn_count,
+        "counseling_phase": session.counseling_phase,
+        "counseling_phase_info": phase_snapshot(session),
+        "clinical_insight": session.clinical_insight,
+        "has_tarot_handoff": bool(session.tarot_handoff),
+        "homework_pending": bool(session.pending_homework),
+    }
+
+
+@app.get("/api/v1/chat/sessions/user/{user_id}")
+async def chat_sessions_for_user(user_id: str, limit: int = 12):
+    from app.services.persistence import list_user_sessions
+
+    return {"user_id": user_id, "sessions": list_user_sessions(user_id, min(max(limit, 1), 30))}
+
+
+@app.post("/api/v1/chat/sessions/new")
+async def chat_new_session(user_id: str, plan: str = "BASIC"):
+    from uuid import uuid4
+
+    from app.services.chat_session import ChatSessionState
+    from app.services.persistence import save_session
+
+    session = ChatSessionState(user_id=user_id, session_id=str(uuid4()), plan=plan)
+    save_session(session)
+    return {"session_id": session.session_id, "user_id": user_id}
 
 
 @app.get("/api/v1/chat/personas")
@@ -1101,6 +1339,87 @@ async def chat_personas():
         "personas": list_theories_for_api(),
         "categories": list_categories_for_api(),
     }
+
+
+@app.get("/api/v1/dsm5/catalog")
+async def dsm5_catalog():
+    return list_dsm5_catalog()
+
+
+@app.get("/api/v1/users/{user_id}/psych-profile")
+async def user_psych_profile(user_id: str, auto_backfill: bool = True):
+    return get_user_psych_profile(user_id, auto_backfill=auto_backfill)
+
+
+@app.post("/api/v1/users/{user_id}/psych-profile/rebuild")
+async def rebuild_user_psych_profile(user_id: str):
+    return backfill_user_profile(user_id)
+
+
+@app.get("/api/v1/users/{user_id}/psych-timeline")
+async def user_psych_timeline(user_id: str, limit: int = 30):
+    from app.services.psych_timeline import list_events
+
+    return {"user_id": user_id, "events": list_events(user_id, min(max(limit, 1), 100))}
+
+
+@app.get("/api/v1/associations/catalog")
+async def associations_catalog():
+    from app.services.association_licensing import build_associations_catalog
+
+    return build_associations_catalog()
+
+
+@app.get("/api/v1/associations/disciplines/{discipline_id}")
+async def association_discipline(discipline_id: str):
+    from app.services.association_licensing import DISCIPLINE_PROFILES, resolve_entitlements
+
+    profile = DISCIPLINE_PROFILES.get(discipline_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Unknown discipline")
+    return {
+        **profile,
+        "sample_entitlements_society": resolve_entitlements(discipline_id, "society"),
+    }
+
+
+@app.post("/api/v1/associations/licenses/validate")
+async def validate_association_license(request: AssociationLicenseRequest):
+    from app.services.license_store import validate_license
+
+    return validate_license(request.license_key)
+
+
+@app.post("/api/v1/associations/licenses/provision")
+async def provision_association_license(request: AssociationProvisionRequest, req: Request):
+    expected = os.getenv("PURGE_AUDIT_TOKEN", "")
+    token = req.headers.get("X-Audit-Token", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=403, detail="Admin token required")
+    from app.services.license_store import provision_license
+    from app.services.vault import write_audit_event
+
+    result = provision_license(
+        request.org_name,
+        request.discipline_id,
+        request.tier_id,
+        secondary_discipline=request.secondary_discipline,
+        seats=request.seats,
+        days_valid=request.days_valid,
+    )
+    write_audit_event("LICENSE_PROVISION", "association", {"org_id": result.get("org_id")})
+    return result
+
+
+@app.get("/api/v1/associations/orgs")
+async def list_association_orgs(request: Request, limit: int = 20):
+    expected = os.getenv("PURGE_AUDIT_TOKEN", "")
+    token = request.headers.get("X-Audit-Token", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=403, detail="Admin token required")
+    from app.services.license_store import list_organizations
+
+    return {"organizations": list_organizations(min(max(limit, 1), 100))}
 
 
 @app.get("/api/v1/assessments/catalog")
@@ -1247,7 +1566,12 @@ async def chat_stream(request: ChatStreamRequest):
     session = get_or_create_session(request.user_id, request.session_id, request.plan)
     if request.preferred_school:
         session.preferred_school = request.preferred_school.value
-    config = _resolve_plan(request.plan)
+    if request.association_license:
+        from app.services.association_context import bind_license_to_session
+
+        bind_license_to_session(session, request.association_license)
+    effective_plan = session.plan or request.plan
+    config = _resolve_plan(effective_plan)
 
     async def event_generator():
         try:
@@ -1265,6 +1589,19 @@ async def chat_stream(request: ChatStreamRequest):
                     _store_chat_profile(request.user_id, profile_delta, request.plan)
                     _invalidate_user_caches(request.user_id)
                     save_session(session)
+                    psych = sync_after_counseling(request.user_id, session)
+                    event["data"]["psych_profile"] = {
+                        "pipeline_status": psych.get("pipeline_status"),
+                        "top_spectra": (psych.get("recommendations") or {}).get("top_spectra", [])[:3],
+                        "instruments": (psych.get("recommendations") or {}).get("instruments", [])[:4],
+                        "techniques": (psych.get("recommendations") or {}).get("techniques", [])[:3],
+                    }
+                    if session.org_entitlements:
+                        event["data"]["association"] = {
+                            "org_name": session.org_name,
+                            "discipline_label": session.org_entitlements.get("discipline_label"),
+                            "primary_lens": session.org_entitlements.get("primary_lens"),
+                        }
                 yield format_sse(event)
         except asyncio.CancelledError:
             raise

@@ -37,6 +37,10 @@ class ChatSessionState:
     homework_packages: List[Dict[str, Any]] = field(default_factory=list)
     homework_completed: List[Dict[str, Any]] = field(default_factory=list)
     pending_homework: Optional[Dict[str, Any]] = None
+    org_id: Optional[str] = None
+    org_name: Optional[str] = None
+    org_entitlements: Optional[Dict[str, Any]] = None
+    association_license_key: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -68,6 +72,9 @@ class ChatSessionState:
             "homework_pending": bool(self.pending_homework),
             "homework_completed_count": len(self.homework_completed),
             "message_count": len(self.messages),
+            "org_id": self.org_id,
+            "org_name": self.org_name,
+            "discipline_id": (self.org_entitlements or {}).get("discipline_id"),
         }
 
 

@@ -69,6 +69,11 @@ ASSESSMENT_DOMAINS: Dict[str, Dict[str, Any]] = {
         "school": "로저스·인간중심",
         "instruments": ["micro_emotion"],
     },
+    "projective_sct": {
+        "label": "문장완성 · 마음 글씨",
+        "school": "투사·SCT",
+        "instruments": ["sct"],
+    },
 }
 
 INSTRUMENT_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -162,6 +167,13 @@ INSTRUMENT_PROFILES: Dict[str, Dict[str, Any]] = {
         "focus": "전반적 감정 강도",
         "keywords": ("힘들", "지침", "모르겠", "복잡", "답답", "막막"),
         "counseling_fit": ("상담", "이야기", "힘들"),
+    },
+    "sct": {
+        "display_name": "문장완성 · SCT",
+        "domain": "projective_sct",
+        "focus": "자기·관계·미래에 대한 마음 글씨",
+        "keywords": ("나는", "자신", "느끼", "힘들", "앞으로", "관계", "엄마", "아버지"),
+        "counseling_fit": ("나는", "자신", "느끼는", "써", "말해"),
     },
 }
 

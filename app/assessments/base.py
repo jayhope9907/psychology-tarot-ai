@@ -9,13 +9,14 @@ class ResponseType(str, Enum):
     LIKERT_0_3 = "likert_0_3"
     SCALE_0_10 = "scale_0_10"
     SINGLE_CHOICE = "single_choice"
+    OPEN_TEXT = "open_text"
 
 
 LIKERT_0_3_OPTIONS = [
-    {"value": 0, "label": "전혀 없음"},
-    {"value": 1, "label": "며칠"},
-    {"value": 2, "label": "절반 이상"},
-    {"value": 3, "label": "거의 매일"},
+    {"value": 0, "label": "전혀 없었어요"},
+    {"value": 1, "label": "며칠 정도 그랬어요"},
+    {"value": 2, "label": "절반 넘는 날 그랬어요"},
+    {"value": 3, "label": "거의 매일 그랬어요"},
 ]
 
 

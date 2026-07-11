@@ -6,6 +6,44 @@ from typing import Any, Dict, List, Optional, Tuple
 
 MOOD_DIMENSION_KEYS: Tuple[str, ...] = ("valence", "energy", "anxiety", "social", "sleep")
 
+DIMENSION_FACETS: Dict[str, Dict[int, str]] = {
+    "valence": {
+        1: "매우 무거움",
+        2: "처짐",
+        3: "평온",
+        4: "가벼움",
+        5: "밝고 여유",
+    },
+    "energy": {
+        1: "탈진",
+        2: "무기력",
+        3: "보통",
+        4: "활동적",
+        5: "활력 넘침",
+    },
+    "anxiety": {
+        1: "매우 차분",
+        2: "안정",
+        3: "약간 긴장",
+        4: "불안함",
+        5: "극심한 긴장",
+    },
+    "social": {
+        1: "고립감",
+        2: "거리 둠",
+        3: "중립",
+        4: "연결감",
+        5: "깊은 교류",
+    },
+    "sleep": {
+        1: "심한 피로",
+        2: "피곤",
+        3: "보통",
+        4: "쉬운 편",
+        5: "완전 회복",
+    },
+}
+
 MOOD_DIMENSION_META: Dict[str, Dict[str, str]] = {
     "valence": {
         "label": "기분",
@@ -134,13 +172,200 @@ def dimensions_from_json(raw: Optional[str]) -> Dict[str, int]:
     return normalize_dimensions({})
 
 
+def facet_label(key: str, value: int) -> str:
+    return DIMENSION_FACETS.get(key, {}).get(clamp_dimension(value), "보통")
+
+
+def dimension_meta_for_client() -> Dict[str, Dict[str, Any]]:
+    """API payload: labels + per-level facet names for live UI."""
+    out: Dict[str, Dict[str, Any]] = {}
+    for key in MOOD_DIMENSION_KEYS:
+        meta = dict(MOOD_DIMENSION_META[key])
+        meta["facets"] = {str(level): label for level, label in DIMENSION_FACETS[key].items()}
+        out[key] = meta
+    return out
+
+
 def dimension_summary(dimensions: Dict[str, int]) -> str:
     d = normalize_dimensions(dimensions)
     parts = []
     for key in MOOD_DIMENSION_KEYS:
         meta = MOOD_DIMENSION_META[key]
-        parts.append(f"{meta['label']} {d[key]}/5")
+        parts.append(f"{meta['label']} {facet_label(key, d[key])}")
     return " · ".join(parts)
+
+
+def _axis_zone(key: str, value: int) -> str:
+    v = clamp_dimension(value)
+    if key == "anxiety":
+        if v <= 2:
+            return "low"
+        if v >= 4:
+            return "high"
+        return "mid"
+    if v <= 2:
+        return "low"
+    if v >= 4:
+        return "high"
+    return "mid"
+
+
+def build_mood_fingerprint(dimensions: Dict[str, int]) -> str:
+    d = normalize_dimensions(dimensions)
+    return " · ".join(facet_label(key, d[key]) for key in MOOD_DIMENSION_KEYS)
+
+
+def build_mood_portrait(dimensions: Dict[str, int]) -> Dict[str, Any]:
+    """Rich 5-axis mood profile — humans feel combinations, not one score."""
+    d = normalize_dimensions(dimensions)
+    axes: List[Dict[str, Any]] = []
+    for key in MOOD_DIMENSION_KEYS:
+        meta = MOOD_DIMENSION_META[key]
+        val = d[key]
+        axes.append(
+            {
+                "key": key,
+                "label": meta["label"],
+                "value": val,
+                "facet": facet_label(key, val),
+                "zone": _axis_zone(key, val),
+                "emoji": meta.get("emoji", ""),
+            }
+        )
+
+    highlights: List[str] = []
+    for key in MOOD_DIMENSION_KEYS:
+        val = d[key]
+        label = MOOD_DIMENSION_META[key]["label"]
+        facet = facet_label(key, val)
+        if key == "anxiety" and val >= 4:
+            highlights.append(f"{label} {facet} ({val}/5)")
+        elif key != "anxiety" and val <= 2:
+            highlights.append(f"{label} {facet} ({val}/5)")
+        elif key != "anxiety" and val >= 4:
+            highlights.append(f"{label} {facet} ({val}/5)")
+
+    spread = max(d.values()) - min(d.values())
+    balance = round(max(0.0, 1.0 - (spread - 1) * 0.22), 2)
+
+    narrative_parts: List[str] = []
+    valence_f = facet_label("valence", d["valence"])
+    energy_f = facet_label("energy", d["energy"])
+    anxiety_f = facet_label("anxiety", d["anxiety"])
+    social_f = facet_label("social", d["social"])
+    sleep_f = facet_label("sleep", d["sleep"])
+
+    narrative_parts.append(f"기분은 **{valence_f}**, 에너지는 **{energy_f}** 쪽이에요.")
+    if d["anxiety"] >= 4:
+        narrative_parts.append(f"불안·긴장은 **{anxiety_f}**으로 높게 느껴지는 하루예요.")
+    elif d["anxiety"] <= 2:
+        narrative_parts.append(f"마음은 비교적 **{anxiety_f}**한 편이에요.")
+    else:
+        narrative_parts.append(f"불안은 **{anxiety_f}** 정도예요.")
+
+    if d["social"] <= 2 and d["valence"] <= 2:
+        narrative_parts.append(f"관계에서는 **{social_f}**이고, 혼자 버티는 느낌이 클 수 있어요.")
+    elif d["social"] >= 4:
+        narrative_parts.append(f"사람과의 **{social_f}**이 오늘 마음을 받쳐 주고 있어요.")
+    else:
+        narrative_parts.append(f"관계·연결은 **{social_f}** 쪽이에요.")
+
+    if d["sleep"] <= 2:
+        narrative_parts.append(f"몸·수면은 **{sleep_f}** 상태라 무리하지 않는 게 좋아요.")
+    elif d["sleep"] >= 4:
+        narrative_parts.append(f"휴식·회복은 **{sleep_f}** 편이에요.")
+
+    if spread >= 3:
+        narrative_parts.append("축마다 온도가 달라요 — 한 가지 기분으로만 정의하기 어려운 날이에요.")
+    elif balance >= 0.75:
+        narrative_parts.append("전반적으로 비교적 고른 마음 좌표예요.")
+
+    return {
+        "fingerprint": build_mood_fingerprint(d),
+        "narrative": " ".join(narrative_parts),
+        "axes": axes,
+        "highlights": highlights[:4],
+        "balance": balance,
+        "spread": spread,
+        "composite_score": composite_mood_score(d),
+    }
+
+
+def compute_dimension_trends(checkins: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Per-axis averages, latest values, and week-over-week direction."""
+    if not checkins:
+        return {"axes": [], "days": 0, "summary": None}
+
+    series: Dict[str, List[int]] = {key: [] for key in MOOD_DIMENSION_KEYS}
+    ordered = list(reversed(checkins))
+    for row in ordered:
+        dims = row.get("dimensions") or default_dimensions_from_score(row.get("mood_score", 3))
+        dims = normalize_dimensions(dims)
+        for key in MOOD_DIMENSION_KEYS:
+            series[key].append(dims[key])
+
+    latest = normalize_dimensions(checkins[0].get("dimensions") or {})
+    if not any(latest.values()) and checkins[0].get("mood_score"):
+        latest = default_dimensions_from_score(checkins[0]["mood_score"])
+
+    axes_out: List[Dict[str, Any]] = []
+    for key in MOOD_DIMENSION_KEYS:
+        values = series[key]
+        if not values:
+            continue
+        avg = round(sum(values) / len(values), 1)
+        latest_val = latest.get(key, values[-1])
+        delta = round(latest_val - avg, 1)
+        trend = "stable"
+        if len(values) >= 3:
+            early = sum(values[: len(values) // 2]) / max(1, len(values) // 2)
+            late = sum(values[len(values) // 2 :]) / max(1, len(values) - len(values) // 2)
+            if late - early >= 0.6:
+                trend = "rising" if key != "anxiety" else "rising"
+            elif early - late >= 0.6:
+                trend = "falling" if key != "anxiety" else "falling"
+        if key == "anxiety":
+            if trend == "rising":
+                trend_label = "긴장 증가"
+            elif trend == "falling":
+                trend_label = "진정 추세"
+            else:
+                trend_label = "비슷함"
+        else:
+            if trend == "rising":
+                trend_label = "회복·상승"
+            elif trend == "falling":
+                trend_label = "하락·저하"
+            else:
+                trend_label = "비슷함"
+
+        axes_out.append(
+            {
+                "key": key,
+                "label": MOOD_DIMENSION_META[key]["label"],
+                "latest": latest_val,
+                "latest_facet": facet_label(key, latest_val),
+                "avg": avg,
+                "delta_from_avg": delta,
+                "trend": trend,
+                "trend_label": trend_label,
+                "series": values,
+            }
+        )
+
+    summary_bits: List[str] = []
+    for axis in axes_out:
+        if abs(axis["delta_from_avg"]) >= 0.8:
+            direction = "평균보다 높음" if axis["delta_from_avg"] > 0 else "평균보다 낮음"
+            if axis["key"] == "anxiety":
+                direction = "평균보다 긴장↑" if axis["delta_from_avg"] > 0 else "평균보다 차분↓"
+            summary_bits.append(f"{axis['label']} {direction}({axis['latest_facet']})")
+
+    return {
+        "days": len(checkins),
+        "axes": axes_out,
+        "summary": " · ".join(summary_bits[:3]) if summary_bits else None,
+    }
 
 
 def dominant_concerns(dimensions: Dict[str, int]) -> List[str]:

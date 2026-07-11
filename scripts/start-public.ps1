@@ -95,6 +95,10 @@ function Start-Localtunnel {
     return $null
 }
 
+Write-Status "오프라인 번들 생성"
+python (Join-Path $Root "scripts\build_offline_bundles.py")
+if ($LASTEXITCODE -ne 0) { throw "오프라인 번들 생성 실패" }
+
 Write-Status "기존 서버/터널 정리"
 Stop-PublicStack
 Start-Sleep -Seconds 2
@@ -139,9 +143,9 @@ $shareObj = [ordered]@{
     home = "$publicUrl/home"
     chat = "$publicUrl/chat"
     tarot = "$publicUrl/tarot"
+    picto = "$publicUrl/picto"
     test = "$publicUrl/test"
     legal = "$publicUrl/legal"
-    health = "$publicUrl/health"
     started_at = (Get-Date).ToUniversalTime().ToString("o")
 }
 ($shareObj | ConvertTo-Json -Depth 3) | Set-Content (Join-Path $Root "public-url.json") -Encoding UTF8
@@ -154,6 +158,7 @@ Write-Host "앱   : $($shareObj.app)"
 Write-Host "홈   : $($shareObj.home)"
 Write-Host "대화 : $($shareObj.chat)"
 Write-Host "타로 : $($shareObj.tarot)"
+Write-Host "그림 : $($shareObj.picto)"
 Write-Host "법률 : $($shareObj.legal)"
 Write-Host "테스트: $($shareObj.test)"
 Write-Host ""

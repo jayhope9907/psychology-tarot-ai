@@ -35,18 +35,28 @@ from app.services.tarot_bridge import build_tarot_system_block, should_suggest_t
 from app.services.persona_router import build_persona_directive, route_clinical_persona
 from app.services.prompt_binding import PromptContextWeightBindingFactory, extract_chat_quant_features
 
+from app.assessments.user_voice import user_instrument_title
+
 INSTRUMENT_LABELS = {
-    "phq9": "우울 척도(PHQ-9)",
-    "gad7": "불안 척도(GAD-7)",
-    "attachment_ecr": "관계·애착",
-    "isi": "수면",
-    "pss": "스트레스",
-    "micro_emotion": "감정 온도",
+    "phq9": "요즘 마음 기분 들여다보기",
+    "gad7": "걱정·불안한 마음 살펴보기",
+    "attachment_ecr": "관계·가까움·거리감",
+    "isi": "잠·수면 이야기",
+    "pss": "스트레스·버거움",
+    "micro_emotion": "지금 마음 무게",
+    "sct": "문장 이어쓰기 · 마음 글씨",
+    "rses": "나 자신을 바라보는 마음",
+    "cbt_thought": "자주 드는 생각 패턴",
+    "psychodynamic": "반복되는 마음·관계",
+    "behavioral": "미루기·피하기·즐거움",
+    "htp": "집·나무·사람 상상하기",
+    "tarot_reflect": "지금 마음에 닿는 상징",
+    "pcl5": "힘든 기억·마음 반응",
 }
 
 
 def _instrument_label(instrument_id: str) -> str:
-    return INSTRUMENT_LABELS.get(instrument_id, "마음 상태")
+    return user_instrument_title(instrument_id) or INSTRUMENT_LABELS.get(instrument_id, "마음 상태")
 
 
 def _last_assistant_message(state: ChatSessionState) -> str:

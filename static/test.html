@@ -256,7 +256,7 @@
       <li data-check="chat"><span class="check-icon">·</span><span>AI 대화 페이지 로드</span></li>
       <li data-check="tarot"><span class="check-icon">·</span><span>타로 페이지 로드</span></li>
       <li data-check="css"><span class="check-icon">·</span><span>토스 UI 스타일시트</span></li>
-      <li data-check="deck"><span class="check-icon">·</span><span>타로 덱 API (22장)</span></li>
+      <li data-check="deck"><span class="check-icon">·</span><span>타로 덱 API (78장)</span></li>
     </ul>
   </section>
 
@@ -416,7 +416,7 @@
         const res = await fetch("/api/v1/tarot/deck");
         const d = await res.json();
         log(`✓ deck → ${d.cards?.length || 0}장`);
-        setCheck("deck", d.cards?.length === 22);
+        setCheck("deck", d.cards?.length === 78 && d.major_count === 22 && d.minor_count === 56);
         return d;
       },
       async draw() {

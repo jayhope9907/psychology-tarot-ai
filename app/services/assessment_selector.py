@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from app.assessments import ALL_INSTRUMENTS, INSTRUMENT_PROFILES, profile_summary
 from app.assessments.base import AssessmentItem
 from app.services.assessment_battery import boost_battery_coverage_scores
+from app.services.association_licensing import instrument_allowed
 from app.services.chat_session import ChatSessionState
 
 
@@ -29,6 +30,8 @@ def _conversation_text(state: ChatSessionState, user_message: str) -> str:
 def _available_candidates(state: ChatSessionState) -> Dict[str, AssessmentItem]:
     candidates: Dict[str, AssessmentItem] = {}
     for instrument_id, instrument in ALL_INSTRUMENTS.items():
+        if not instrument_allowed(instrument_id, state.org_entitlements):
+            continue
         answers = state.formal_answers.setdefault(instrument_id, {})
         next_item = instrument.next_item(answers)
         if next_item:
@@ -158,6 +161,7 @@ def select_best_assessment(
         "htp": "상상을 통해 마음을 비춰볼 질문이에요.",
         "tarot_reflect": "상징을 통해 지금 마음을 비춰볼게요.",
         "micro_emotion": "지금 감정 온도를 가볍게 확인할게요.",
+        "sct": "문장을 이어 써서 지금 마음을 들여다볼게요.",
     }
 
     return AssessmentSelection(

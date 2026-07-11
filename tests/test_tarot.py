@@ -17,14 +17,39 @@ def test_tarot_deck_has_22_major_arcana():
     assert cards[0]["name_en"] == "The Fool"
 
 
+def test_tarot_full_deck_has_78_cards():
+    from app.services.tarot import get_full_deck, get_minor_arcana
+
+    assert len(get_minor_arcana()) == 56
+    assert len(get_full_deck()) == 78
+
+
 def test_list_deck_catalog_endpoint():
     response = client.get("/api/v1/tarot/deck")
     assert response.status_code == 200
     payload = response.json()
-    assert len(payload["cards"]) == 22
+    assert len(payload["cards"]) == 78
+    assert payload.get("total") == 78
+    assert payload.get("major_count") == 22
+    assert payload.get("minor_count") == 56
     assert "three_card" in payload["spreads"]
     assert payload["cards"][0]["image_url"].startswith("https://")
     assert "upright_ko" in payload["cards"][0]
+    minor = next(c for c in payload["cards"] if c.get("arcana") == "minor")
+    assert minor["suit"] in ("wands", "cups", "swords", "pentacles")
+    assert minor["image_url"].endswith(".svg")
+
+
+def test_pick_endpoint_user_selected_minor_card():
+    response = client.post(
+        "/api/v1/tarot/pick",
+        json={"spread": "three_card", "card_ids": ["fool", "wands_ace", "cups_three"]},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["cards"]) == 3
+    assert payload["cards"][1]["id"] == "wands_ace"
+    assert payload["cards"][1]["image_url"].startswith("https://")
 
 
 def test_pick_endpoint_user_selected_cards():

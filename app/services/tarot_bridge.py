@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.services.chat_session import ChatSessionState
+from app.services.clinical_pipeline import extract_tarot_signals
 
 
 def build_tarot_handoff(
@@ -94,6 +95,13 @@ def apply_tarot_handoff(state: ChatSessionState, handoff: Dict[str, Any]) -> Dic
     if archetypes:
         notes["tarot_archetypes"] = archetypes
 
+    tarot_signals = extract_tarot_signals(handoff)
+    if tarot_signals:
+        state.quant_features["tarot_spectrum_signals"] = tarot_signals
+        top_spectrum = max(tarot_signals.items(), key=lambda item: item[1])
+        state.quant_features["tarot_primary_spectrum"] = top_spectrum[0]
+        state.quant_features["tarot_primary_spectrum_score"] = round(top_spectrum[1], 2)
+
     if state.counseling_phase == "rapport" and state.turn_count >= 2:
         state.counseling_phase = "conceptualization"
         notes["conceptualization_intro_done"] = False
@@ -139,6 +147,10 @@ def build_tarot_system_block(state: ChatSessionState) -> str:
 
 
 def should_suggest_tarot(state: ChatSessionState) -> bool:
+    from app.services.association_licensing import feature_enabled
+
+    if state.org_entitlements and not feature_enabled("tarot_bridge", state.org_entitlements):
+        return False
     if state.tarot_blended or state.tarot_handoff:
         return False
     if state.counseling_phase not in {"conceptualization", "intervention"}:

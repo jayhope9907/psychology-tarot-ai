@@ -63,6 +63,10 @@ def session_to_storage(state: ChatSessionState) -> Dict[str, Any]:
         "homework_packages": state.homework_packages,
         "homework_completed": state.homework_completed,
         "pending_homework": state.pending_homework,
+        "org_id": state.org_id,
+        "org_name": state.org_name,
+        "org_entitlements": state.org_entitlements,
+        "association_license_key": state.association_license_key,
     }
 
 
@@ -98,6 +102,10 @@ def session_from_storage(data: Dict[str, Any]) -> ChatSessionState:
         homework_packages=data.get("homework_packages", []),
         homework_completed=data.get("homework_completed", []),
         pending_homework=data.get("pending_homework"),
+        org_id=data.get("org_id"),
+        org_name=data.get("org_name"),
+        org_entitlements=data.get("org_entitlements"),
+        association_license_key=data.get("association_license_key"),
     )
 
 
@@ -161,6 +169,44 @@ def load_latest_session_for_user(user_id: str) -> Optional[ChatSessionState]:
         state = session_from_storage(data)
         CHAT_SESSIONS[state.session_id] = state
         return state
+    finally:
+        conn.close()
+
+
+def list_user_sessions(user_id: str, limit: int = 12) -> List[Dict[str, Any]]:
+    init_db()
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT session_id, state_json, updated_at
+            FROM session_snapshots
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        ).fetchall()
+        sessions: List[Dict[str, Any]] = []
+        for row in rows:
+            data = json.loads(row["state_json"])
+            messages = data.get("messages") or []
+            preview = ""
+            for entry in reversed(messages):
+                if entry.get("role") == "user" and entry.get("content"):
+                    preview = str(entry["content"])[:72]
+                    break
+            sessions.append(
+                {
+                    "session_id": row["session_id"],
+                    "updated_at": row["updated_at"],
+                    "turn_count": data.get("turn_count", 0),
+                    "message_count": len(messages),
+                    "counseling_phase": data.get("counseling_phase", "rapport"),
+                    "preview": preview,
+                }
+            )
+        return sessions
     finally:
         conn.close()
 

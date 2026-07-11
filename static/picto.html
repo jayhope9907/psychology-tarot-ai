@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2d6a4f" />
+  <meta name="description" content="그림으로만 마음 표현 — 마음쉼터 쉬운 모드" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="prefetch" href="/static/picto-catalog.bundle.json" />
+  <title>마음쉼터 · 그림 모드</title>
+  <link rel="stylesheet" href="/static/css/embed.css" />
+  <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
+  <style>
+    :root {
+      --bg: #f0f7f4;
+      --tile: #fff;
+      --accent: #2d6a4f;
+      --accent-soft: #d8f3dc;
+      --danger: #c1121f;
+      --tile-size: clamp(88px, 22vw, 120px);
+      --gap: 12px;
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: #1b4332;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      user-select: none;
+    }
+    body.show-labels .picto-label { display: block; }
+    .picto-label { display: none; font-size: 0.72rem; font-weight: 700; margin-top: 6px; text-align: center; line-height: 1.2; }
+
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: #fff; border-bottom: 3px solid var(--accent-soft);
+      flex-shrink: 0;
+    }
+    .top-bar h1 { margin: 0; font-size: 1.1rem; }
+    .top-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 48px; height: 48px; border: 2px solid var(--accent-soft);
+      border-radius: 14px; background: #fff; font-size: 1.4rem; cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .icon-btn:active { transform: scale(0.94); background: var(--accent-soft); }
+    .icon-btn.active { background: var(--accent-soft); border-color: var(--accent); }
+
+    main { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+
+    .screen { display: none; animation: fade 0.25s ease; }
+    .screen.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--gap);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-1 { grid-template-columns: 1fr; max-width: 280px; }
+
+    .picto-btn {
+      aspect-ratio: 1;
+      min-height: var(--tile-size);
+      border: 3px solid transparent;
+      border-radius: var(--radius);
+      background: var(--tile);
+      box-shadow: 0 4px 14px rgba(45,106,79,0.12);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .picto-btn .emoji { font-size: clamp(2.8rem, 10vw, 3.6rem); line-height: 1; }
+    .picto-btn:active { transform: scale(0.92); }
+    .picto-btn.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+    .picto-btn.nav-tile { background: linear-gradient(160deg, #fff, var(--accent-soft)); }
+    .picto-btn.help-tile { border-color: #ffc8c8; background: #fff5f5; }
+    .picto-btn.help-tile .emoji { font-size: 2.4rem; }
+
+    .sentence-strip {
+      position: sticky; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 3px solid var(--accent-soft);
+      padding: 12px 14px; display: flex; gap: 8px; align-items: center;
+      min-height: 72px; flex-wrap: wrap;
+    }
+    .sentence-strip .chip {
+      font-size: 2rem; padding: 4px 8px; border-radius: 12px;
+      background: var(--accent-soft); animation: pop 0.2s ease;
+    }
+    @keyframes pop { from { transform: scale(0.5); } to { transform: scale(1); } }
+    .send-btn {
+      margin-left: auto; width: 64px; height: 64px; border: none;
+      border-radius: 50%; background: var(--accent); color: #fff;
+      font-size: 1.8rem; cursor: pointer; flex-shrink: 0;
+    }
+    .send-btn:disabled { opacity: 0.4; }
+
+    .feedback {
+      text-align: center; padding: 32px 16px;
+    }
+    .feedback .big-emoji { font-size: 5rem; margin-bottom: 16px; animation: bounce 0.6s ease; }
+    @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+
+    .reply-area {
+      max-width: 480px; margin: 16px auto 0;
+      padding: 16px; background: #fff; border-radius: var(--radius);
+      border: 2px solid var(--accent-soft);
+    }
+    .reply-pictos { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+    .reply-pictos span { font-size: 2.4rem; }
+
+    .loading { text-align: center; padding: 40px; font-size: 3rem; animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: 0.5; } }
+
+    body.big-touch { --tile-size: clamp(104px, 28vw, 148px); --gap: 16px; }
+    body.big-touch .picto-btn .emoji { font-size: clamp(3.2rem, 12vw, 4.2rem); }
+    body.big-touch .send-btn { width: 76px; height: 76px; }
+    body.high-contrast {
+      --bg: #000; --tile: #111; --accent: #ffd60a; --accent-soft: #333;
+      color: #fff;
+    }
+    body.high-contrast .picto-btn { border-color: #fff; color: #fff; box-shadow: none; }
+    body.high-contrast .picto-btn.selected { border-color: #ffd60a; box-shadow: 0 0 0 4px #665500; }
+    body.high-contrast .top-bar, body.high-contrast .sentence-strip,
+    body.high-contrast .reply-area, body.high-contrast .float-dock {
+      background: #111; border-color: #444;
+    }
+
+    .grid-home { grid-template-columns: repeat(2, 1fr); max-width: 520px; }
+    .grid-home .span-full { grid-column: 1 / -1; justify-self: center; width: calc(50% - var(--gap) / 2); }
+
+    .fav-row {
+      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px;
+      max-width: 520px; margin: 0 auto 14px; scrollbar-width: none;
+    }
+    .fav-row:empty { display: none; }
+    .fav-chip {
+      flex: 0 0 auto; min-width: 72px; min-height: 72px; border-radius: 18px;
+      border: 2px dashed var(--accent); background: #fff; font-size: 1.6rem;
+      cursor: pointer; display: grid; place-items: center; padding: 8px;
+    }
+
+    .timeline-row {
+      display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+      max-width: 520px; margin: 0 auto;
+    }
+    .timeline-day {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      min-width: 56px; padding: 10px 6px; border-radius: 16px; background: #fff;
+      box-shadow: 0 2px 8px rgba(45,106,79,0.1);
+    }
+    .timeline-day .emoji { font-size: 2.2rem; }
+    .timeline-day .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-soft); }
+    .timeline-day.is-today { outline: 3px solid var(--accent); }
+    .timeline-day.empty .emoji { opacity: 0.25; filter: grayscale(1); }
+
+    .float-dock {
+      position: fixed; bottom: max(12px, env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; padding: 8px 12px; border-radius: 999px;
+      background: rgba(255,255,255,0.96); border: 2px solid var(--accent-soft);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12); z-index: 50;
+    }
+    body:not(.embed-mode) .float-dock { display: none; }
+    body.embed-mode.dock-visible .float-dock { display: flex; }
+    .float-dock .icon-btn { width: 44px; height: 44px; font-size: 1.2rem; }
+
+    .tel-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100;
+      display: grid; place-items: center; padding: 20px;
+    }
+    .tel-modal[hidden] { display: none; }
+    .tel-card {
+      background: #fff; border-radius: 24px; padding: 24px; text-align: center;
+      max-width: 320px; width: 100%;
+    }
+    .tel-card .big { font-size: 4rem; margin-bottom: 16px; }
+    .tel-actions { display: flex; gap: 12px; justify-content: center; }
+    .tel-actions .picto-btn { width: 100px; height: 100px; min-height: 0; }
+
+    .reply-pictos button, .reply-pictos .reply-btn {
+      font-size: 2.4rem; border: none; background: var(--accent-soft);
+      border-radius: 16px; padding: 10px 14px; cursor: pointer;
+    }
+    .reply-pictos button:active { transform: scale(0.92); }
+
+    main.has-dock { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+    main.has-strip { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+
+    .save-fav-btn {
+      margin: 12px auto 0; display: block; width: 88px; height: 88px;
+      border: 2px dashed var(--accent); border-radius: 20px; background: #fff;
+      font-size: 2rem; cursor: pointer;
+    }
+    .offline-badge { font-size: 1.15rem; line-height: 1; }
+  </style>
+</head>
+<body>
+  <header class="top-bar app-hide-embed">
+    <button type="button" class="icon-btn" id="btnBack" aria-label="뒤로">🔙</button>
+    <h1 aria-hidden="true">🌿 <span id="offlineBadge" class="offline-badge" hidden aria-label="오프라인">📴</span></h1>
+    <div class="top-actions">
+      <button type="button" class="icon-btn" id="btnBigTouch" aria-label="큰 버튼">⬛</button>
+      <button type="button" class="icon-btn" id="btnContrast" aria-label="선명하게">🌓</button>
+      <button type="button" class="icon-btn" id="btnLabels" aria-label="글자 보기">👁️</button>
+      <button type="button" class="icon-btn" id="btnSpeak" aria-label="소리 듣기">🔊</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 홈 -->
+    <section class="screen active" id="screenHome" aria-label="메인 메뉴">
+      <div class="fav-row" id="homeFavorites"></div>
+      <div class="grid grid-home" id="homeGrid"></div>
+    </section>
+
+    <!-- 기분 -->
+    <section class="screen" id="screenMood" aria-label="기분 고르기">
+      <div class="grid grid-3" id="moodGrid"></div>
+    </section>
+    <section class="screen" id="screenMoodDone" aria-label="기분 저장됨">
+      <div class="feedback">
+        <div class="big-emoji" id="moodDoneEmoji">💚</div>
+        <button type="button" class="picto-btn nav-tile" style="width:120px;height:120px;margin:0 auto" data-go="home">
+          <span class="emoji">🏠</span>
+          <span class="picto-label">처음</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 말하기 -->
+    <section class="screen" id="screenTalk" aria-label="그림 말하기">
+      <div class="fav-row" id="talkFavorites"></div>
+      <div class="grid grid-3" id="talkGrid"></div>
+    </section>
+    <section class="screen" id="screenTalkReply" aria-label="답변">
+      <div class="reply-area">
+        <div class="reply-pictos" id="replyPictos"></div>
+        <div class="loading" id="talkLoading" hidden>💭</div>
+      </div>
+      <button type="button" class="save-fav-btn" id="btnSaveFav" hidden aria-label="즐겨찾기 저장">⭐</button>
+      <div style="text-align:center;margin-top:20px">
+        <button type="button" class="picto-btn nav-tile" style="width:100px;height:100px;margin:0 auto" data-go="talk">
+          <span class="emoji">➕</span>
+          <span class="picto-label">더 말하기</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 카드 -->
+    <section class="screen" id="screenCards" aria-label="카드 고르기">
+      <div class="grid grid-3" id="cardGrid"></div>
+    </section>
+    <section class="screen" id="screenCardDone" aria-label="카드 결과">
+      <div class="feedback">
+        <div class="big-emoji" id="cardDoneEmoji">⭐</div>
+        <div class="reply-pictos" id="cardReplyPictos"></div>
+        <button type="button" class="picto-btn nav-tile" style="width:100px;height:100px;margin:16px auto 0" data-go="home">
+          <span class="emoji">🏠</span>
+          <span class="picto-label">처음</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 도움 -->
+    <section class="screen" id="screenHelp" aria-label="도움 요청">
+      <div class="grid grid-1" id="helpGrid"></div>
+    </section>
+
+    <section class="screen" id="screenHistory" aria-label="기분 기록">
+      <div class="timeline-row" id="moodTimeline"></div>
+      <div style="text-align:center;margin-top:24px">
+        <button type="button" class="picto-btn nav-tile" style="width:100px;height:100px;margin:0 auto" data-go="mood">
+          <span class="emoji">💚</span>
+          <span class="picto-label">기분 고르기</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <div class="tel-modal" id="telModal" hidden>
+    <div class="tel-card">
+      <div class="big" id="telModalEmoji">📞</div>
+      <div class="tel-actions">
+        <button type="button" class="picto-btn help-tile" id="telConfirm" aria-label="전화">
+          <span class="emoji">✅</span>
+        </button>
+        <button type="button" class="picto-btn nav-tile" id="telCancel" aria-label="취소">
+          <span class="emoji">❌</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="float-dock" id="floatDock" aria-label="빠른 메뉴">
+    <button type="button" class="icon-btn" id="dockHome" aria-label="처음">🏠</button>
+    <button type="button" class="icon-btn" id="dockBack" aria-label="뒤로">🔙</button>
+    <button type="button" class="icon-btn" id="dockUndo" aria-label="취소" hidden>↩️</button>
+  </nav>
+
+  <div class="sentence-strip" id="talkStrip" hidden>
+    <button type="button" class="icon-btn" id="btnUndo" aria-label="하나 빼기" style="width:52px;height:52px;font-size:1.2rem">↩️</button>
+    <div id="talkChips" style="display:flex;gap:8px;flex-wrap:wrap;flex:1"></div>
+    <button type="button" class="send-btn" id="btnSend" disabled aria-label="보내기">➤</button>
+  </div>
+
+  <script>
+    const userId = localStorage.getItem("psychology_ai_user_id") || `picto-${crypto.randomUUID().slice(0, 8)}`;
+    localStorage.setItem("psychology_ai_user_id", userId);
+    let sessionId = localStorage.getItem("psychology_ai_picto_session") || null;
+    let catalog = null;
+    let talkSelection = [];
+    let lastSentIds = [];
+    let pendingTel = null;
+    let labelsVisible = localStorage.getItem("picto_show_labels") === "1";
+    let speakEnabled = localStorage.getItem("picto_speak") === "1";
+    let bigTouch = localStorage.getItem("picto_big_touch") === "1";
+    let highContrast = localStorage.getItem("picto_high_contrast") === "1";
+    const isEmbed = document.documentElement.classList.contains("embed-mode");
+    const FAV_KEY = "picto_favorites_v1";
+    const CATALOG_CACHE_KEY = "picto_catalog_bundle_v1";
+    const CHECKIN_QUEUE_KEY = "picto_checkin_queue_v1";
+    const LOCAL_MOOD_KEY = "picto_local_mood_v1";
+    const BUNDLE_URL = "/static/picto-catalog.bundle.json";
+    let isOnline = navigator.onLine !== false;
+
+    const screens = {
+      home: document.getElementById("screenHome"),
+      mood: document.getElementById("screenMood"),
+      moodDone: document.getElementById("screenMoodDone"),
+      talk: document.getElementById("screenTalk"),
+      talkReply: document.getElementById("screenTalkReply"),
+      cards: document.getElementById("screenCards"),
+      cardDone: document.getElementById("screenCardDone"),
+      help: document.getElementById("screenHelp"),
+      history: document.getElementById("screenHistory"),
+    };
+    const talkStrip = document.getElementById("talkStrip");
+    const btnBack = document.getElementById("btnBack");
+    const mainEl = document.querySelector("main");
+
+    function buzz() {
+      if (navigator.vibrate) navigator.vibrate(12);
+    }
+
+    function updateOnlineBadge() {
+      const badge = document.getElementById("offlineBadge");
+      if (badge) badge.hidden = isOnline;
+    }
+
+    function cacheCatalog(data) {
+      if (!data?.items?.length) return;
+      try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(data)); } catch (_) {}
+    }
+
+    function readCachedCatalog() {
+      try {
+        const raw = localStorage.getItem(CATALOG_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) { return null; }
+    }
+
+    async function loadCatalog() {
+      if (isOnline) {
+        try {
+          const res = await fetch("/api/v1/picto/catalog?full=1", { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            cacheCatalog(data);
+            return data;
+          }
+        } catch (_) {}
+      }
+      try {
+        const res = await fetch(BUNDLE_URL, { cache: "force-cache" });
+        if (res.ok) {
+          const data = await res.json();
+          cacheCatalog(data);
+          return data;
+        }
+      } catch (_) {}
+      const cached = readCachedCatalog();
+      if (cached?.items?.length) return cached;
+      return null;
+    }
+
+    function suggestReplyLocal(text, limit = 4) {
+      const blob = (text || "").toLowerCase();
+      const keywords = catalog?.reply_keywords || {};
+      const ranked = [];
+      Object.entries(keywords).forEach(([id, kws]) => {
+        if ((kws || []).some((kw) => blob.includes(kw))) ranked.push(id);
+      });
+      if (!ranked.length) ranked.push("talk_yes", "mood_calm", "talk_thanks", "talk_want_quiet");
+      const map = itemMap();
+      return ranked.slice(0, limit).map((id) => map[id]).filter(Boolean);
+    }
+
+    function offlineChatReply(pictoIds) {
+      const templates = catalog?.offline_chat_templates || {};
+      for (const id of pictoIds) {
+        if (templates[id]) {
+          const text = templates[id];
+          return { reply_text: text, reply_pictos: suggestReplyLocal(text, 4), offline: true };
+        }
+      }
+      const text = templates.default || "함께 있어요. 천천히 괜찮아질 거예요.";
+      return { reply_text: text, reply_pictos: suggestReplyLocal(text, 4), offline: true };
+    }
+
+    function offlineCardReply(cardId, item) {
+      const replies = catalog?.card_replies || {};
+      const text = replies[cardId] || `${item?.phrase || "카드"}의 기운을 느껴보세요.`;
+      return { reply_text: text, reply_pictos: suggestReplyLocal(text, 4), offline: true };
+    }
+
+    function loadLocalMoods() {
+      try { return JSON.parse(localStorage.getItem(LOCAL_MOOD_KEY) || "[]"); } catch (_) { return []; }
+    }
+
+    function saveLocalMood(entry) {
+      const list = loadLocalMoods().filter((r) => r.date !== entry.date);
+      list.unshift(entry);
+      localStorage.setItem(LOCAL_MOOD_KEY, JSON.stringify(list.slice(0, 14)));
+    }
+
+    function loadCheckinQueue() {
+      try { return JSON.parse(localStorage.getItem(CHECKIN_QUEUE_KEY) || "[]"); } catch (_) { return []; }
+    }
+
+    function saveCheckinQueue(list) {
+      localStorage.setItem(CHECKIN_QUEUE_KEY, JSON.stringify(list));
+    }
+
+    function queueCheckin(payload) {
+      const q = loadCheckinQueue();
+      q.push({ ...payload, queued_at: Date.now() });
+      saveCheckinQueue(q);
+    }
+
+    async function flushCheckinQueue() {
+      if (!isOnline) return;
+      let q = loadCheckinQueue();
+      if (!q.length) return;
+      const remaining = [];
+      for (const item of q) {
+        try {
+          const res = await fetch("/api/v1/picto/checkin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: item.user_id, mood_picto_id: item.mood_picto_id }),
+          });
+          if (!res.ok) remaining.push(item);
+        } catch (_) {
+          remaining.push(item);
+        }
+      }
+      saveCheckinQueue(remaining);
+    }
+
+    function todayStr() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function loadFavorites() {
+      try { return JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); } catch (_) { return []; }
+    }
+
+    function saveFavorites(list) {
+      localStorage.setItem(FAV_KEY, JSON.stringify(list.slice(0, 8)));
+    }
+
+    function favEmoji(ids) {
+      const map = itemMap();
+      return ids.map((id) => map[id]?.emoji || "?").join("");
+    }
+
+    function renderFavorites(containerId, onPick) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const favs = loadFavorites();
+      el.innerHTML = "";
+      favs.forEach((entry) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "fav-chip";
+        chip.setAttribute("aria-label", entry.label || favEmoji(entry.ids));
+        chip.textContent = entry.emoji || favEmoji(entry.ids);
+        chip.addEventListener("click", () => { buzz(); onPick(entry.ids); });
+        el.appendChild(chip);
+      });
+    }
+
+    function showScreen(name) {
+      Object.entries(screens).forEach(([key, el]) => el.classList.toggle("active", key === name));
+      talkStrip.hidden = name !== "talk";
+      btnBack.hidden = name === "home";
+      document.getElementById("dockBack").hidden = name === "home";
+      document.getElementById("dockUndo").hidden = name !== "talk";
+      document.body.classList.toggle("dock-visible", isEmbed && name !== "home");
+      mainEl.classList.toggle("has-dock", isEmbed && name !== "home");
+      mainEl.classList.toggle("has-strip", name === "talk");
+      if (name !== "talk") talkSelection = [];
+      if (name === "history") loadMoodTimeline();
+      updateTalkStrip();
+    }
+
+    function itemMap() {
+      const m = {};
+      (catalog?.items || []).forEach((i) => { m[i.id] = i; });
+      return m;
+    }
+
+    function makeBtn(item, extraClass = "") {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `picto-btn ${extraClass}`.trim();
+      btn.dataset.id = item.id;
+      btn.setAttribute("aria-label", item.phrase);
+      btn.innerHTML = `<span class="emoji">${item.emoji}</span><span class="picto-label">${item.phrase}</span>`;
+      if (item.color) btn.style.background = `linear-gradient(160deg,#fff,${item.color}44)`;
+      return btn;
+    }
+
+    function renderReplyPictos(container, pictos, clickable = false) {
+      const el = typeof container === "string" ? document.getElementById(container) : container;
+      el.innerHTML = "";
+      (pictos || []).forEach((p) => {
+        if (clickable) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "reply-btn";
+          btn.textContent = p.emoji;
+          btn.setAttribute("aria-label", p.phrase);
+          btn.addEventListener("click", () => {
+            buzz();
+            talkSelection = [p.id];
+            sendTalk();
+          });
+          el.appendChild(btn);
+        } else {
+          const span = document.createElement("span");
+          span.textContent = p.emoji;
+          span.title = p.phrase;
+          el.appendChild(span);
+        }
+      });
+    }
+
+    function renderHome() {
+      const grid = document.getElementById("homeGrid");
+      grid.innerHTML = "";
+      const map = itemMap();
+      const navIds = catalog?.home_nav || [];
+      navIds.forEach((id, idx) => {
+        const item = map[id];
+        if (!item) return;
+        const btn = makeBtn(item, "nav-tile");
+        if (navIds.length % 2 === 1 && idx === navIds.length - 1) btn.classList.add("span-full");
+        const dest = {
+          nav_mood: "mood", nav_talk: "talk", nav_cards: "cards",
+          nav_help: "help", nav_history: "history",
+        }[id];
+        btn.addEventListener("click", () => { buzz(); speak(item.phrase); showScreen(dest); });
+        grid.appendChild(btn);
+      });
+      renderFavorites("homeFavorites", (ids) => {
+        talkSelection = [...ids];
+        showScreen("talk");
+        updateTalkStrip();
+        document.querySelectorAll("#talkGrid .picto-btn").forEach((b) => {
+          b.classList.toggle("selected", talkSelection.includes(b.dataset.id));
+        });
+      });
+    }
+
+    function renderMood() {
+      const grid = document.getElementById("moodGrid");
+      grid.innerHTML = "";
+      const map = itemMap();
+      (catalog?.mood_ids || []).forEach((id) => {
+        const btn = makeBtn(map[id]);
+        btn.addEventListener("click", () => { buzz(); submitMood(id, map[id]); });
+        grid.appendChild(btn);
+      });
+    }
+
+    function renderTalk() {
+      renderFavorites("talkFavorites", (ids) => {
+        talkSelection = [...ids];
+        updateTalkStrip();
+        document.querySelectorAll("#talkGrid .picto-btn").forEach((b) => {
+          b.classList.toggle("selected", talkSelection.includes(b.dataset.id));
+        });
+      });
+      const grid = document.getElementById("talkGrid");
+      grid.innerHTML = "";
+      const map = itemMap();
+      (catalog?.talk_ids || []).forEach((id) => {
+        const btn = makeBtn(map[id]);
+        btn.addEventListener("click", () => { buzz(); toggleTalk(id, btn); });
+        grid.appendChild(btn);
+      });
+    }
+
+    function renderCards() {
+      const grid = document.getElementById("cardGrid");
+      grid.innerHTML = "";
+      const map = itemMap();
+      (catalog?.card_ids || []).forEach((id) => {
+        const btn = makeBtn(map[id]);
+        btn.addEventListener("click", () => { buzz(); submitCard(id, map[id]); });
+        grid.appendChild(btn);
+      });
+    }
+
+    function openTelModal(item) {
+      pendingTel = item.tel;
+      document.getElementById("telModalEmoji").textContent = item.emoji || "📞";
+      document.getElementById("telModal").hidden = false;
+      speak(item.phrase);
+    }
+
+    function renderHelp() {
+      const grid = document.getElementById("helpGrid");
+      grid.innerHTML = "";
+      const map = itemMap();
+      (catalog?.help_ids || []).forEach((id) => {
+        const item = map[id];
+        const btn = makeBtn(item, "help-tile");
+        if (item.tel) {
+          btn.addEventListener("click", () => { buzz(); openTelModal(item); });
+        } else if (id === "help_caregiver") {
+          btn.addEventListener("click", () => { buzz(); alertCaregiver(item); });
+        } else {
+          btn.addEventListener("click", () => { buzz(); speak(item.phrase); });
+        }
+        grid.appendChild(btn);
+      });
+    }
+
+    async function alertCaregiver(item) {
+      speak(item?.phrase);
+      try {
+        await fetch("/api/v1/picto/caregiver-alert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, picto_ids: ["help_caregiver"] }),
+        });
+      } catch (_) {}
+      document.getElementById("moodDoneEmoji").textContent = "👨‍👩‍👧";
+      showScreen("moodDone");
+    }
+
+    async function loadMoodTimeline() {
+      const el = document.getElementById("moodTimeline");
+      el.innerHTML = '<div class="loading">📅</div>';
+      let rows = [];
+      if (isOnline) {
+        try {
+          const res = await fetch(`/api/v1/picto/mood-timeline/${encodeURIComponent(userId)}?days=7`);
+          if (res.ok) {
+            const data = await res.json();
+            rows = data.timeline || [];
+          }
+        } catch (_) {}
+      }
+      if (!rows.length) rows = loadLocalMoods();
+      el.innerHTML = "";
+      if (!rows.length) {
+        el.innerHTML = '<div class="timeline-day empty"><span class="emoji">💚</span><span class="picto-label">아직 없음</span></div>';
+        return;
+      }
+      rows.slice().reverse().forEach((row) => {
+        const day = document.createElement("div");
+        day.className = "timeline-day";
+        if (row.date === todayStr()) day.classList.add("is-today");
+        day.innerHTML = `<span class="emoji">${row.emoji || "💚"}</span><span class="dot"></span>`;
+        el.appendChild(day);
+      });
+    }
+
+    function toggleTalk(id, btn) {
+      const idx = talkSelection.indexOf(id);
+      if (idx >= 0) {
+        talkSelection.splice(idx, 1);
+        btn.classList.remove("selected");
+      } else {
+        talkSelection.push(id);
+        btn.classList.add("selected");
+        speak(itemMap()[id]?.phrase);
+      }
+      updateTalkStrip();
+    }
+
+    function undoTalk() {
+      if (!talkSelection.length) return;
+      buzz();
+      const last = talkSelection.pop();
+      document.querySelectorAll("#talkGrid .picto-btn").forEach((b) => {
+        if (b.dataset.id === last) b.classList.remove("selected");
+      });
+      updateTalkStrip();
+    }
+
+    function updateTalkStrip() {
+      const chips = document.getElementById("talkChips");
+      const map = itemMap();
+      chips.innerHTML = talkSelection.map((id) => `<span class="chip">${map[id]?.emoji || "?"}</span>`).join("");
+      document.getElementById("btnSend").disabled = talkSelection.length === 0;
+    }
+
+    async function submitMood(moodId, item) {
+      speak(item?.phrase);
+      const localEntry = {
+        date: todayStr(),
+        emoji: item?.emoji || "💚",
+        mood_picto_id: moodId,
+        mood_score: catalog?.mood_dimensions?.[moodId]?.valence || 3,
+      };
+      saveLocalMood(localEntry);
+      let saved = false;
+      if (isOnline) {
+        try {
+          const res = await fetch("/api/v1/picto/checkin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, mood_picto_id: moodId }),
+          });
+          saved = res.ok;
+        } catch (_) {}
+      }
+      if (!saved) queueCheckin({ user_id: userId, mood_picto_id: moodId });
+      document.getElementById("moodDoneEmoji").textContent = item?.emoji || "💚";
+      showScreen("moodDone");
+    }
+
+    async function submitCard(cardId, item) {
+      speak(item?.phrase);
+      document.getElementById("cardDoneEmoji").textContent = item?.emoji || "⭐";
+      const replyEl = document.getElementById("cardReplyPictos");
+      replyEl.innerHTML = '<div class="loading">💭</div>';
+      showScreen("cardDone");
+      let data = null;
+      if (isOnline) {
+        try {
+          const res = await fetch("/api/v1/picto/card", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, card_picto_id: cardId }),
+          });
+          if (res.ok) data = await res.json();
+        } catch (_) {}
+      }
+      if (!data) data = offlineCardReply(cardId, item);
+      renderReplyPictos(replyEl, data.reply_pictos, true);
+      if (speakEnabled && data.reply_text) speakShort(data.reply_text);
+    }
+
+    document.getElementById("btnSend").addEventListener("click", () => { buzz(); sendTalk(); });
+    document.getElementById("btnUndo").addEventListener("click", undoTalk);
+
+    async function sendTalk() {
+      if (!talkSelection.length) return;
+      lastSentIds = [...talkSelection];
+      const sentIds = [...talkSelection];
+      showScreen("talkReply");
+      document.getElementById("talkLoading").hidden = false;
+      document.getElementById("replyPictos").innerHTML = "";
+      document.getElementById("btnSaveFav").hidden = true;
+      let data = null;
+      if (isOnline) {
+        try {
+          const res = await fetch("/api/v1/picto/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, session_id: sessionId, picto_ids: sentIds }),
+          });
+          if (res.ok) data = await res.json();
+        } catch (_) {}
+      }
+      if (!data) data = offlineChatReply(sentIds);
+      if (data.session_id) {
+        sessionId = data.session_id;
+        localStorage.setItem("psychology_ai_picto_session", sessionId);
+      }
+      document.getElementById("talkLoading").hidden = true;
+      renderReplyPictos("replyPictos", data.reply_pictos, true);
+      document.getElementById("btnSaveFav").hidden = !lastSentIds.length;
+      if (speakEnabled && data.reply_text) speakShort(data.reply_text);
+      talkSelection = [];
+    }
+
+    document.getElementById("btnSaveFav").addEventListener("click", () => {
+      if (!lastSentIds.length) return;
+      buzz();
+      const favs = loadFavorites();
+      const entry = { ids: lastSentIds, emoji: favEmoji(lastSentIds), label: favEmoji(lastSentIds) };
+      favs.unshift(entry);
+      const deduped = favs.filter((f, i, arr) => arr.findIndex((x) => x.emoji === f.emoji) === i);
+      saveFavorites(deduped);
+      document.getElementById("btnSaveFav").textContent = "✅";
+      renderHome();
+      renderTalk();
+    });
+
+    function speak(text) {
+      if (!speakEnabled || !text || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ko-KR";
+      u.rate = 0.88;
+      window.speechSynthesis.speak(u);
+    }
+
+    function speakShort(text) { speak(text.slice(0, 120)); }
+
+    function applyA11yPrefs() {
+      document.body.classList.toggle("show-labels", labelsVisible);
+      document.body.classList.toggle("big-touch", bigTouch);
+      document.body.classList.toggle("high-contrast", highContrast);
+      document.getElementById("btnLabels").classList.toggle("active", labelsVisible);
+      document.getElementById("btnSpeak").classList.toggle("active", speakEnabled);
+      document.getElementById("btnBigTouch").classList.toggle("active", bigTouch);
+      document.getElementById("btnContrast").classList.toggle("active", highContrast);
+    }
+
+    btnBack.addEventListener("click", () => { buzz(); showScreen("home"); });
+    document.getElementById("dockHome").addEventListener("click", () => { buzz(); showScreen("home"); });
+    document.getElementById("dockBack").addEventListener("click", () => { buzz(); showScreen("home"); });
+    document.getElementById("dockUndo").addEventListener("click", undoTalk);
+
+    document.getElementById("btnLabels").addEventListener("click", () => {
+      labelsVisible = !labelsVisible;
+      localStorage.setItem("picto_show_labels", labelsVisible ? "1" : "0");
+      applyA11yPrefs();
+    });
+    document.getElementById("btnSpeak").addEventListener("click", () => {
+      speakEnabled = !speakEnabled;
+      localStorage.setItem("picto_speak", speakEnabled ? "1" : "0");
+      applyA11yPrefs();
+      if (speakEnabled) speak("소리 켜짐");
+    });
+    document.getElementById("btnBigTouch").addEventListener("click", () => {
+      bigTouch = !bigTouch;
+      localStorage.setItem("picto_big_touch", bigTouch ? "1" : "0");
+      applyA11yPrefs();
+      buzz();
+    });
+    document.getElementById("btnContrast").addEventListener("click", () => {
+      highContrast = !highContrast;
+      localStorage.setItem("picto_high_contrast", highContrast ? "1" : "0");
+      applyA11yPrefs();
+    });
+
+    document.getElementById("telConfirm").addEventListener("click", () => {
+      document.getElementById("telModal").hidden = true;
+      if (pendingTel) window.location.href = `tel:${pendingTel}`;
+      pendingTel = null;
+    });
+    document.getElementById("telCancel").addEventListener("click", () => {
+      document.getElementById("telModal").hidden = true;
+      pendingTel = null;
+    });
+
+    document.querySelectorAll("[data-go]").forEach((el) => {
+      el.addEventListener("click", () => { buzz(); showScreen(el.dataset.go); });
+    });
+
+    async function init() {
+      applyA11yPrefs();
+      updateOnlineBadge();
+      window.addEventListener("online", () => { isOnline = true; updateOnlineBadge(); flushCheckinQueue(); });
+      window.addEventListener("offline", () => { isOnline = false; updateOnlineBadge(); });
+
+      catalog = await loadCatalog();
+      if (!catalog) {
+        document.querySelector("main").innerHTML =
+          '<div class="feedback"><div class="big-emoji">📴</div><p class="picto-label">그림 사전을 불러오지 못했어요. 연결 후 다시 시도해 주세요.</p></div>';
+        return;
+      }
+      renderHome();
+      renderMood();
+      renderTalk();
+      renderCards();
+      renderHelp();
+      if (isOnline) flushCheckinQueue();
+    }
+
+    init().catch(() => {});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js").catch(() => {});
+  </script>
+</body>
+</html>

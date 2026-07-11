@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from app.assessments import ALL_INSTRUMENTS
 
 from app.assessments.base import AssessmentItem
+from app.assessments.user_voice import enrich_assessment_payload
 
 from app.services.assessment_battery import next_recommended_instruments, sync_session_battery
 
@@ -94,7 +95,7 @@ def _serialize_assessment(item: AssessmentItem, optional: bool = True, selection
 
         payload["selection"] = selection
 
-    return payload
+    return enrich_assessment_payload(payload)
 
 
 
@@ -299,6 +300,8 @@ def record_assessment_answer(state: ChatSessionState, assessment_response: Dict[
 
     value = assessment_response.get("value")
 
+    text_value = assessment_response.get("text")
+
     skipped = bool(assessment_response.get("skipped"))
 
 
@@ -319,9 +322,61 @@ def record_assessment_answer(state: ChatSessionState, assessment_response: Dict[
 
 
 
-    if value is None:
+    if value is None and text_value is not None:
+
+        value = str(text_value).strip()
+
+    if value is None or (isinstance(value, str) and not value):
 
         return {"recorded": False, "skipped": False}
+
+
+
+    if isinstance(value, str):
+
+        result = {
+
+            "recorded": True,
+
+            "instrument": instrument,
+
+            "item_id": item_id,
+
+            "value": value,
+
+            "text": value,
+
+        }
+
+        instrument_impl = ALL_INSTRUMENTS.get(instrument)
+
+        if instrument_impl:
+
+            answers = state.formal_answers.setdefault(instrument, {})
+
+            answers[item_id] = value
+
+            result["formal_score"] = instrument_impl.score_partial(answers)
+
+        else:
+
+            state.micro_answers.append(
+
+                {"instrument": instrument, "item_id": item_id, "value": value, "text": value}
+
+            )
+
+        state.assessments_completed += 1
+
+        state.pending_assessment = None
+
+        state.fatigue_score = max(0.0, state.fatigue_score - 0.04)
+
+        sync_session_battery(state)
+
+        sync_session_insight(state)
+
+        return result
 
 
 

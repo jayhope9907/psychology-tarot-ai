@@ -69,6 +69,29 @@
     .dim-row input[type=range] { width: 100%; accent-color: var(--t-blue); }
     .dim-row .dim-val { text-align: right; font-size: 0.78rem; font-weight: 800; color: var(--t-blue); }
     .dim-hint { font-size: 0.65rem; color: var(--t-text-tertiary); margin-top: -4px; grid-column: 2 / -1; }
+    .dim-facet { font-size: 0.68rem; font-weight: 700; color: var(--t-blue-dark); grid-column: 2 / -1; margin-top: -6px; }
+    .mood-portrait {
+      margin: 0 0 14px; padding: 12px 14px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(49,130,246,0.08), rgba(49,130,246,0.02));
+      border: 1px solid rgba(49,130,246,0.15);
+    }
+    .mood-portrait .fp { font-size: 0.72rem; font-weight: 800; color: var(--t-blue-dark); margin-bottom: 6px; }
+    .mood-portrait .nar { font-size: 0.82rem; line-height: 1.55; color: var(--t-text-secondary); margin: 0; }
+    .axis-bars { display: grid; gap: 8px; margin-top: 10px; }
+    .axis-bar-row { display: grid; grid-template-columns: 52px 1fr 42px; gap: 8px; align-items: center; }
+    .axis-bar-row .lbl { font-size: 0.68rem; font-weight: 700; color: var(--t-text-secondary); }
+    .axis-bar-track { height: 8px; background: var(--t-bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--t-border); }
+    .axis-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--t-blue-soft), var(--t-blue)); transition: width 0.25s; }
+    .axis-bar-row .facet { font-size: 0.62rem; color: var(--t-text-tertiary); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .axis-trend-grid { display: grid; gap: 10px; margin-top: 10px; }
+    .axis-trend-row { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: center; }
+    .axis-spark { display: flex; gap: 3px; align-items: flex-end; height: 36px; }
+    .axis-spark i {
+      flex: 1; display: block; min-width: 4px; border-radius: 3px 3px 0 0;
+      background: var(--t-blue-soft); max-height: 100%;
+    }
+    .axis-spark i.latest { background: var(--t-blue); }
+    .axis-trend-meta { font-size: 0.62rem; color: var(--t-text-tertiary); margin-top: 2px; }
     .note-input {
       width: 100%; margin-top: 12px; border: 1px solid var(--t-border); border-radius: 12px;
       padding: 10px 12px; font: inherit; font-size: 0.85rem; resize: none; min-height: 56px;
@@ -108,8 +131,13 @@
 
   <section class="checkin-card" id="checkinCard">
     <h2>입체 마음 체크인</h2>
-    <p class="desc">기분·에너지·불안·관계·수면 — 5축으로 오늘 마음을 표현해 주세요.</p>
+    <p class="desc">기분·에너지·불안·관계·수면 — 5축 조합으로 오늘 마음을 세밀하게 기록해요.</p>
     <span class="agent-pill" id="agentPill" hidden>맞춤 AI · 준비 중</span>
+
+    <div class="mood-portrait" id="moodPortrait">
+      <div class="fp" id="moodFingerprint">오늘의 마음 좌표</div>
+      <p class="nar" id="moodNarrative">슬라이더를 움직이면 5축 조합이 실시간으로 반영돼요.</p>
+    </div>
 
     <div class="mood-sphere-stage" aria-hidden="true">
       <div class="mood-sphere" id="moodSphere">
@@ -132,6 +160,11 @@
 
     <div class="dim-grid" id="dimGrid"></div>
 
+    <div class="checkin-card" style="margin:12px 0 0;padding:14px;box-shadow:none">
+      <h2 style="font-size:0.9rem;margin:0 0 8px">오늘 5축 프로필</h2>
+      <div class="axis-bars" id="axisBarsToday"></div>
+    </div>
+
     <textarea class="note-input" id="checkinNote" placeholder="한 줄 메모 (선택)"></textarea>
     <button type="button" class="submit-checkin" id="btnCheckin" disabled>체크인 저장</button>
     <p id="checkinStatus" style="margin:10px 0 0;font-size:0.8rem;color:var(--t-text-secondary)"></p>
@@ -143,6 +176,12 @@
     <a class="quick-card" href="/test"><strong>🧪 테스트</strong><span>API·상태 확인</span></a>
     <a class="quick-card" href="/chat" id="continueChat"><strong>↩ 이어하기</strong><span id="continueHint">최근 대화 이어가기</span></a>
   </div>
+
+  <section class="checkin-card">
+    <h2>5축 주간 추적</h2>
+    <p class="desc" id="axisTrendSummary">최근 7일, 축마다 어떻게 변했는지</p>
+    <div class="axis-trend-grid" id="axisTrendGrid"></div>
+  </section>
 
   <section class="checkin-card">
     <h2>이번 주 기분</h2>
@@ -181,6 +220,88 @@
     let dimensionMeta = {};
     const dimensions = { valence: 3, energy: 3, anxiety: 3, social: 3, sleep: 3 };
 
+    function facetFor(key, value) {
+      const facets = dimensionMeta[key]?.facets || {};
+      return facets[String(value)] || `${value}/5`;
+    }
+
+    function buildLocalPortrait(dims) {
+      const axes = Object.keys(dimensions).map((key) => ({
+        key,
+        label: dimensionMeta[key]?.label || key,
+        value: dims[key],
+        facet: facetFor(key, dims[key]),
+      }));
+      const fingerprint = axes.map((a) => a.facet).join(" · ");
+      const concerns = axes.filter((a) =>
+        (a.key === "anxiety" && a.value >= 4) || (a.key !== "anxiety" && a.value <= 2)
+      );
+      let narrative = `기분 ${facetFor("valence", dims.valence)}, 에너지 ${facetFor("energy", dims.energy)}, 불안 ${facetFor("anxiety", dims.anxiety)}.`;
+      narrative += ` 관계 ${facetFor("social", dims.social)}, 수면 ${facetFor("sleep", dims.sleep)}.`;
+      if (concerns.length) {
+        narrative += ` 특히 ${concerns.map((c) => `${c.label}(${c.facet})`).join(", ")}이 두드러져요.`;
+      }
+      return { fingerprint, narrative, axes };
+    }
+
+    function renderMoodPortrait(portrait) {
+      const p = portrait || buildLocalPortrait(dimensions);
+      document.getElementById("moodFingerprint").textContent = p.fingerprint || "오늘의 마음 좌표";
+      document.getElementById("moodNarrative").textContent = (p.narrative || "").replace(/\*\*/g, "");
+      document.getElementById("dimensionSummary").textContent = p.fingerprint || "5축 슬라이더를 조절해 보세요";
+    }
+
+    function renderAxisBarsToday() {
+      const el = document.getElementById("axisBarsToday");
+      el.innerHTML = Object.keys(dimensions).map((key) => {
+        const val = dimensions[key];
+        const pct = (val / 5) * 100;
+        const invert = key === "anxiety";
+        const fillPct = invert ? 100 - pct + 20 : pct;
+        return `
+          <div class="axis-bar-row">
+            <span class="lbl">${dimensionMeta[key]?.emoji || ""} ${dimensionMeta[key]?.label || key}</span>
+            <div class="axis-bar-track"><div class="axis-bar-fill" style="width:${Math.max(8, Math.min(100, fillPct))}%"></div></div>
+            <span class="facet">${facetFor(key, val)}</span>
+          </div>`;
+      }).join("");
+    }
+
+    function renderAxisTrends(trends) {
+      const summaryEl = document.getElementById("axisTrendSummary");
+      const grid = document.getElementById("axisTrendGrid");
+      if (!trends?.axes?.length) {
+        summaryEl.textContent = "체크인을 쌓으면 축별 추세가 보여요.";
+        grid.innerHTML = "";
+        return;
+      }
+      summaryEl.textContent = trends.summary || `최근 ${trends.days}일 5축 변화`;
+      grid.innerHTML = trends.axes.map((axis) => {
+        const bars = (axis.series || []).map((v, i, arr) => {
+          const h = Math.max(4, (v / 5) * 32);
+          const latest = i === arr.length - 1 ? " latest" : "";
+          return `<i class="${latest.trim()}" style="height:${h}px" title="${v}/5"></i>`;
+        }).join("");
+        return `
+          <div class="axis-trend-row">
+            <span class="lbl">${axis.label}</span>
+            <div>
+              <div class="axis-spark">${bars}</div>
+              <div class="axis-trend-meta">${axis.latest_facet} · ${axis.trend_label}${axis.delta_from_avg ? ` (평균 대비 ${axis.delta_from_avg > 0 ? "+" : ""}${axis.delta_from_avg})` : ""}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function refreshMoodUI() {
+      renderMoodPortrait(buildLocalPortrait(dimensions));
+      renderAxisBarsToday();
+      Object.keys(dimensions).forEach((key) => {
+        const facetEl = document.getElementById(`dim-facet-${key}`);
+        if (facetEl) facetEl.textContent = facetFor(key, dimensions[key]);
+      });
+    }
+
     function renderDimensionSliders(meta) {
       dimensionMeta = meta || dimensionMeta;
       const grid = document.getElementById("dimGrid");
@@ -189,6 +310,7 @@
           <label for="dim-${key}">${m.emoji || ""} ${m.label}</label>
           <input type="range" id="dim-${key}" min="1" max="5" step="1" value="${dimensions[key] || 3}" data-key="${key}" />
           <span class="dim-val" id="dim-val-${key}">${dimensions[key] || 3}</span>
+          <span class="dim-facet" id="dim-facet-${key}">${facetFor(key, dimensions[key] || 3)}</span>
           <span class="dim-hint">${m.low} ↔ ${m.high}</span>
         </div>
       `).join("");
@@ -197,9 +319,11 @@
           dimensions[input.dataset.key] = Number(input.value);
           document.getElementById(`dim-val-${input.dataset.key}`).textContent = input.value;
           updateSpherePreview();
+          refreshMoodUI();
           document.getElementById("btnCheckin").disabled = false;
         });
       });
+      refreshMoodUI();
     }
 
     function updateSpherePreview(sphere) {
@@ -240,6 +364,8 @@
       if (checkin.dimension_summary) {
         document.getElementById("dimensionSummary").textContent = checkin.dimension_summary;
       }
+      if (checkin.mood_portrait) renderMoodPortrait(checkin.mood_portrait);
+      else refreshMoodUI();
     }
 
     async function loadDashboard() {
@@ -284,6 +410,7 @@
       }
 
       renderChart(data.recent_checkins || []);
+      renderAxisTrends(data.dimension_trends || data.weekly_report?.dimension_trends || {});
       renderWeekly(data.weekly_report || {});
     }
 
@@ -322,6 +449,7 @@
           if (val) val.textContent = dimensions[key];
         });
         updateSpherePreview();
+        refreshMoodUI();
         document.getElementById("btnCheckin").disabled = false;
       });
     });
@@ -336,12 +464,13 @@
       const data = await res.json();
       selectedMood = data.mood_score;
       document.getElementById("checkinStatus").textContent =
-        `저장됐어요! ${data.agent?.label || data.mood_label} · 연속 ${data.streak_days}일`;
+        `저장됐어요! ${data.mood_portrait?.fingerprint || data.agent?.label || data.mood_label} · 연속 ${data.streak_days}일`;
       if (data.agent?.label) {
         const pill = document.getElementById("agentPill");
         pill.hidden = false;
         pill.textContent = `맞춤 AI · ${data.agent.label}`;
       }
+      if (data.mood_portrait) renderMoodPortrait(data.mood_portrait);
       await loadDashboard();
     });
 

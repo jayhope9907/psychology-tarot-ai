@@ -2,7 +2,9 @@ from app.services.daily_routine import record_checkin
 from app.services.mood_assistant import resolve_mood_context
 from app.services.mood_dimensions import (
     build_mood_agent_profile,
+    build_mood_portrait,
     composite_mood_score,
+    compute_dimension_trends,
     default_dimensions_from_score,
     normalize_dimensions,
     resolve_agent_mode,
@@ -64,3 +66,23 @@ def test_build_mood_agent_profile_sphere():
     profile = build_mood_agent_profile(default_dimensions_from_score(3))
     assert "rotateX" in profile.sphere
     assert profile.label
+
+
+def test_mood_portrait_narrative():
+    dims = {"valence": 2, "energy": 2, "anxiety": 4, "social": 2, "sleep": 2}
+    portrait = build_mood_portrait(dims)
+    assert portrait["fingerprint"]
+    assert "기분" in portrait["narrative"]
+    assert len(portrait["axes"]) == 5
+    assert portrait["highlights"]
+
+
+def test_dimension_trends_from_checkins():
+    checkins = [
+        {"dimensions": {"valence": 2, "energy": 2, "anxiety": 4, "social": 2, "sleep": 2}, "mood_score": 2},
+        {"dimensions": {"valence": 3, "energy": 3, "anxiety": 3, "social": 3, "sleep": 3}, "mood_score": 3},
+    ]
+    trends = compute_dimension_trends(checkins)
+    assert trends["days"] == 2
+    assert len(trends["axes"]) == 5
+    assert trends["axes"][0]["latest"] >= 1

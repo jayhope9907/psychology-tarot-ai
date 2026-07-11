@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 
 from app.db.database import get_connection, init_db
 from app.services.daily_routine import MOOD_LABELS, recent_checkins
+from app.services.mood_dimensions import compute_dimension_trends
 from app.services.persistence import list_tarot_draws
 
 
@@ -59,6 +60,19 @@ def build_weekly_report(user_id: str) -> Dict[str, Any]:
         names = ", ".join(name for name, _ in top_cards)
         insights.append(f"자주 뽑힌 카드: {names}")
 
+    dim_trends = compute_dimension_trends(checkins)
+    if dim_trends.get("summary"):
+        insights.append(f"5축 추적: {dim_trends['summary']}")
+    for axis in dim_trends.get("axes", []):
+        if axis.get("trend") == "rising" and axis["key"] == "anxiety":
+            insights.append(f"이번 주 {axis['label']}이 점점 높아지고 있어요. 짧은 호흡·쉬는 시간을 의식해 보세요.")
+        elif axis.get("trend") == "falling" and axis["key"] == "anxiety":
+            insights.append(f"{axis['label']}은(는) 조금 가라앉는 추세예요.")
+        elif axis.get("trend") == "rising" and axis["key"] in ("valence", "energy", "social", "sleep"):
+            insights.append(f"{axis['label']}이 회복·상승하는 흐름이에요 ({axis['latest_facet']}).")
+        elif axis.get("trend") == "falling" and axis["key"] in ("valence", "energy", "social", "sleep"):
+            insights.append(f"{axis['label']}이 평균보다 낮아지는 편이에요. 무리하지 않는 선택을 해도 괜찮아요.")
+
     summary_parts = [f"체크인 {len(checkins)}일"]
     if tarot:
         summary_parts.append(f"타로 {len(tarot)}회")
@@ -74,6 +88,7 @@ def build_weekly_report(user_id: str) -> Dict[str, Any]:
         "tarot_count": len(tarot),
         "chat_turns": chat_turns,
         "top_tarot_cards": [{"name": n, "count": c} for n, c in top_cards],
+        "dimension_trends": dim_trends,
         "insights": insights,
     }
 

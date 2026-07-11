@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="상담·심리·정신의학 학회를 위한 마음쉼터 Association License" />
+  <meta name="theme-color" content="#0f1714" />
+  <title>마음쉼터 · Association License</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a100e;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(196,165,116,0.22);
+      --text: #f4f1eb;
+      --muted: rgba(244,241,235,0.62);
+      --gold: #c4a574;
+      --green: #5a8f78;
+      --blue: #4a90d9;
+      --purple: #9b7fd4;
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Noto Sans KR", sans-serif;
+      background: radial-gradient(ellipse 120% 80% at 50% -20%, #1a2822, var(--bg));
+      color: var(--text); line-height: 1.65;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 80px; }
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0 32px; flex-wrap: wrap; gap: 12px;
+    }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; margin-left: 16px; }
+    nav a:hover { color: var(--gold); }
+    .logo { font-weight: 800; font-size: 1.1rem; color: var(--text); text-decoration: none; }
+    .hero {
+      text-align: center; padding: 48px 12px 56px;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge {
+      display: inline-block; padding: 6px 14px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--gold); font-size: 0.72rem;
+      font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-family: "Playfair Display", serif; font-size: clamp(2rem, 5vw, 3rem);
+      margin: 0 0 16px; line-height: 1.2; letter-spacing: -0.02em;
+    }
+    .hero p { max-width: 640px; margin: 0 auto 28px; color: var(--muted); font-size: 1.05rem; }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      border: none; border-radius: 14px; padding: 14px 24px; font: inherit;
+      font-weight: 700; cursor: pointer; transition: 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green), #3d6b5a); color: #fff;
+    }
+    .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent; color: var(--text); border: 1px solid var(--border);
+    }
+    section { padding: 48px 0; }
+    section h2 {
+      font-size: 1.5rem; margin: 0 0 8px; font-weight: 800; letter-spacing: -0.03em;
+    }
+    .sec-desc { color: var(--muted); margin: 0 0 28px; font-size: 0.92rem; }
+    .discipline-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;
+    }
+    .disc-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; position: relative; overflow: hidden;
+    }
+    .disc-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .disc-card.counseling::before { background: var(--green); }
+    .disc-card.psychology::before { background: var(--blue); }
+    .disc-card.psychiatry::before { background: var(--purple); }
+    .disc-icon { font-size: 2rem; margin-bottom: 12px; }
+    .disc-card h3 { margin: 0 0 6px; font-size: 1.15rem; }
+    .disc-tagline { color: var(--gold); font-size: 0.78rem; font-weight: 600; margin-bottom: 12px; }
+    .disc-lens {
+      font-size: 0.82rem; padding: 8px 12px; border-radius: 10px;
+      background: rgba(0,0,0,0.25); margin-bottom: 14px;
+    }
+    .disc-list { margin: 0; padding-left: 18px; font-size: 0.82rem; color: var(--muted); }
+    .disc-list li { margin-bottom: 6px; }
+    .compare-wrap { overflow-x: auto; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 0.82rem;
+      background: var(--surface); border-radius: var(--radius); overflow: hidden;
+    }
+    th, td { padding: 14px 16px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--gold); font-weight: 700; background: rgba(0,0,0,0.2); }
+    td { color: var(--muted); }
+    td:first-child { color: var(--text); font-weight: 600; }
+    .tier-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;
+    }
+    .tier-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 22px; background: var(--surface);
+    }
+    .tier-card.recommended { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(196,165,116,0.2); }
+    .tier-card h3 { margin: 0 0 4px; font-size: 1rem; }
+    .tier-price { font-size: 1.4rem; font-weight: 800; color: var(--gold); margin: 12px 0; }
+    .tier-includes { margin: 0; padding: 0; list-style: none; font-size: 0.78rem; color: var(--muted); }
+    .tier-includes li { padding: 4px 0; padding-left: 16px; position: relative; }
+    .tier-includes li::before { content: "✓"; position: absolute; left: 0; color: var(--green); }
+    .validate-box {
+      background: linear-gradient(160deg, rgba(61,107,90,0.15), rgba(0,0,0,0.3));
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 28px;
+    }
+    .validate-box input {
+      width: 100%; padding: 14px 16px; border-radius: 12px;
+      border: 1px solid var(--border); background: rgba(0,0,0,0.35);
+      color: var(--text); font: inherit; margin-bottom: 12px;
+    }
+    .validate-result {
+      margin-top: 16px; padding: 16px; border-radius: 12px;
+      background: rgba(0,0,0,0.3); font-size: 0.85rem; display: none;
+    }
+    .validate-result.ok { display: block; border: 1px solid rgba(90,143,120,0.4); }
+    .validate-result.err { display: block; border: 1px solid rgba(200,80,80,0.4); }
+    .demo-keys { margin-top: 16px; font-size: 0.75rem; color: var(--muted); }
+    .demo-keys code {
+      display: inline-block; margin: 4px 6px 4px 0; padding: 4px 8px;
+      border-radius: 6px; background: rgba(0,0,0,0.35); cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .collab-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .collab-card {
+      padding: 20px; border-radius: 16px; border: 1px solid var(--border);
+      background: var(--surface); font-size: 0.88rem;
+    }
+    .collab-card strong { display: block; margin-bottom: 8px; color: var(--gold); }
+    footer {
+      margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border);
+      font-size: 0.75rem; color: var(--muted); text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="/">🌿 마음쉼터</a>
+      <div>
+        <a href="/chat">AI 대화</a>
+        <a href="/tarot">타로</a>
+        <a href="/legal">이용 안내</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <span class="badge">Association License · B2B</span>
+      <h1>학회가 보는 것에 맞춘<br/>AI 웰니스·교육 플랫폼</h1>
+      <p>
+        상담학회는 <strong>사례</strong>를, 심리학회는 <strong>측정·데이터</strong>를,
+        정신의학회는 <strong>DSM 스크리닝·위험 신호</strong>를 중심으로 —
+        각 학문 렌즈에 맞게 기능·검사·법적 프레이밍을 분리합니다.
+      </p>
+      <div class="hero-actions">
+        <button type="button" class="btn btn-primary" id="btnScrollValidate">라이선스 확인</button>
+        <a class="btn btn-ghost" href="mailto:license@maum-shelter.example?subject=학회%20제휴%20문의">제휴 문의</a>
+      </div>
+    </header>
+
+    <section id="disciplines">
+      <h2>학회 유형별 초점</h2>
+      <p class="sec-desc">같은 앱이지만, 라이선스에 따라 강조하는 임상·교육 렌즈가 달라집니다.</p>
+      <div class="discipline-grid" id="disciplineGrid"></div>
+    </section>
+
+    <section>
+      <h2>한눈에 비교</h2>
+      <p class="sec-desc">케이스 중심 vs 측정 중심 vs 정신병리 스크리닝</p>
+      <div class="compare-wrap">
+        <table id="compareTable">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>상담학회</th>
+              <th>심리학회</th>
+              <th>정신의학회</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>구독 등급</h2>
+      <p class="sec-desc">지부부터 연합·연구기관까지 — 좌석·export·화이트라벨 단계별</p>
+      <div class="tier-grid" id="tierGrid"></div>
+    </section>
+
+    <section>
+      <h2>협업 모델</h2>
+      <div class="collab-grid" id="collabGrid"></div>
+    </section>
+
+    <section id="validate">
+      <h2>라이선스 키 확인</h2>
+      <p class="sec-desc">학회에 발급된 키를 입력하면 적용되는 영역·검사·플랜을 확인합니다.</p>
+      <div class="validate-box">
+        <input type="text" id="licenseInput" placeholder="예: MSHT-COUNSEL-DEMO-2026" autocomplete="off" />
+        <button type="button" class="btn btn-primary" id="btnValidate">검증하기</button>
+        <div class="demo-keys">
+          데모 키 (클릭하여 입력):
+          <code data-key="MSHT-COUNSEL-DEMO-2026">상담학회</code>
+          <code data-key="MSHT-PSYCH-DEMO-2026">심리학회</code>
+          <code data-key="MSHT-PSYCHIATRY-DEMO-2026">정신의학회</code>
+        </div>
+        <div class="validate-result" id="validateResult"></div>
+      </div>
+    </section>
+
+    <footer>
+      모든 Association License는 AI 웰니스·교육·연구 보조 도구입니다.
+      면허 진료·임상치료·공식 심리검사 실시·진단·처방을 대체하지 않습니다.
+    </footer>
+  </div>
+
+  <script>
+    const DISC_CLASS = {
+      counseling_society: "counseling",
+      psychology_society: "psychology",
+      psychiatry_society: "psychiatry",
+      integrative_society: "counseling",
+    };
+
+    async function loadCatalog() {
+      const res = await fetch("/api/v1/associations/catalog");
+      const data = await res.json();
+
+      const grid = document.getElementById("disciplineGrid");
+      (data.disciplines || []).filter(d => d.discipline_id !== "integrative_society").forEach(d => {
+        const card = document.createElement("article");
+        card.className = `disc-card ${DISC_CLASS[d.discipline_id] || ""}`;
+        const optimize = (d.what_we_optimize || []).slice(0, 4).map(x => `<li>${x}</li>`).join("");
+        const de = (d.what_we_de_emphasize || []).slice(0, 2).map(x => `<li>${x}</li>`).join("");
+        card.innerHTML = `
+          <div class="disc-icon">${d.icon || "◆"}</div>
+          <h3>${d.label_ko}</h3>
+          <div class="disc-tagline">${d.tagline || ""}</div>
+          <div class="disc-lens"><strong>렌즈:</strong> ${d.primary_lens || ""}</div>
+          <ul class="disc-list">${optimize}</ul>
+          ${de ? `<p style="font-size:0.72rem;color:var(--muted);margin:12px 0 0">제외: ${d.what_we_de_emphasize.join(" · ")}</p>` : ""}
+        `;
+        grid.appendChild(card);
+      });
+
+      const tbody = document.querySelector("#compareTable tbody");
+      (data.comparison_matrix || []).forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.dimension}</td>
+          <td>${row.counseling}</td>
+          <td>${row.psychology}</td>
+          <td>${row.psychiatry}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const tierGrid = document.getElementById("tierGrid");
+      (data.license_tiers || []).forEach(t => {
+        const card = document.createElement("div");
+        card.className = "tier-card" + (t.recommended ? " recommended" : "");
+        const inc = (t.includes || []).map(i => `<li>${i}</li>`).join("");
+        card.innerHTML = `
+          <h3>${t.label_ko}</h3>
+          <div style="font-size:0.78rem;color:var(--muted)">${t.subtitle || ""}</div>
+          <div class="tier-price">${t.price_label || ""}</div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">좌석 ${t.seats || "—"}</div>
+          <ul class="tier-includes">${inc}</ul>
+        `;
+        tierGrid.appendChild(card);
+      });
+
+      const collab = document.getElementById("collabGrid");
+      (data.collaboration_models || []).forEach(m => {
+        const card = document.createElement("div");
+        card.className = "collab-card";
+        card.innerHTML = `<strong>${m.model}</strong>${m.description}`;
+        collab.appendChild(card);
+      });
+    }
+
+    async function validateKey() {
+      const key = document.getElementById("licenseInput").value.trim();
+      const box = document.getElementById("validateResult");
+      if (!key) return;
+      box.className = "validate-result";
+      box.textContent = "확인 중…";
+      box.style.display = "block";
+      try {
+        const res = await fetch("/api/v1/associations/licenses/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ license_key: key }),
+        });
+        const data = await res.json();
+        if (!data.valid) {
+          box.className = "validate-result err";
+          box.innerHTML = `유효하지 않음 · ${data.reason || "unknown"}`;
+          return;
+        }
+        const e = data.entitlements || {};
+        const inst = (e.allowed_instruments || []).slice(0, 8).join(", ");
+        box.className = "validate-result ok";
+        box.innerHTML = `
+          <strong>${data.org_name}</strong><br/>
+          ${e.discipline_label} · ${e.tier_label}<br/>
+          렌즈: ${e.primary_lens}<br/>
+          플랜: ${e.plan_override} · 좌석 ${data.seats_used}/${data.seats_total}<br/>
+          검사: ${inst}${(e.allowed_instruments || []).length > 8 ? " …" : ""}<br/>
+          <span style="font-size:0.75rem;color:var(--muted)">${e.legal_framing_ko || ""}</span>
+        `;
+        localStorage.setItem("psychology_ai_association_license", data.license_key);
+      } catch (_) {
+        box.className = "validate-result err";
+        box.textContent = "연결 오류";
+      }
+    }
+
+    document.getElementById("btnValidate").addEventListener("click", validateKey);
+    document.getElementById("btnScrollValidate").addEventListener("click", () => {
+      document.getElementById("validate").scrollIntoView({ behavior: "smooth" });
+    });
+    document.querySelectorAll(".demo-keys code").forEach(el => {
+      el.addEventListener("click", () => {
+        document.getElementById("licenseInput").value = el.dataset.key;
+        validateKey();
+      });
+    });
+
+    loadCatalog().catch(() => {});
+  </script>
+</body>
+</html>

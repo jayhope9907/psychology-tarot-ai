@@ -35,7 +35,7 @@
       background: #eef3ff; color: #1a56db;
     }
     .app-tabs {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
       background: #fff; border-bottom: 1px solid #e5e8eb;
     }
     .app-tabs button {
@@ -99,12 +99,14 @@
     <button type="button" data-tab="tarot" class="active" id="tabTarot">타로</button>
     <button type="button" data-tab="checkin" id="tabCheckin">오늘 마음</button>
     <button type="button" data-tab="chat" id="tabChat">AI 대화</button>
+    <button type="button" data-tab="picto" id="tabPicto">그림 마음</button>
   </nav>
 
   <main class="app-main">
     <iframe class="app-frame active" id="frameTarot" title="타로 자기성찰" src="/tarot?embed=1"></iframe>
     <iframe class="app-frame" id="frameCheckin" title="오늘 마음 체크인" src="/home?embed=1"></iframe>
     <iframe class="app-frame" id="frameChat" title="AI 마음 대화" src="/chat?embed=1"></iframe>
+    <iframe class="app-frame" id="framePicto" title="그림 마음 모드" src="/picto?embed=1"></iframe>
   </main>
 
   <footer class="app-footer">
@@ -124,6 +126,7 @@
       tarot: document.getElementById("frameTarot"),
       checkin: document.getElementById("frameCheckin"),
       chat: document.getElementById("frameChat"),
+      picto: document.getElementById("framePicto"),
     };
     const tabs = document.querySelectorAll(".app-tabs button");
 

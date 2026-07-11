@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#3182F6" />
   <meta name="description" content="3D 타로 카드 — 마음쉼터 타로 자기성찰" />
-  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="prefetch" href="/static/tarot-deck.bundle.json" />
   <link rel="apple-touch-icon" href="/static/icons/icon.svg" />
   <title>마음쉼터 · 3D 타로</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -86,8 +86,8 @@
       background: var(--glass); border: 1px solid var(--glass-border);
       backdrop-filter: blur(20px); overflow: hidden;
     }
-    .stage-panel { min-height: 420px; display: flex; flex-direction: column; }
-  #tarotCanvas { flex: 1; min-height: 380px; position: relative; }
+    .stage-panel { min-height: 560px; display: flex; flex-direction: column; }
+  #tarotCanvas { flex: 1; min-height: 520px; position: relative; }
   #tarotCanvas canvas { display: block; width: 100% !important; height: 100% !important; }
     .stage-footer {
       padding: 12px 16px; border-top: 1px solid var(--glass-border);
@@ -219,6 +219,39 @@
       background: rgba(61,107,90,0.2); border: 1px solid rgba(90,143,120,0.3);
       font-size: 0.84rem; line-height: 1.6;
     }
+    .tarot-img-setting {
+      margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px;
+      background: rgba(0,0,0,0.18); border: 1px solid var(--glass-border);
+    }
+    .tarot-img-setting label { display: block; font-size: 0.72rem; color: var(--text-soft); margin-bottom: 8px; }
+    .image-mode-btns { display: flex; gap: 6px; }
+    .image-mode-btns button {
+      flex: 1; padding: 8px 6px; border-radius: 10px; border: 1px solid var(--glass-border);
+      background: rgba(0,0,0,0.2); color: var(--text-soft); font: inherit; font-size: 0.72rem; cursor: pointer;
+    }
+    .image-mode-btns button.active {
+      border-color: var(--gold); color: var(--gold); background: rgba(196,165,116,0.12);
+    }
+    .card-back-face {
+      width: 100%; aspect-ratio: 2/3; border-radius: 8px; margin-bottom: 6px;
+      background: linear-gradient(145deg,#1a2822,#0f1714);
+      display: grid; place-items: center; position: relative; overflow: hidden;
+    }
+    .card-back-face .tarot-img-peek {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+      opacity: 0.22; filter: blur(0.5px); margin: 0;
+    }
+    .card-back-sym { position: relative; z-index: 1; color: #c4a574; font-size: 1.4rem; }
+    .card-symbol-face {
+      width: 100%; aspect-ratio: 2/3; border-radius: 8px; margin-bottom: 6px;
+      background: linear-gradient(145deg,#1e3a5f,#5b9bd5); display: grid; place-items: center;
+    }
+    .pick-card .tarot-img-peek {
+      width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 6px;
+      opacity: 0.22; filter: blur(0.5px); display: block; margin-bottom: 4px;
+    }
+    .pick-card.back img:not(.tarot-img-peek) { opacity: 0.15; }
+    .tarot-img-hidden { display: none !important; }
   </style>
 </head>
 <body class="toss-ui tarot-page">
@@ -273,6 +306,13 @@
             <button type="button" class="spread-btn" data-spread="single" data-count="1">원카드</button>
             <button type="button" class="spread-btn active" data-spread="three_card" data-count="3">3카드</button>
           </div>
+          <div class="tarot-img-setting">
+            <label for="imageModePeek">카드 그림 표시</label>
+            <div class="image-mode-btns" id="imageModeBtns">
+              <button type="button" data-mode="peek" class="active">살짝 보기</button>
+              <button type="button" data-mode="hidden">그림 숨기기</button>
+            </div>
+          </div>
           <div class="actions">
             <button type="button" class="btn btn-primary" id="btnShuffle" disabled>카드 섞기</button>
           </div>
@@ -325,7 +365,9 @@
   </nav>
 
   <script src="/static/js/embed-bridge.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="/static/js/tarot-image-settings.js"></script>
+  <script src="/static/js/tarot-offline.js"></script>
+  <script src="/static/js/vendor/three.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js'"></script>
   <script src="/static/js/tarot-scene.js"></script>
   <script>
     const PHASE_LABELS = {
@@ -339,9 +381,9 @@
     };
     const HINTS = {
       ready: "카드 섞기 버튼을 눌러 주세요",
-      shuffling: "카드가 에너지를 모으고 있어요…",
-      picking: "직감으로 카드를 직접 선택하세요",
-      spreading: "선택한 카드가 자리를 찾고 있어요…",
+      shuffling: "원형으로 펼친 카드를 돌리며 섞는 중…",
+      picking: "원 안에서 직감으로 카드를 눌러 뽑으세요",
+      spreading: "뽑은 카드를 앞으로 펼치는 중…",
       reveal: "카드를 눌러 그림을 확인하세요",
       complete: "마음 풀이를 받아 보세요",
     };
@@ -353,6 +395,7 @@
     const sessionId = urlSession || localStorage.getItem("psychology_ai_session_id") || null;
 
     let scene = null;
+    let deckData = null;
     let deckCatalog = [];
     let currentDraw = null;
     let currentReading = null;
@@ -418,25 +461,60 @@
       });
     });
 
-    function cardImgHtml(card, flipped) {
-      if (!flipped) {
-        return `<div style="width:100%;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(145deg,#1a2822,#0f1714);display:grid;place-items:center;color:#c4a574;font-size:1.4rem;margin-bottom:6px">✦</div>`;
+    function cardBackHtml(card) {
+      const mode = TarotImageSettings.getMode();
+      if (mode === "peek" && card?.image_url) {
+        return `<div class="card-back-face"><img class="tarot-img-peek" src="${card.image_url}" alt="" loading="lazy" /><span class="card-back-sym">✦</span></div>`;
       }
-      const cls = card.reversed ? " reversed" : "";
-      const src = card.image_url || "";
-      if (src) {
-        return `<img class="fallback-card-img${cls}" src="${src}" alt="${card.name_ko}" loading="lazy" />`;
-      }
-      return `<span class="sym">${card.symbol}</span>`;
+      return `<div class="card-back-face"><span class="card-back-sym">✦</span></div>`;
     }
 
+    function cardImgHtml(card, flipped) {
+      if (!flipped) return cardBackHtml(card);
+      const mode = TarotImageSettings.getMode();
+      if (mode === "hidden" || !card.image_url) {
+        return `<div class="card-symbol-face"><span class="sym">${card.symbol || "✦"}</span></div>`;
+      }
+      const cls = card.reversed ? " reversed" : "";
+      return `<img class="fallback-card-img${cls}" src="${card.image_url}" alt="${card.name_ko}" loading="lazy" />`;
+    }
+
+    function syncImageModeUI() {
+      const mode = TarotImageSettings.getMode();
+      document.querySelectorAll("#imageModeBtns button").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+    }
+
+    function onImageModeChange() {
+      syncImageModeUI();
+      if (scene?.refreshImageMode) scene.refreshImageMode();
+      if (currentDraw?.cards) renderMiniCards(currentDraw.cards, false);
+      if (els.pickDeck.classList.contains("visible") && !use3d) renderPickDeck();
+    }
+
+    document.querySelectorAll("#imageModeBtns button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        TarotImageSettings.setMode(btn.dataset.mode);
+        onImageModeChange();
+      });
+    });
+    window.addEventListener("tarot-image-mode-change", onImageModeChange);
+    syncImageModeUI();
+
     function renderPickDeck() {
-      els.pickDeck.innerHTML = deckCatalog.map((c) => `
+      if (use3d) return;
+      const mode = TarotImageSettings.getMode();
+      els.pickDeck.innerHTML = deckCatalog.map((c) => {
+        const peekImg = mode === "peek" && c.image_url
+          ? `<img class="tarot-img-peek" src="${c.image_url}" alt="" loading="lazy" onerror="this.classList.add('tarot-img-hidden')" />`
+          : "";
+        return `
         <button type="button" class="pick-card back" data-id="${c.id}" aria-label="${c.name_ko} 선택">
-          <img src="${c.image_url || ""}" alt="" style="opacity:0.15" onerror="this.style.display='none'" />
+          ${peekImg}
           ✦
-        </button>
-      `).join("");
+        </button>`;
+      }).join("");
       els.pickDeck.classList.add("visible");
       els.pickDeck.querySelectorAll(".pick-card").forEach((btn) => {
         btn.addEventListener("click", () => togglePickId(btn.dataset.id));
@@ -444,6 +522,10 @@
     }
 
     function updatePickUI() {
+      if (use3d) {
+        setStatus(`${pickedIds.length}/${selectedCount}장 뽑음 — 원 안에서 카드를 눌러 주세요`);
+        return;
+      }
       els.pickDeck.querySelectorAll(".pick-card").forEach((btn) => {
         const selected = pickedIds.includes(btn.dataset.id);
         btn.classList.toggle("selected", selected);
@@ -470,13 +552,24 @@
       els.pickDeck.classList.remove("visible");
       setStatus("선택한 카드를 배치하는 중…");
       try {
-        const pickRes = await fetch("/api/v1/tarot/pick", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spread: selectedSpread, card_ids: pickedIds, user_id: userId }),
-        });
-        if (!pickRes.ok) throw new Error("pick failed");
-        currentDraw = await pickRes.json();
+        let pickOk = false;
+        if (navigator.onLine !== false) {
+          try {
+            const pickRes = await fetch("/api/v1/tarot/pick", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ spread: selectedSpread, card_ids: pickedIds, user_id: userId }),
+            });
+            if (pickRes.ok) {
+              currentDraw = await pickRes.json();
+              pickOk = true;
+            }
+          } catch (_) {}
+        }
+        if (!pickOk) {
+          if (!deckData?.cards?.length) throw new Error("no deck");
+          currentDraw = TarotOffline.buildDrawFromPicks(pickedIds, selectedSpread, deckData);
+        }
 
         if (use3d && scene) {
           await scene.layoutSelected(currentDraw.cards);
@@ -485,11 +578,11 @@
         renderMiniCards(currentDraw.cards, false);
         els.setupStep.style.display = "none";
         els.revealStep.style.display = "block";
-        els.revealDesc.textContent = "3D 카드나 아래 카드를 눌러 직접 뒤집어 보세요.";
+        els.revealDesc.textContent = "원에서 뽑은 카드를 눌러 직접 뒤집어 보세요.";
         els.btnReading.disabled = true;
         flippedIndices = new Set();
         setTarotStep(3);
-        setStatus("카드를 눌러 그림을 확인하세요");
+        setStatus(currentDraw.offline ? "오프라인 타로 — 카드를 눌러 확인하세요" : "카드를 눌러 그림을 확인하세요");
       } catch (err) {
         console.error(err);
         setStatus("카드 배치 중 문제가 생겼어요. 다시 선택해 주세요.");
@@ -511,10 +604,9 @@
 
     async function loadDeck() {
       try {
-        const res = await fetch("/api/v1/tarot/deck");
-        if (!res.ok) throw new Error("deck fetch failed");
-        const data = await res.json();
-        deckCatalog = data.cards || [];
+        deckData = await TarotOffline.loadDeckCatalog();
+        if (!deckData?.cards?.length) throw new Error("deck fetch failed");
+        deckCatalog = deckData.cards || [];
         if (typeof THREE !== "undefined" && typeof TarotScene !== "undefined") {
           scene = new TarotScene(els.canvas);
           scene.onPhaseChange = (phase) => {
@@ -539,7 +631,8 @@
         }
         deckReady = true;
         els.btnShuffle.disabled = false;
-        setStatus("준비 완료. 질문을 적고 카드를 섞어 주세요.");
+        const offlineNote = navigator.onLine === false ? " (오프라인 · 78장 전체)" : "";
+        setStatus(`준비 완료. 78장 덱 — 질문을 적고 카드를 섞어 주세요.${offlineNote}`);
       } catch (err) {
         setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
       }
@@ -608,17 +701,19 @@
         if (use3d && scene) {
           scene.buildDeck(deckCatalog);
           await scene.shuffle();
-          scene.onPick = (count, max) => setStatus(`${count}/${max}장 선택됨 — 3D 카드나 아래 목록에서 골라 주세요`);
+          scene.onPick = (count, max) => setStatus(`${count}/${max}장 뽑음 — 원 안에서 카드를 눌러 주세요`);
           scene.onPickComplete = (ids) => {
             pickedIds = ids.slice();
             updatePickUI();
             finalizePicks();
           };
           scene.startPickMode(selectedCount);
+          setStatus(`원형 덱에서 직감으로 ${selectedCount}장을 뽑아 주세요`);
+        } else {
+          renderPickDeck();
+          updatePickUI();
+          setStatus(`직감으로 ${selectedCount}장을 직접 선택하세요`);
         }
-        renderPickDeck();
-        updatePickUI();
-        setStatus(`직감으로 ${selectedCount}장을 직접 선택하세요 (3D 또는 아래 카드)`);
       } catch (err) {
         console.error(err);
         setStatus("카드 섞기 중 문제가 생겼어요. 다시 시도해 주세요.");
@@ -637,26 +732,37 @@
     els.btnReading.addEventListener("click", async () => {
       els.btnReading.disabled = true;
       els.loadingReading.classList.add("visible");
-      setStatus("이서연 AI 가이드가 카드와 마음을 연결하고 있어요…");
+      setStatus("카드와 마음을 연결하고 있어요…");
       try {
-        const res = await fetch("/api/v1/tarot/reading", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            session_id: sessionId,
-            user_story: els.userStory.value.trim(),
-            spread: selectedSpread,
-            count: selectedCount,
-            cards: currentDraw.cards,
-            bridge_to_chat: false,
-          }),
-        });
-        if (!res.ok) throw new Error("reading failed");
-        const data = await res.json();
-        renderReading(data.reading || {});
+        let reading = null;
+        if (navigator.onLine !== false) {
+          try {
+            const res = await fetch("/api/v1/tarot/reading", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: userId,
+                session_id: sessionId,
+                user_story: els.userStory.value.trim(),
+                spread: selectedSpread,
+                count: selectedCount,
+                cards: currentDraw.cards,
+                bridge_to_chat: false,
+              }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              reading = data.reading || {};
+            }
+          } catch (_) {}
+        }
+        if (!reading) {
+          reading = TarotOffline.buildLocalReading(els.userStory.value.trim(), currentDraw);
+        }
+        currentReading = reading;
+        renderReading(reading);
         setTarotStep(4);
-        setStatus("풀이가 준비됐어요. AI 대화와 이어가실 수 있어요.");
+        setStatus(reading.offline ? "오프라인 풀이 준비됐어요. 연결되면 AI 대화로 이어갈 수 있어요." : "풀이가 준비됐어요. AI 대화와 이어가실 수 있어요.");
       } catch (err) {
         alert("풀이를 가져오지 못했어요.");
         setStatus("");
@@ -673,25 +779,39 @@
       }
       els.btnToChat.disabled = true;
       try {
-        const res = await fetch("/api/v1/tarot/bridge", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            session_id: sessionId,
-            user_story: els.userStory.value.trim(),
-            draw: currentDraw,
-            reading: currentReading,
-          }),
-        });
-        if (!res.ok) throw new Error("bridge failed");
-        const data = await res.json();
-        localStorage.setItem("psychology_ai_session_id", data.session_id);
+        let bridgeSession = sessionId;
+        let bridgeMessage = TarotOffline.buildBridgeMessage(
+          els.userStory.value.trim(),
+          currentDraw,
+          currentReading
+        );
+        if (navigator.onLine !== false) {
+          try {
+            const res = await fetch("/api/v1/tarot/bridge", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: userId,
+                session_id: sessionId,
+                user_story: els.userStory.value.trim(),
+                draw: currentDraw,
+                reading: currentReading,
+              }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              bridgeSession = data.session_id;
+              bridgeMessage = data.bridge_message || bridgeMessage;
+            }
+          } catch (_) {}
+        }
+        localStorage.setItem("psychology_ai_session_id", bridgeSession || "");
         localStorage.setItem(TAROT_HANDOFF_KEY, JSON.stringify({
-          session_id: data.session_id,
-          bridge_message: data.bridge_message,
+          session_id: bridgeSession,
+          bridge_message: bridgeMessage,
           draw: currentDraw,
           reading: currentReading,
+          offline: navigator.onLine === false,
         }));
         if (window.MaumEmbed?.goChatFromTarot) {
           window.MaumEmbed.goChatFromTarot();

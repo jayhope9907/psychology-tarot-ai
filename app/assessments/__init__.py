@@ -5,6 +5,7 @@ from app.assessments.micro_emotion import EmotionScaleInstrument
 from app.assessments.phq9 import PHQ9Instrument
 from app.assessments.projective import HTPProjectiveInstrument, TarotProjectiveInstrument
 from app.assessments.registry import ASSESSMENT_DOMAINS, INSTRUMENT_PROFILES, all_instrument_ids, profile_summary
+from app.assessments.sct import SCTInstrument
 from app.assessments.school_probes import BehavioralActivationInstrument, CBThoughtInstrument, PsychodynamicInstrument
 from app.assessments.wellbeing_screens import AttachmentECRInstrument, RSESInstrument
 
@@ -21,6 +22,7 @@ FORMAL_INSTRUMENTS = {
     "behavioral": BehavioralActivationInstrument(),
     "htp": HTPProjectiveInstrument(),
     "tarot_reflect": TarotProjectiveInstrument(),
+    "sct": SCTInstrument(),
 }
 
 MICRO_INSTRUMENTS = {

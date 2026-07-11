@@ -81,10 +81,73 @@ def init_db(force: bool = False) -> None:
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             );
+
+            CREATE TABLE IF NOT EXISTS psych_timeline_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                source_id TEXT NOT NULL DEFAULT '',
+                event_at TEXT NOT NULL,
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, event_type, source_id),
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_psych_timeline_user
+                ON psych_timeline_events(user_id, event_at DESC);
+
+            CREATE TABLE IF NOT EXISTS user_psych_profiles (
+                user_id TEXT PRIMARY KEY,
+                profile_json TEXT NOT NULL DEFAULT '{}',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS organizations (
+                org_id TEXT PRIMARY KEY,
+                org_name TEXT NOT NULL,
+                discipline_id TEXT NOT NULL,
+                tier_id TEXT NOT NULL,
+                secondary_discipline_id TEXT,
+                branding_json TEXT NOT NULL DEFAULT '{}',
+                contact_email TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS organization_licenses (
+                license_key TEXT PRIMARY KEY,
+                org_id TEXT NOT NULL,
+                valid_from TEXT NOT NULL,
+                valid_until TEXT NOT NULL,
+                seats_total INTEGER NOT NULL DEFAULT 150,
+                seats_used INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'active',
+                metadata_json TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (org_id) REFERENCES organizations(org_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_org_licenses_org ON organization_licenses(org_id);
+
+            CREATE TABLE IF NOT EXISTS organization_members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                org_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(org_id, user_id),
+                FOREIGN KEY (org_id) REFERENCES organizations(org_id)
+            );
             """
         )
         conn.commit()
         _migrate_schema(conn)
+        conn.commit()
+        from app.services.license_store import _seed_demo_licenses
+
+        _seed_demo_licenses(conn)
         conn.commit()
         _initialized = True
     finally:
@@ -104,8 +167,23 @@ def reset_db() -> None:
     init_db(force=True)
     conn = get_connection()
     try:
-        for table in ("journal_entries", "tarot_draws", "mood_checkins", "session_snapshots", "users"):
+        for table in (
+            "organization_members",
+            "organization_licenses",
+            "organizations",
+            "psych_timeline_events",
+            "user_psych_profiles",
+            "journal_entries",
+            "tarot_draws",
+            "mood_checkins",
+            "session_snapshots",
+            "users",
+        ):
             conn.execute(f"DELETE FROM {table}")
+        conn.commit()
+        from app.services.license_store import _seed_demo_licenses
+
+        _seed_demo_licenses(conn)
         conn.commit()
     finally:
         conn.close()
