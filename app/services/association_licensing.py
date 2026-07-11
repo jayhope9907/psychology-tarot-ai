@@ -18,6 +18,7 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
             "19개 상담 이론·학파 (로저스, 벡, IPT, DBT, 가족치료 등)",
             "타로·투사를 은유·거울로 활용 (깊은 무의식 해석 최소)",
             "SCT·애착·행동 회피 등 대화형 탐색",
+            "마음 돌보기 허브 · 그림·이야기 표현 (HTP·DAP·KFD·SCT)",
         ],
         "what_we_de_emphasize": [
             "질병명·정신병 진단 라벨링",
@@ -32,17 +33,25 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
             "attachment_ecr",
             "micro_emotion",
             "htp",
+            "dap",
+            "kfd",
             "behavioral",
             "cbt_thought",
             "psychodynamic",
             "tarot_reflect",
         ],
+        "allowed_projective": ["htp", "dap", "kfd", "sct", "tarot_reflect"],
         "feature_flags": {
             "counseling_theories_full": True,
             "counseling_phases": True,
             "homework_packages": True,
             "tarot_bridge": True,
             "assessment_packages": True,
+            "clinical_hub": True,
+            "projective_battery": True,
+            "projective_drawing": True,
+            "projective_inkblot": False,
+            "projective_tat": False,
             "dsm5_catalog": False,
             "clinical_insight_risk": False,
             "psych_timeline": True,
@@ -63,7 +72,7 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
             "PHQ-9·GAD-7·RSES 등 표준화 스크리닝 (웰니스 프레이밍)",
             "5축 기분·psych timeline 백필·종단 프로파일",
             "검사 패키지·배터리 커버리지·학회 교육용 리포트",
-            "SCT·투사·애착 등 서사+수치 혼합",
+            "마음 돌보기 · 짧게 확인 + 그림·잉크·TAT 표현 전체",
         ],
         "what_we_de_emphasize": [
             "정신과적 처방·응급 의료 개입",
@@ -82,15 +91,25 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
             "attachment_ecr",
             "micro_emotion",
             "htp",
+            "dap",
+            "kfd",
+            "rorschach",
+            "tat",
             "cbt_thought",
             "behavioral",
         ],
+        "allowed_projective": ["htp", "dap", "kfd", "rorschach", "tat", "sct"],
         "feature_flags": {
             "counseling_theories_full": True,
             "counseling_phases": True,
             "homework_packages": True,
             "tarot_bridge": True,
             "assessment_packages": True,
+            "clinical_hub": True,
+            "projective_battery": True,
+            "projective_drawing": True,
+            "projective_inkblot": True,
+            "projective_tat": True,
             "dsm5_catalog": True,
             "clinical_insight_risk": True,
             "psych_timeline": True,
@@ -131,12 +150,18 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
             "micro_emotion",
             "rses",
         ],
+        "allowed_projective": ["micro_emotion"],
         "feature_flags": {
             "counseling_theories_full": False,
             "counseling_phases": True,
             "homework_packages": False,
             "tarot_bridge": False,
             "assessment_packages": True,
+            "clinical_hub": True,
+            "projective_battery": False,
+            "projective_drawing": False,
+            "projective_inkblot": False,
+            "projective_tat": False,
             "dsm5_catalog": True,
             "clinical_insight_risk": True,
             "psych_timeline": True,
@@ -157,19 +182,25 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
         "what_we_optimize": [
             "3영역 기능 전체 · 학회 간 공동 교육",
             "타로·상담·검사·DSM 파이프라인 일원화",
-            "B2B export · 화이트라벨",
+            "마음 돌보기 · 스크리닝 + 투영 표현 전체",
         ],
         "what_we_de_emphasize": [],
         "hero_stat": "다학제 · 통합 리포트",
         "color": "#c4a574",
         "icon": "🔗",
         "allowed_instruments": "all",
+        "allowed_projective": "all",
         "feature_flags": {
             "counseling_theories_full": True,
             "counseling_phases": True,
             "homework_packages": True,
             "tarot_bridge": True,
             "assessment_packages": True,
+            "clinical_hub": True,
+            "projective_battery": True,
+            "projective_drawing": True,
+            "projective_inkblot": True,
+            "projective_tat": True,
             "dsm5_catalog": True,
             "clinical_insight_risk": True,
             "psych_timeline": True,
@@ -272,9 +303,15 @@ def build_associations_catalog() -> Dict[str, Any]:
         },
         {
             "dimension": "주요 도구",
-            "counseling": "상담 이론 19종 · SCT · 애착 · 타로 거울",
-            "psychology": "검사 배터리 · 기분 5축 · psych 프로파일",
-            "psychiatry": "PHQ-9·GAD-7·PCL-5 · DSM 영역 · insight",
+            "counseling": "상담 이론 19종 · 마음 돌보기 · 그림·문장 표현",
+            "psychology": "짧게 확인 · 그림·잉크·TAT · psych 프로파일",
+            "psychiatry": "PHQ-9·GAD-7·PCL-5 · DSM · insight",
+        },
+        {
+            "dimension": "마음 돌보기",
+            "counseling": "그림·가족·문장 (HTP·DAP·KFD·SCT)",
+            "psychology": "전체 (그림·잉크·TAT 포함)",
+            "psychiatry": "짧게 확인 위주",
         },
         {
             "dimension": "적합 학회",
@@ -336,6 +373,16 @@ def resolve_entitlements(
     else:
         instruments = set(allowed or [])
 
+    proj_allowed = profile.get("allowed_projective")
+    if proj_allowed == "all":
+        from app.assessments.projective_battery import PROJECTIVE_INSTRUMENTS
+
+        projective_ids = set(PROJECTIVE_INSTRUMENTS.keys())
+    elif isinstance(proj_allowed, list):
+        projective_ids = set(proj_allowed)
+    else:
+        projective_ids = set()
+
     if secondary_discipline and tier_id in (LicenseTier.FEDERATION.value, LicenseTier.INSTITUTE.value):
         sec = DISCIPLINE_PROFILES.get(secondary_discipline, {})
         sec_allowed = sec.get("allowed_instruments")
@@ -345,6 +392,13 @@ def resolve_entitlements(
             instruments |= set(all_instrument_ids())
         elif isinstance(sec_allowed, list):
             instruments |= set(sec_allowed)
+        sec_proj = sec.get("allowed_projective")
+        if sec_proj == "all":
+            from app.assessments.projective_battery import PROJECTIVE_INSTRUMENTS
+
+            projective_ids |= set(PROJECTIVE_INSTRUMENTS.keys())
+        elif isinstance(sec_proj, list):
+            projective_ids |= set(sec_proj)
 
     plan_override = "PREMIUM" if tier_id in (LicenseTier.SOCIETY.value, LicenseTier.FEDERATION.value, LicenseTier.INSTITUTE.value) else "PLUS"
 
@@ -357,11 +411,78 @@ def resolve_entitlements(
         "seats": tier.get("seats"),
         "plan_override": plan_override,
         "allowed_instruments": sorted(instruments),
+        "allowed_projective": sorted(projective_ids),
         "feature_flags": flags,
         "legal_framing_ko": profile.get("legal_framing_ko"),
         "tarot_enabled": flags.get("tarot_bridge", True),
         "dsm_enabled": flags.get("dsm5_catalog", False),
     }
+
+
+def projective_allowed(instrument_id: str, entitlements: Optional[Dict[str, Any]]) -> bool:
+    if not entitlements:
+        return True
+    if not feature_enabled("projective_battery", entitlements):
+        return False
+    allowed = entitlements.get("allowed_projective") or []
+    return instrument_id in allowed
+
+
+def filter_catalog_by_entitlements(catalog: Dict[str, Any], entitlements: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not entitlements:
+        return catalog
+    allowed_formal = set(entitlements.get("allowed_instruments") or [])
+    allowed_proj = set(entitlements.get("allowed_projective") or [])
+    flags = entitlements.get("feature_flags") or {}
+
+    out = dict(catalog)
+    if flags.get("clinical_hub") is False:
+        out["formal_instruments"] = []
+        out["projective_instruments"] = []
+        out["domains"] = []
+        out["tracks"] = []
+        return out
+
+    out["formal_instruments"] = [
+        f for f in out.get("formal_instruments") or [] if f.get("instrument_id") in allowed_formal
+    ]
+    if flags.get("projective_battery"):
+        out["projective_instruments"] = [
+            p for p in out.get("projective_instruments") or [] if p.get("instrument_id") in allowed_proj
+        ]
+    else:
+        out["projective_instruments"] = []
+
+    allowed_domain_instruments: set[str] = allowed_formal | allowed_proj
+    out["domains"] = [
+        d
+        for d in out.get("domains") or []
+        if any(i in allowed_domain_instruments for i in (d.get("instruments") or []))
+    ]
+
+    track_ids = {"screening"} if out["formal_instruments"] else set()
+    if out.get("projective_instruments"):
+        track_ids.add("projective")
+    out["tracks"] = [t for t in out.get("tracks") or [] if t.get("track_id") in track_ids]
+
+    formal_items = sum(f.get("item_count", 0) for f in out["formal_instruments"])
+    proj_items = sum(p.get("item_count", 0) for p in out.get("projective_instruments") or [])
+    out["counts"] = {
+        **(out.get("counts") or {}),
+        "formal_instruments": len(out["formal_instruments"]),
+        "projective_instruments": len(out.get("projective_instruments") or []),
+        "formal_items": formal_items,
+        "projective_items": proj_items,
+        "total_items": formal_items + proj_items,
+        "domains": len(out["domains"]),
+    }
+    if entitlements.get("discipline_label"):
+        out["license"] = {
+            "org_name": entitlements.get("org_name"),
+            "discipline_label": entitlements.get("discipline_label"),
+            "tier_label": entitlements.get("tier_label"),
+        }
+    return out
 
 
 def instrument_allowed(instrument_id: str, entitlements: Optional[Dict[str, Any]]) -> bool:

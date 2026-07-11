@@ -1,7 +1,7 @@
 {
   "name": "마음쉼터",
   "short_name": "마음쉼터",
-  "description": "타로·체크인·AI 대화·임상검사·투영검사 — 통합 마음 웰니스 (비의료)",
+  "description": "타로·체크인·AI 대화·마음 돌보기 — 통합 마음 웰니스 (비의료)",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F2F4F6",
@@ -17,16 +17,16 @@
   ],
   "shortcuts": [
     {
-      "name": "임상검사",
-      "short_name": "검사",
-      "description": "임상심리 검사 총정리",
+      "name": "마음 돌보기",
+      "short_name": "돌보기",
+      "description": "가볍게 마음 들여다보기",
       "url": "/clinical",
       "icons": [{ "src": "/static/icons/icon.svg", "sizes": "any" }]
     },
     {
-      "name": "투영검사",
-      "short_name": "투영",
-      "description": "HTP·로르샤흐·TAT 그림검사",
+      "name": "그림으로 표현",
+      "short_name": "그림",
+      "description": "그림·이야기로 마음 표현",
       "url": "/picture-assessment",
       "icons": [{ "src": "/static/icons/icon.svg", "sizes": "any" }]
     },

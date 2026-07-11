@@ -8,6 +8,7 @@ from app.assessments.projective_battery import (
     all_projective_items,
     projective_battery_catalog,
 )
+from app.services.clinical_user_voice import PICTURE_HUB, PROJECTIVE_USER_VOICE, apply_user_voice_to_catalog
 from app.services.projective_scoring import score_item_response, score_projective_battery
 
 STORE_KEY = "projective_battery"
@@ -30,8 +31,37 @@ def _item_lookup() -> Dict[str, Dict[str, str]]:
     return lookup
 
 
-def picture_assessment_catalog() -> Dict[str, Any]:
-    return projective_battery_catalog()
+def picture_assessment_catalog(entitlements: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    raw = projective_battery_catalog()
+    raw["title"] = PICTURE_HUB["title"]
+    raw["subtitle"] = PICTURE_HUB["subtitle"]
+    raw["disclaimer"] = (
+        "정답은 없어요. 편한 만큼만, 넘어가도 괜찮아요. "
+        "그림 실력·말재주는 중요하지 않아요."
+    )
+    for inst in raw.get("instruments") or []:
+        voice = PROJECTIVE_USER_VOICE.get(inst.get("instrument_id", ""), {})
+        inst["user_title"] = voice.get("user_title") or inst.get("display_name")
+        inst["user_intro"] = voice.get("intro") or inst.get("intro")
+        inst.pop("clinical_reference", None)
+        for item in inst.get("items") or []:
+            item.pop("clinical_note", None)
+
+    if entitlements:
+        from app.services.association_licensing import filter_catalog_by_entitlements, feature_enabled
+
+        if not feature_enabled("projective_battery", entitlements):
+            raw["instruments"] = []
+            raw["instrument_count"] = 0
+            raw["total_items"] = 0
+        else:
+            allowed = set(entitlements.get("allowed_projective") or [])
+            raw["instruments"] = [i for i in raw["instruments"] if i.get("instrument_id") in allowed]
+            raw["instrument_count"] = len(raw["instruments"])
+            raw["total_items"] = sum(i.get("item_count", 0) for i in raw["instruments"])
+        if entitlements.get("discipline_label"):
+            raw["license"] = {"discipline_label": entitlements.get("discipline_label")}
+    return raw
 
 
 def record_projective_response(session, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -48,6 +78,11 @@ def record_projective_response(session, payload: Dict[str, Any]) -> Dict[str, An
     meta = lookup.get(item_id, {})
     if not meta or meta.get("instrument_id") != instrument:
         return {"recorded": False, "error": "unknown_item"}
+
+    from app.services.association_licensing import projective_allowed
+
+    if session.org_entitlements and not projective_allowed(instrument, session.org_entitlements):
+        return {"recorded": False, "error": "not_licensed"}
 
     response_type = meta["response_type"]
     answer: Dict[str, Any] = {"response_type": response_type}

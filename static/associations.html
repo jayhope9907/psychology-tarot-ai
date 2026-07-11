@@ -312,13 +312,20 @@
         }
         const e = data.entitlements || {};
         const inst = (e.allowed_instruments || []).slice(0, 8).join(", ");
+        const agent = data.agent_profile || {};
+        const cases = (data.demo_cases || []).slice(0, 3);
+        const caseLines = cases.map(c =>
+          `· ${c.label || c.case_type} (${c.chief_complaint || ""})`
+        ).join("<br/>");
         box.className = "validate-result ok";
         box.innerHTML = `
           <strong>${data.org_name}</strong><br/>
           ${e.discipline_label} · ${e.tier_label}<br/>
           렌즈: ${e.primary_lens}<br/>
+          ${agent.agent_name ? `에이전트: ${agent.agent_name} (${agent.counselor_name || ""})<br/>` : ""}
           플랜: ${e.plan_override} · 좌석 ${data.seats_used}/${data.seats_total}<br/>
           검사: ${inst}${(e.allowed_instruments || []).length > 8 ? " …" : ""}<br/>
+          ${cases.length ? `<div style="margin-top:8px;font-size:0.82rem"><strong>데모 사례 ${cases.length}건</strong><br/>${caseLines}</div>` : ""}
           <span style="font-size:0.75rem;color:var(--muted)">${e.legal_framing_ko || ""}</span>
         `;
         localStorage.setItem("psychology_ai_association_license", data.license_key);

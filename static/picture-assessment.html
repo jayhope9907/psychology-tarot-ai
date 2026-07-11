@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#4a3f5c" />
   <meta name="robots" content="noindex" />
-  <meta name="description" content="임상심리 투영검사 — HTP·로르샤흐·TAT·DAP·KFD·SCT" />
-  <title>마음쉼터 · 투영검사 (그림검사)</title>
+  <meta name="description" content="그림·이야기·상상으로 마음 표현하기" />
+  <title>마음쉼터 · 그림으로 마음 표현</title>
   <link rel="stylesheet" href="/static/css/embed.css" />
   <script src="/static/js/embed-bridge.js"></script>
   <script src="/static/js/maum-organism.js"></script>
@@ -136,7 +136,7 @@
 <body>
   <header class="top-bar">
     <button type="button" class="icon-btn" id="btnBack" title="뒤로">←</button>
-    <h1 id="pageTitle">투영검사 · 그림검사</h1>
+    <h1 id="pageTitle">그림으로 마음 표현하기</h1>
   </header>
   <div class="progress-wrap" id="progressWrap" hidden>
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -147,14 +147,14 @@
     <section class="screen active" id="screenHome">
       <div class="hero">
         <div class="big">🖼️</div>
-        <p>임상심리 <strong>투영검사</strong> 기법<br/>HTP · DAP · KFD · 로르샤흐 · TAT · SCT</p>
+        <p>그림·상상·이야기로 지금 마음을 표현해요.<br/>전체 <strong id="totalItemsLabel">—</strong>활동 · <strong id="totalInstLabel">—</strong>가지</p>
       </div>
       <div class="disclaimer" id="disclaimer"></div>
       <div class="grid" style="margin-bottom:12px">
         <button type="button" class="tile hero-tile" id="btnAll">
           <span class="emoji">🧩</span>
           <div>
-            <div class="title">전체 투영검사 배터리</div>
+            <div class="title">전체 활동 시작</div>
             <div class="meta" id="batteryMeta">—</div>
           </div>
         </button>
@@ -217,8 +217,10 @@
   </div>
 
   <script>
+    const LICENSE_KEY = "psychology_ai_association_license";
     const STORAGE_KEY = "psychology_ai_user_id";
     const SESSION_KEY = "psychology_ai_session_id";
+    let licenseKey = localStorage.getItem(LICENSE_KEY) || "";
 
     let catalog = null, userId = localStorage.getItem(STORAGE_KEY);
     let sessionId = localStorage.getItem(SESSION_KEY);
@@ -334,7 +336,7 @@
     function renderHome() {
       document.getElementById("disclaimer").textContent = catalog.disclaimer || "";
       document.getElementById("batteryMeta").textContent =
-        `${catalog.instrument_count}종 · ${catalog.total_items}문항`;
+        `${catalog.instrument_count}가지 · ${catalog.total_items}활동`;
       const grid = document.getElementById("instrumentGrid");
       grid.innerHTML = "";
       catalog.instruments.forEach(form => {
@@ -342,8 +344,8 @@
         btn.type = "button";
         btn.className = "tile";
         btn.innerHTML = `<span class="emoji">${form.emoji}</span>
-          <span class="title">${form.display_name}</span>
-          <span class="meta">${form.school}<br/>${form.item_count}문항</span>`;
+          <span class="title">${form.user_title || form.display_name}</span>
+          <span class="meta">${form.item_count}활동</span>`;
         btn.onclick = () => startInstrument(form.instrument_id);
         grid.appendChild(btn);
       });
@@ -354,7 +356,7 @@
       const res = await fetch("/api/v1/picture-assessment/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, session_id: sessionId }),
+        body: JSON.stringify({ user_id: userId, session_id: sessionId, association_license: licenseKey || null }),
       });
       if (!res.ok) throw new Error("세션 시작 실패");
       const data = await res.json();
@@ -382,7 +384,7 @@
         <h2>${form.display_name}</h2>
         <p>${form.intro}</p>
         <span class="badge">${form.clinical_reference}</span>
-        <span class="badge">${form.item_count}문항</span>`;
+        <span class="badge">${form.item_count}활동</span>`;
       setProgress(queueIndex, queue.length);
       showScreen("intro");
     }
@@ -508,11 +510,11 @@
     }
 
     async function showResults() {
-      document.getElementById("pageTitle").textContent = "투영검사 결과";
+      document.getElementById("pageTitle").textContent = "마음 표현 결과";
       const res = await fetch(`/api/v1/picture-assessment/results/${sessionId}`);
       const data = await res.json();
       document.getElementById("resultsSummary").textContent =
-        `${data.answered_items}/${data.total_items} 문항 · ${Object.keys(data.progress).filter(k => data.progress[k].answered > 0).length}종 완료`;
+        `${data.answered_items}/${data.total_items} 활동 · ${Object.keys(data.progress).filter(k => data.progress[k].answered > 0).length}가지 완료`;
       document.getElementById("resultsDisclaimer").textContent = data.disclaimer || "";
       const list = document.getElementById("resultsList");
       list.innerHTML = "";
@@ -538,7 +540,8 @@
 
     async function init() {
       try {
-        const catRes = await fetch("/api/v1/picture-assessment/catalog");
+        const licQ = licenseKey ? `?license_key=${encodeURIComponent(licenseKey)}&user_id=${encodeURIComponent(userId)}` : "";
+        const catRes = await fetch(`/api/v1/picture-assessment/catalog${licQ}`);
         if (!catRes.ok) throw new Error("카탈로그 로드 실패");
         catalog = await catRes.json();
         await ensureSession();

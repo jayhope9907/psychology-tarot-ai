@@ -8,6 +8,7 @@ from app.assessments.base import ResponseType
 from app.assessments.projective_battery import PROJECTIVE_INSTRUMENTS, projective_battery_catalog
 from app.assessments.user_voice import INSTRUMENT_USER_VOICE, enrich_assessment_payload, user_instrument_title
 from app.services.assessment_battery import build_battery_status
+from app.services.clinical_user_voice import HUB, TRACKS as USER_TRACKS, apply_user_voice_to_catalog, friendly_domain_label
 from app.services.persistence import load_latest_session_for_user
 from app.services.picture_assessment import STORE_KEY, picture_assessment_results
 
@@ -15,17 +16,17 @@ from app.services.picture_assessment import STORE_KEY, picture_assessment_result
 TRACKS = {
     "screening": {
         "track_id": "screening",
-        "label": "임상 스크리닝·설문",
+        "label": USER_TRACKS["screening"]["label"],
         "school": "정신의학·DSM·CBT·행동·인본",
-        "description": "PHQ-9, GAD-7, ISI, PSS, PCL-5, RSES, 애착, CBT, 정신동역, BA, SCT, HTP·타로 투사, 감정온도",
+        "description": USER_TRACKS["screening"]["description"],
         "route": "/clinical#screening",
         "submit_api": "/api/v1/assessments/submit",
     },
     "projective": {
         "track_id": "projective",
-        "label": "투영검사 (그림·잉크·TAT)",
-        "school": "투사검사 · Buck · Rorschach · Murray · Machover",
-        "description": "HTP·DAP·KFD 그림, 로르샤흐 5매, TAT 6장, SCT 6문항",
+        "label": USER_TRACKS["projective"]["label"],
+        "school": "그림·상상·이야기 표현",
+        "description": USER_TRACKS["projective"]["description"],
         "route": "/picture-assessment",
         "submit_api": "/api/v1/picture-assessment/submit",
     },
@@ -66,7 +67,7 @@ def build_formal_instrument(instrument_id: str) -> Dict[str, Any]:
     }
 
 
-def unified_clinical_catalog() -> Dict[str, Any]:
+def unified_clinical_catalog(entitlements: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     formal = [build_formal_instrument(iid) for iid in ALL_INSTRUMENTS.keys()]
     projective = projective_battery_catalog()
     formal_items = sum(f["item_count"] for f in formal)
@@ -78,6 +79,7 @@ def unified_clinical_catalog() -> Dict[str, Any]:
             {
                 "domain_id": domain_id,
                 "label": meta["label"],
+                "user_label": friendly_domain_label(domain_id, meta["label"]),
                 "school": meta["school"],
                 "instruments": meta["instruments"],
                 "track": "screening",
@@ -97,14 +99,12 @@ def unified_clinical_catalog() -> Dict[str, Any]:
             }
         )
 
-    return {
+    catalog = {
         "catalog_id": "unified_clinical_psychology",
-        "title": "임상심리학 검사 총정리",
-        "disclaimer": (
-            "본 서비스의 모든 검사는 자기탐색·웰니스 참고용이며, "
-            "임상 진단·치료 결정을 대체하지 않습니다. "
-            "표준화 도구는 대화형 점진 도입 버전이 포함될 수 있습니다."
-        ),
+        "title": HUB["title"],
+        "subtitle": HUB["subtitle"],
+        "tab_label": HUB["tab_label"],
+        "disclaimer": HUB["disclaimer"],
         "tracks": list(TRACKS.values()),
         "domains": domains,
         "formal_instruments": formal,
@@ -126,11 +126,22 @@ def unified_clinical_catalog() -> Dict[str, Any]:
             | {t["school"] for t in TRACKS.values()}
         ),
     }
+    from app.services.association_licensing import filter_catalog_by_entitlements
+
+    catalog = apply_user_voice_to_catalog(catalog)
+    if entitlements:
+        entitlements = dict(entitlements)
+        if entitlements.get("org_name"):
+            catalog.setdefault("license", {})["org_name"] = entitlements.get("org_name")
+        catalog = filter_catalog_by_entitlements(catalog, entitlements)
+        catalog = apply_user_voice_to_catalog(catalog)
+    return catalog
 
 
 def build_user_clinical_summary(user_id: str) -> Dict[str, Any]:
-    catalog = unified_clinical_catalog()
     session = load_latest_session_for_user(user_id)
+    entitlements = session.org_entitlements if session else None
+    catalog = unified_clinical_catalog(entitlements)
     formal_progress: Dict[str, Any] = {}
     formal_scores: Dict[str, Any] = {}
     battery = None

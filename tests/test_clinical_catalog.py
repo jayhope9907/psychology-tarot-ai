@@ -29,7 +29,7 @@ def test_clinical_summary_api():
 def test_clinical_ui_route():
     res = client.get("/clinical")
     assert res.status_code == 200
-    assert "임상심리" in res.text
+    assert "마음 돌보기" in res.text or "알아가는" in res.text
 
 
 def test_app_health_lists_clinical():

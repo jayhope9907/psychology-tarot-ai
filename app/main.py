@@ -217,6 +217,9 @@ class AssociationProvisionRequest(BaseModel):
     secondary_discipline: Optional[str] = None
     seats: Optional[int] = None
     days_valid: int = 365
+    seed_cases: bool = True
+    backfill_days: int = 28
+    case_ids: Optional[List[str]] = None
 
 
 class HomeworkSubmitRequest(BaseModel):
@@ -287,6 +290,7 @@ class PictoCaregiverAlertRequest(BaseModel):
 class PictureAssessmentStartRequest(BaseModel):
     user_id: str
     session_id: Optional[str] = None
+    association_license: Optional[str] = None
 
 
 class PictureAssessmentSubmitRequest(BaseModel):
@@ -875,7 +879,8 @@ async def health_check(request: Request):
             "3D 타로": urls.get("tarot", "/tarot"),
             "그림 마음": urls.get("picto", "/picto"),
             "임상검사": urls.get("clinical", "/clinical"),
-            "투영검사": urls.get("picture_assessment", "/picture-assessment"),
+            "마음 돌보기": urls.get("clinical", "/clinical"),
+            "그림 표현": urls.get("picture_assessment", "/picture-assessment"),
             "이용 안내": urls.get("legal", "/legal"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
@@ -1473,6 +1478,9 @@ async def provision_association_license(request: AssociationProvisionRequest, re
         secondary_discipline=request.secondary_discipline,
         seats=request.seats,
         days_valid=request.days_valid,
+        seed_cases=request.seed_cases,
+        backfill_days=request.backfill_days,
+        case_ids=request.case_ids,
     )
     write_audit_event("LICENSE_PROVISION", "association", {"org_id": result.get("org_id")})
     return result
@@ -1490,32 +1498,71 @@ async def list_association_orgs(request: Request, limit: int = 20):
 
 
 @app.get("/api/v1/clinical/catalog")
-async def clinical_catalog_api():
+async def clinical_catalog_api(license_key: Optional[str] = None, user_id: Optional[str] = None):
     from app.services.clinical_catalog import unified_clinical_catalog
+    from app.services.association_context import bind_license_to_session
+    from app.services.persistence import load_latest_session_for_user
 
-    return unified_clinical_catalog()
+    entitlements = None
+    if license_key:
+        from app.services.license_store import validate_license
+
+        lic = validate_license(license_key)
+        if lic.get("valid"):
+            entitlements = lic.get("entitlements")
+            entitlements = {**(entitlements or {}), "org_name": lic.get("org_name")}
+    elif user_id:
+        session = load_latest_session_for_user(user_id)
+        if session and session.org_entitlements:
+            entitlements = {**session.org_entitlements, "org_name": session.org_name}
+
+    return unified_clinical_catalog(entitlements)
 
 
 @app.get("/api/v1/clinical/summary/{user_id}")
-async def clinical_summary_api(user_id: str):
+async def clinical_summary_api(user_id: str, license_key: Optional[str] = None):
     from app.services.clinical_catalog import build_user_clinical_summary
+    from app.services.persistence import load_latest_session_for_user
+    from app.services.association_context import bind_license_to_session
+
+    if license_key:
+        session = load_latest_session_for_user(user_id) or get_or_create_session(user_id, plan="PLUS")
+        bind_license_to_session(session, license_key)
+        save_session(session)
 
     return build_user_clinical_summary(user_id)
 
 
 @app.get("/api/v1/picture-assessment/catalog")
-async def picture_assessment_catalog_api():
+async def picture_assessment_catalog_api(license_key: Optional[str] = None, user_id: Optional[str] = None):
     from app.services.picture_assessment import picture_assessment_catalog
+    from app.services.persistence import load_latest_session_for_user
 
-    return picture_assessment_catalog()
+    entitlements = None
+    if license_key:
+        from app.services.license_store import validate_license
+
+        lic = validate_license(license_key)
+        if lic.get("valid"):
+            entitlements = lic.get("entitlements")
+    elif user_id:
+        session = load_latest_session_for_user(user_id)
+        if session and session.org_entitlements:
+            entitlements = session.org_entitlements
+
+    return picture_assessment_catalog(entitlements)
 
 
 @app.post("/api/v1/picture-assessment/start")
 async def picture_assessment_start(request: PictureAssessmentStartRequest):
     session = get_or_create_session(request.user_id, request.session_id, "PICTURE_ASSESSMENT_TEST")
+    if request.association_license:
+        from app.services.association_context import bind_license_to_session
+
+        bind_license_to_session(session, request.association_license)
     from app.services.picture_assessment import picture_assessment_catalog
 
-    catalog = picture_assessment_catalog()
+    catalog = picture_assessment_catalog(session.org_entitlements)
     save_session(session)
     return {
         "session_id": session.session_id,

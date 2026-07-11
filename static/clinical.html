@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#3182F6" />
-  <meta name="description" content="임상심리학 검사 총정리 — 스크리닝·투영검사 통합" />
-  <title>마음쉼터 · 임상검사</title>
+  <meta name="description" content="나를 알아가는 시간 — 가볍게 마음 들여다보기" />
+  <title>마음쉼터 · 마음 돌보기</title>
   <link rel="stylesheet" href="/static/css/toss-ui.css" />
   <link rel="stylesheet" href="/static/css/embed.css" />
   <script src="/static/js/embed-bridge.js"></script>
@@ -80,34 +80,34 @@
 <body class="toss-ui clinical-hub">
   <div id="viewHub" class="c-screen active">
     <div class="c-hero">
-      <h1>임상심리 검사 총정리</h1>
-      <p>표준화 스크리닝 14종 + 투영검사 6종 · 학파별 통합 허브</p>
+      <h1 id="hubTitle">나를 알아가는 시간</h1>
+      <p id="hubSubtitle">검사가 아니라, 지금 마음을 가볍게 들여다보는 공간이에요.</p>
     </div>
     <div class="c-stats" id="statsGrid"></div>
     <div class="c-progress" id="progressBox" hidden>
-      <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">나의 검사 진행</div>
+      <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">나의 마음 돌보기 진행</div>
       <div class="c-progress-bar"><div class="c-progress-fill" id="progressFill"></div></div>
       <div style="font-size:0.72rem;color:var(--t-text-secondary);margin-top:6px" id="progressLabel"></div>
     </div>
     <div class="c-section">
-      <h2>검사 트랙</h2>
-      <p class="sub">두 가지 임상심리 검사 체계를 하나의 앱에서 이용할 수 있습니다.</p>
+      <h2>어떻게 시작할까요?</h2>
+      <p class="sub">짧게 확인하거나, 그림·이야기로 표현하거나 — 편한 방식부터 시작해 보세요.</p>
       <button type="button" class="c-track-btn" id="btnScreening">
         <span class="emoji">📊</span>
-        <div><div class="title">임상 스크리닝·설문</div><div class="desc" id="screeningDesc">PHQ-9, GAD-7, ISI, PSS, PCL-5, RSES, 애착, CBT, BA, SCT…</div></div>
+        <div><div class="title">짧게 확인하기</div><div class="desc" id="screeningDesc">기분·걱정·잠·관계 등 대화처럼 가볍게</div></div>
       </button>
       <button type="button" class="c-track-btn" id="btnProjective">
         <span class="emoji">🖼️</span>
-        <div><div class="title">투영검사 (그림·잉크·TAT)</div><div class="desc" id="projectiveDesc">HTP, DAP, KFD, 로르샤흐, TAT, SCT</div></div>
+        <div><div class="title">그림·이야기로 표현하기</div><div class="desc" id="projectiveDesc">그림·상상·이야기·문장으로 마음 표현</div></div>
       </button>
       <button type="button" class="c-track-btn" id="btnChatAssess">
         <span class="emoji">💬</span>
-        <div><div class="title">AI 대화 속 맞춤 검사</div><div class="desc">상담 흐름에 맞춰 검사·숙제·인사이트 연결</div></div>
+        <div><div class="title">AI 대화 속 맞춤 이야기</div><div class="desc">대화 흐름에 맞춰 가볍게 질문·숙제 연결</div></div>
       </button>
     </div>
     <div class="c-section">
-      <h2>학파·영역</h2>
-      <p class="sub">임상심리학 taxonomy — DSM 스크리닝, CBT, 정신동역, 투사검사 등</p>
+      <h2>마음 주제</h2>
+      <p class="sub">기분·관계·생각·그림 표현 등 — 편한 것부터 시작해 보세요</p>
       <div id="domainList"></div>
     </div>
     <p class="c-disclaimer" id="disclaimer"></p>
@@ -115,12 +115,12 @@
 
   <div id="viewScreening" class="c-screen">
     <button type="button" class="c-back" id="backFromScreening">← 총정리</button>
-    <h2 style="margin:0 0 12px;font-size:1.1rem">임상 스크리닝·설문</h2>
+    <h2 style="margin:0 0 12px;font-size:1.1rem">짧게 확인하기</h2>
     <div id="formalList"></div>
   </div>
 
   <div id="viewFormalRun" class="c-screen">
-    <button type="button" class="c-back" id="backFromFormal">← 검사 목록</button>
+    <button type="button" class="c-back" id="backFromFormal">← 목록으로</button>
     <div id="formalRunner"></div>
     <div class="c-actions">
       <button type="button" class="c-btn c-btn-ghost" id="btnSkipFormal">넘기기</button>
@@ -130,10 +130,12 @@
 
   <script>
     const USER_KEY = "psychology_ai_user_id";
+    const LICENSE_KEY = "psychology_ai_association_license";
     const SESSION_KEY = "psychology_ai_session_id";
     let catalog = null, summary = null;
     let userId = localStorage.getItem(USER_KEY);
     let sessionId = localStorage.getItem(SESSION_KEY);
+    let licenseKey = localStorage.getItem(LICENSE_KEY) || "";
     let formalQueue = [], formalIdx = 0, selectedValue = null;
 
     if (!userId) {
@@ -165,10 +167,12 @@
     function renderStats() {
       const c = catalog.counts;
       document.getElementById("statsGrid").innerHTML = `
-        <div class="c-stat"><strong>${c.unique_instruments}</strong><span>검사 종류</span></div>
-        <div class="c-stat"><strong>${c.total_items}</strong><span>총 문항</span></div>
-        <div class="c-stat"><strong>${c.domains}</strong><span>학파·영역</span></div>`;
-      document.getElementById("disclaimer").textContent = catalog.disclaimer || "";
+        <div class="c-stat"><strong>${c.unique_instruments}</strong><span>마음 주제</span></div>
+        <div class="c-stat"><strong>${c.total_items}</strong><span>질문·활동</span></div>
+        <div class="c-stat"><strong>${c.domains}</strong><span>영역</span></div>`;
+      document.getElementById("hubTitle").textContent = catalog.user_title || catalog.title;
+      document.getElementById("hubSubtitle").textContent = catalog.user_subtitle || catalog.subtitle || "";
+      document.getElementById("disclaimer").textContent = catalog.user_disclaimer || catalog.disclaimer || "";
       document.getElementById("screeningDesc").textContent = catalog.tracks[0].description;
       document.getElementById("projectiveDesc").textContent = catalog.tracks[1].description;
     }
@@ -181,15 +185,15 @@
       const pct = Math.round(o.completion_rate * 100);
       document.getElementById("progressFill").style.width = pct + "%";
       document.getElementById("progressLabel").textContent =
-        `${o.total_answered_items} / ${o.total_catalog_items} 문항 (${pct}%) · 스크리닝 ${o.formal_answered_items} · 투영 ${o.projective_answered_items}`;
+        `${o.total_answered_items} / ${o.total_catalog_items} (${pct}%) · 짧게 확인 ${o.formal_answered_items} · 그림·이야기 ${o.projective_answered_items}`;
     }
 
     function renderDomains() {
       const el = document.getElementById("domainList");
       el.innerHTML = catalog.domains.map(d => `
         <div class="c-domain">
-          <strong>${d.label}</strong>
-          <span>${d.school} · ${(d.instruments || []).join(", ")} · ${d.track === "projective" ? "투영" : "스크리닝"}</span>
+          <strong>${d.user_label || d.label}</strong>
+          <span>${d.track === "projective" ? "그림·이야기" : "짧게 확인"}</span>
         </div>`).join("");
     }
 
@@ -197,10 +201,10 @@
       const el = document.getElementById("formalList");
       el.innerHTML = catalog.formal_instruments.map(f => {
         const prog = (summary?.formal_progress || {})[f.instrument_id];
-        const badge = prog ? `${prog.answered}/${prog.total}` : `${f.item_count}문항`;
+        const badge = prog ? `${prog.answered}/${prog.total}` : `${f.item_count}질문`;
         return `<button type="button" class="c-track-btn" data-iid="${f.instrument_id}">
           <span class="emoji">📋</span>
-          <div><div class="title">${f.user_title || f.display_name}</div>
+          <div><div class="title">${f.user_display_name || f.user_title || f.display_name}</div>
           <div class="desc">${f.domain_label || ""} · ${badge}</div></div></button>`;
       }).join("");
       el.querySelectorAll("[data-iid]").forEach(btn => {
@@ -262,7 +266,7 @@
       const res = await fetch("/api/v1/picture-assessment/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, session_id: sessionId }),
+        body: JSON.stringify({ user_id: userId, session_id: sessionId, association_license: licenseKey || null }),
       });
       if (res.ok) {
         const d = await res.json();
@@ -295,9 +299,10 @@
     }
 
     async function loadAll() {
+      const licQ = licenseKey ? `?license_key=${encodeURIComponent(licenseKey)}&user_id=${encodeURIComponent(userId)}` : `?user_id=${encodeURIComponent(userId)}`;
       const [catRes, sumRes] = await Promise.all([
-        fetch("/api/v1/clinical/catalog"),
-        fetch(`/api/v1/clinical/summary/${encodeURIComponent(userId)}`),
+        fetch(`/api/v1/clinical/catalog${licQ}`),
+        fetch(`/api/v1/clinical/summary/${encodeURIComponent(userId)}${licenseKey ? `?license_key=${encodeURIComponent(licenseKey)}` : ""}`),
       ]);
       catalog = await catRes.json();
       summary = await sumRes.json();

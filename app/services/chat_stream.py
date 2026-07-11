@@ -392,6 +392,12 @@ def build_chat_messages(
     if style_block:
         system_prompt += "\n\n" + style_block
 
+    from app.services.association_agent import build_association_agent_block
+
+    agent_block = build_association_agent_block(state)
+    if agent_block:
+        system_prompt += "\n\n" + agent_block
+
     daily_block = build_daily_context_block(state.user_id)
     if daily_block:
         system_prompt += "\n\n" + daily_block

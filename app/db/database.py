@@ -150,6 +150,9 @@ def init_db(force: bool = False) -> None:
         _seed_demo_licenses(conn)
         conn.commit()
         _initialized = True
+        from app.services.license_store import ensure_demo_onboarding
+
+        ensure_demo_onboarding()
     finally:
         conn.close()
 
@@ -187,3 +190,6 @@ def reset_db() -> None:
         conn.commit()
     finally:
         conn.close()
+    from app.services.license_store import ensure_demo_onboarding
+
+    ensure_demo_onboarding()

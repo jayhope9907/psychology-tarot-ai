@@ -31,6 +31,18 @@ def bind_license_to_session(
     if plan:
         session.plan = plan
 
+    from app.services.association_agent import (
+        agent_from_license_metadata,
+        apply_agent_to_session,
+        build_association_agent,
+    )
+
+    metadata = result.get("metadata") or {}
+    agent = agent_from_license_metadata(metadata) or build_association_agent(
+        entitlements, org_name=session.org_name or ""
+    )
+    apply_agent_to_session(session, agent)
+
     if assign_user and session.user_id:
         assign_member(result["org_id"], session.user_id)
 
@@ -43,4 +55,6 @@ def bind_license_to_session(
         "discipline_label": entitlements.get("discipline_label"),
         "tier_label": entitlements.get("tier_label"),
         "entitlements": entitlements,
+        "agent_profile": agent,
+        "demo_cases": result.get("demo_cases") or metadata.get("demo_cases") or [],
     }

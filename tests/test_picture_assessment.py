@@ -90,4 +90,4 @@ def test_drawing_meta_size_hint():
 def test_picture_assessment_ui_route():
     res = client.get("/picture-assessment")
     assert res.status_code == 200
-    assert "투영검사" in res.text
+    assert "그림" in res.text

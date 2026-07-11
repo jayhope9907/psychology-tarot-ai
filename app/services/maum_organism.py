@@ -21,7 +21,7 @@ FEATURE_NODES: Dict[str, Dict[str, str]] = {
     "tarot": {"emoji": "✦", "label": "타로", "tab": "tarot", "route": "/tarot"},
     "chat": {"emoji": "💬", "label": "AI 대화", "tab": "chat", "route": "/chat"},
     "picto": {"emoji": "🖼️", "label": "그림 마음", "tab": "picto", "route": "/picto"},
-    "clinical": {"emoji": "🩺", "label": "임상검사", "tab": "clinical", "route": "/clinical"},
+    "clinical": {"emoji": "💚", "label": "마음 돌보기", "tab": "clinical", "route": "/clinical"},
 }
 
 # 기능 간 기본 연결 (거미줄 골격)
@@ -35,7 +35,7 @@ DEFAULT_EDGES: List[Tuple[str, str, str]] = [
     ("chat", "clinical", "대화 → 검사"),
     ("clinical", "chat", "검사 → 대화"),
     ("tarot", "picto", "타로 → 그림"),
-    ("clinical", "picto", "투영 → 그림"),
+    ("clinical", "picto", "표현 → 그림"),
 ]
 
 EVENT_FEATURE_MAP: Dict[str, str] = {
@@ -245,7 +245,7 @@ def _thread_summary(event_type: str, payload: Dict[str, Any]) -> str:
     if event_type == "picto_caregiver_alert":
         return "보호자 알림"
     if event_type == "projective_answer":
-        return str(payload.get("instrument") or "투영검사")
+        return str(payload.get("instrument") or "그림·이야기 표현")
     if event_type == "assessment_answer":
         return str(payload.get("instrument") or "검사")
     return event_type
@@ -281,12 +281,12 @@ def _build_next_actions(
     recs = (profile or {}).get("recommendations") or {}
     if recs.get("instruments") and not (session and session.formal_answers):
         actions.append(
-            {"tab": "clinical", "emoji": "🩺", "label": "임상검사 허브", "reason": "프로필·대화 기반"}
+            {"tab": "clinical", "emoji": "💚", "label": "마음 돌보기", "reason": "프로필·대화 기반"}
         )
     proj = ((session.quant_features or {}).get("projective_battery") or {}).get("answers") if session else None
     if session and session.formal_answers and not proj:
         actions.append(
-            {"tab": "clinical", "emoji": "🖼️", "label": "투영검사 이어하기", "reason": "스크리닝 후 투사"}
+            {"tab": "clinical", "emoji": "🖼️", "label": "그림으로 표현하기", "reason": "짧게 확인 후 이어하기"}
         )
     if len(actions) < 3:
         actions.append(
@@ -323,7 +323,7 @@ def build_organism_state(user_id: str) -> Dict[str, Any]:
     return {
         "user_id": user_id,
         "mode": "organism",
-        "description": "기분·타로·대화·그림·임상검사가 하나의 마음 이야기로 연결됩니다.",
+        "description": "기분·타로·대화·그림·마음 돌보기가 하나의 마음 이야기로 연결됩니다.",
         "unified_session_id": unified_session,
         "nodes": nodes,
         "edges": _build_edges(events, pulse),

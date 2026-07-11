@@ -84,6 +84,31 @@ def _seed_demo_licenses(conn) -> None:
             ),
         )
 
+    # 온보딩은 init_db 완료 후 ensure_demo_onboarding()에서 처리
+
+
+def ensure_demo_onboarding() -> None:
+    """기존 데모 라이선스에 에이전트·사례 시드가 없으면 보충."""
+    init_db()
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT license_key, metadata_json FROM organization_licenses
+            WHERE license_key IN ({})
+            """.format(",".join("?" * len(DEMO_LICENSES))),
+            tuple(DEMO_LICENSES.keys()),
+        ).fetchall()
+        pending: List[str] = []
+        for row in rows:
+            meta = json.loads(row["metadata_json"] or "{}")
+            if not meta.get("onboarded"):
+                pending.append(row["license_key"])
+        if pending:
+            _onboard_new_licenses(pending)
+    finally:
+        conn.close()
+
 
 def validate_license(license_key: str) -> Dict[str, Any]:
     _ensure_tables()
@@ -96,7 +121,8 @@ def validate_license(license_key: str) -> Dict[str, Any]:
         row = conn.execute(
             """
             SELECT l.license_key, l.org_id, l.valid_from, l.valid_until, l.seats_total,
-                   l.seats_used, l.status, o.org_name, o.discipline_id, o.tier_id,
+                   l.seats_used, l.status, l.metadata_json,
+                   o.org_name, o.discipline_id, o.tier_id,
                    o.secondary_discipline_id, o.branding_json
             FROM organization_licenses l
             JOIN organizations o ON o.org_id = l.org_id
@@ -120,7 +146,8 @@ def validate_license(license_key: str) -> Dict[str, Any]:
             secondary_discipline=row["secondary_discipline_id"],
         )
         branding = json.loads(row["branding_json"] or "{}")
-        return {
+        metadata = json.loads(row["metadata_json"] or "{}")
+        result = {
             "valid": True,
             "license_key": row["license_key"],
             "org_id": row["org_id"],
@@ -130,7 +157,69 @@ def validate_license(license_key: str) -> Dict[str, Any]:
             "seats_used": row["seats_used"],
             "entitlements": entitlements,
             "branding": branding,
+            "metadata": metadata,
         }
+        if metadata.get("agent_profile"):
+            result["agent_profile"] = metadata["agent_profile"]
+        if metadata.get("demo_cases"):
+            result["demo_cases"] = metadata["demo_cases"]
+        return result
+    finally:
+        conn.close()
+
+
+def _onboard_new_licenses(license_keys: List[str], *, backfill_days: int = 28) -> None:
+    """라이선스 발급 후 에이전트 구축 + 데모 사례 백데이팅."""
+    from app.services.association_agent import build_association_agent
+    from app.services.association_licensing import resolve_entitlements
+    from app.services.license_case_seed import seed_org_demo_cases, update_license_metadata
+
+    conn = get_connection()
+    try:
+        for key in license_keys:
+            row = conn.execute(
+                """
+                SELECT l.license_key, l.org_id, l.metadata_json,
+                       o.org_name, o.discipline_id, o.tier_id, o.secondary_discipline_id
+                FROM organization_licenses l
+                JOIN organizations o ON o.org_id = l.org_id
+                WHERE l.license_key = ?
+                """,
+                (key.upper(),),
+            ).fetchone()
+            if not row:
+                continue
+            meta = json.loads(row["metadata_json"] or "{}")
+            if meta.get("onboarded"):
+                continue
+            entitlements = resolve_entitlements(
+                row["discipline_id"],
+                row["tier_id"],
+                secondary_discipline=row["secondary_discipline_id"],
+            )
+            org_id = row["org_id"]
+            org_name = row["org_name"]
+
+            agent = build_association_agent(entitlements, org_name=org_name)
+            seed = seed_org_demo_cases(
+                org_id,
+                key,
+                entitlements,
+                backfill_days=backfill_days,
+            )
+            update_license_metadata(
+                key,
+                {
+                    "onboarded": True,
+                    "agent_profile": agent,
+                    "demo_cases": seed.get("demo_cases") or [],
+                    "seed_summary": {
+                        "anchor_day": seed.get("anchor_day"),
+                        "backfill_days": seed.get("backfill_days"),
+                        "case_count": seed.get("case_count"),
+                    },
+                },
+            )
     finally:
         conn.close()
 
@@ -143,6 +232,9 @@ def provision_license(
     secondary_discipline: Optional[str] = None,
     seats: Optional[int] = None,
     days_valid: int = 365,
+    seed_cases: bool = True,
+    backfill_days: int = 28,
+    case_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     _ensure_tables()
     from app.services.association_licensing import LICENSE_TIERS
@@ -178,6 +270,37 @@ def provision_license(
 
     result = validate_license(license_key)
     result["provisioned"] = True
+
+    if seed_cases:
+        from app.services.association_agent import build_association_agent
+        from app.services.license_case_seed import seed_org_demo_cases, update_license_metadata
+
+        entitlements = result.get("entitlements") or {}
+        agent = build_association_agent(entitlements, org_name=org_name)
+        seed = seed_org_demo_cases(
+            org_id,
+            license_key,
+            entitlements,
+            backfill_days=backfill_days,
+            case_ids=case_ids,
+        )
+        update_license_metadata(
+            license_key,
+            {
+                "onboarded": True,
+                "agent_profile": agent,
+                "demo_cases": seed.get("demo_cases") or [],
+                "seed_summary": {
+                    "anchor_day": seed.get("anchor_day"),
+                    "backfill_days": seed.get("backfill_days"),
+                    "case_count": seed.get("case_count"),
+                },
+            },
+        )
+        result["agent_profile"] = agent
+        result["demo_cases"] = seed.get("demo_cases") or []
+        result["seed_summary"] = seed
+
     return result
 
 
