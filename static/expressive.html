@@ -61,6 +61,19 @@
     .mode-card h2 { margin: 0 0 4px; font-size: 1.02rem; }
     .mode-card .meta { font-size: 0.74rem; color: var(--warm); margin-bottom: 6px; }
     .mode-card p { margin: 0; font-size: 0.84rem; color: var(--muted); }
+    .license-gate {
+      position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+      background: rgba(10,16,14,0.92); padding: 24px; text-align: center;
+    }
+    .license-gate[hidden] { display: none; }
+    .license-gate .card {
+      max-width: 420px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 16px; padding: 22px 18px;
+    }
+    .license-gate a {
+      display: inline-block; margin-top: 14px; padding: 10px 16px; border-radius: 10px;
+      background: var(--accent); color: #102018; font-weight: 700; text-decoration: none;
+    }
     .scholar-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
     .scholar-chip {
       font-size: 0.72rem; padding: 5px 10px; border-radius: 999px;
@@ -105,13 +118,22 @@
   </style>
 </head>
 <body>
+  <div class="license-gate" id="licenseGate" hidden>
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-family:Fraunces,serif">라이선스 전용</h2>
+      <p style="margin:0;color:var(--muted);font-size:0.9rem;line-height:1.5">
+        표현·역할·미술 연습은 학회 라이선스 영역입니다. 유저용 「오늘 마음」에서는 제공하지 않아요.
+      </p>
+      <a href="/associations">라이선스에서 열기</a>
+      <div style="margin-top:12px"><a href="/home" style="background:transparent;color:var(--muted);font-weight:500">유저 홈으로</a></div>
+    </div>
+  </div>
   <div class="wrap">
     <nav>
-      <a class="logo" href="/">마음쉼터</a>
+      <a class="logo" href="/associations">라이선스</a>
       <div>
-        <a href="/clinical">마음 돌보기</a>
-        <a href="/picture-assessment">그림 표현</a>
-        <a href="/chat">AI 대화</a>
+        <a href="/associations">학회 라이선스</a>
+        <a href="/theories">이론·학자</a>
       </div>
     </nav>
 
@@ -156,6 +178,11 @@
   </div>
 
   <script>
+    const LICENSE_KEY = "psychology_ai_association_license";
+    if (!localStorage.getItem(LICENSE_KEY)) {
+      document.getElementById("licenseGate").hidden = false;
+    }
+
     const USER_KEY = "psychology_ai_user_id";
     const SESSION_KEY = "psychology_ai_session_id";
     let catalog = null;

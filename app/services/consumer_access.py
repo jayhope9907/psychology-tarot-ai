@@ -15,6 +15,10 @@ B2B_SEPARATE_NOTE_KO = (
     "학회 라이선스·구독·케이스 노트(기관용)는 유저 앱과 분리해 따로 준비합니다."
 )
 
+DISABILITY_SEPARATE_NOTE_KO = (
+    "장애인용 그림마음(AAC·접근성)은 유저 앱과 분리해 별도 제품으로 준비합니다."
+)
+
 
 def consumer_open() -> bool:
     return CONSUMER_OPEN_ACCESS

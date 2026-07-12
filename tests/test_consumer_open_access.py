@@ -32,11 +32,40 @@ def test_checkout_is_free_for_consumer():
     assert body.get("consumer_open") is True or body.get("payment_required") is False
 
 
-def test_associations_and_case_notes_show_coming_soon():
-    for path in ("/associations", "/case-notes"):
-        res = client.get(path)
-        assert res.status_code == 200
-        assert "별도" in res.text or "따로" in res.text
+def test_associations_is_license_hub_case_notes_coming_soon():
+    assoc = client.get("/associations")
+    assert assoc.status_code == 200
+    assert "라이선스" in assoc.text
+    assert "이론" in assoc.text
+    assert "미술치료" in assoc.text or "표현" in assoc.text
+
+    notes = client.get("/case-notes")
+    assert notes.status_code == 200
+    assert "별도" in notes.text or "따로" in notes.text
+
+
+def test_home_hides_theories_and_expressive():
+    res = client.get("/home")
+    assert res.status_code == 200
+    assert "/theories" not in res.text
+    assert "/expressive" not in res.text
+
+
+def test_user_app_hides_picto_tab():
+    app_page = client.get("/")
+    assert app_page.status_code == 200
+    assert "tabPicto" not in app_page.text
+    assert 'data-tab="picto"' not in app_page.text
+
+    stub = client.get("/picto")
+    assert stub.status_code == 200
+    assert "별도" in stub.text or "따로" in stub.text
+
+    manifest = client.get("/api/v1/disability/manifest")
+    assert manifest.status_code == 200
+    body = manifest.json()
+    assert body["user_app_exposed"] is False
+    assert body["preview_route"] == "/disability/picto"
 
 
 def test_clinical_catalog_open_without_license():

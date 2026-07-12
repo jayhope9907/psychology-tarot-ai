@@ -164,12 +164,43 @@
         상담·심리·정신의학 학회와 함께,
         <strong>임상심리 수련</strong>·<strong>정신보건사회복지사 수련</strong>용
         교육 라이선스도 제공합니다.
+        이론·학자·미술치료 코퍼스는 <strong>라이선스 전용</strong>입니다.
       </p>
       <div class="hero-actions">
         <button type="button" class="btn btn-primary" id="btnScrollValidate">라이선스 확인</button>
         <a class="btn btn-ghost" href="mailto:license@maum-shelter.example?subject=학회%20제휴%20문의">제휴 문의</a>
       </div>
     </header>
+
+    <section id="proTools">
+      <h2>라이선스 전문 도구</h2>
+      <p class="sec-desc">유저용 「오늘 마음」에는 노출하지 않습니다. 키 확인 후 이론·학자·미술치료를 열어 주세요.</p>
+      <div class="discipline-grid" id="proToolsGrid">
+        <article class="disc-card counseling">
+          <h3>📚 이론 · 학자 · 미술치료</h3>
+          <p>상담심리학 이론·기법, 학자 카탈로그, 미술치료 기법 전체</p>
+          <a class="btn btn-ghost" href="/theories" id="linkTheories" style="margin-top:12px;display:inline-block">이론 허브 열기</a>
+        </article>
+        <article class="disc-card psychology">
+          <h3>🎭 표현 · 역할 · 미술 연습</h3>
+          <p>빈 의자·역할극·드라마·낙서·만다라·콜라주 (교육용 가이드)</p>
+          <a class="btn btn-ghost" href="/expressive" id="linkExpressive" style="margin-top:12px;display:inline-block">표현 도구 열기</a>
+        </article>
+        <article class="disc-card clinical">
+          <h3>📝 케이스 노트 AI</h3>
+          <p>상담 녹음 전사·관찰일지·백데이팅 (수련용)</p>
+          <a class="btn btn-ghost" href="/case-notes" style="margin-top:12px;display:inline-block">케이스 노트</a>
+        </article>
+        <article class="disc-card mhsw">
+          <h3>🖼️ 장애인용 · 그림마음</h3>
+          <p>AAC·큰 버튼·TTS·보호자 알림 — <strong>별도 제품</strong>으로 보관 중</p>
+          <a class="btn btn-ghost" href="/disability/picto" style="margin-top:12px;display:inline-block">미리보기</a>
+        </article>
+      </div>
+      <p id="proToolsHint" style="margin-top:12px;font-size:0.82rem;color:var(--muted)">
+        먼저 아래 라이선스 키를 확인하면 전문 도구가 활성화됩니다.
+      </p>
+    </section>
 
     <section id="disciplines">
       <h2>학회 유형별 초점</h2>
@@ -350,16 +381,38 @@
           ${proj ? `그림·이야기: ${proj}<br/>` : ""}
           ${cases.length ? `<div style="margin-top:8px;font-size:0.82rem"><strong>데모 사례 ${cases.length}건</strong><br/>${caseLines}</div>` : ""}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-            <a href="/chat" style="font-size:0.78rem;font-weight:700">💬 대화 시작</a>
-            <a href="/clinical" style="font-size:0.78rem;font-weight:700">💚 마음 돌보기</a>
+            <a href="/theories" style="font-size:0.78rem;font-weight:700">📚 이론·학자·미술치료</a>
+            <a href="/expressive" style="font-size:0.78rem;font-weight:700">🎭 표현·역할</a>
+            <a href="/case-notes" style="font-size:0.78rem;font-weight:700">📝 케이스 노트</a>
           </div>
           <span style="font-size:0.75rem;color:var(--muted);display:block;margin-top:8px">${stripMd(e.legal_framing_ko || "")}</span>
         `;
         localStorage.setItem("psychology_ai_association_license", data.license_key);
+        unlockProTools(true);
       } catch (_) {
         box.className = "validate-result err";
         box.textContent = "연결 오류";
       }
+    }
+
+    function unlockProTools(ok) {
+      const hint = document.getElementById("proToolsHint");
+      if (ok) {
+        if (hint) hint.textContent = "라이선스가 확인되었습니다. 전문 도구를 사용할 수 있어요.";
+      } else if (hint) {
+        hint.textContent = "먼저 아래 라이선스 키를 확인하면 전문 도구가 활성화됩니다.";
+      }
+      ["linkTheories", "linkExpressive"].forEach((id) => {
+        const a = document.getElementById(id);
+        if (!a || a.dataset.guardBound) return;
+        a.dataset.guardBound = "1";
+        a.addEventListener("click", (e) => {
+          if (!localStorage.getItem("psychology_ai_association_license")) {
+            e.preventDefault();
+            document.getElementById("validate").scrollIntoView({ behavior: "smooth" });
+          }
+        });
+      });
     }
 
     document.getElementById("btnValidate").addEventListener("click", validateKey);
@@ -376,6 +429,7 @@
       });
     });
 
+    unlockProTools(!!localStorage.getItem("psychology_ai_association_license"));
     loadCatalog().catch(() => {});
   </script>
 </body>

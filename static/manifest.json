@@ -35,12 +35,6 @@
       "short_name": "대화",
       "url": "/chat",
       "icons": [{ "src": "/static/icons/icon.svg", "sizes": "any" }]
-    },
-    {
-      "name": "그림 마음",
-      "short_name": "그림",
-      "url": "/picto",
-      "icons": [{ "src": "/static/icons/icon.svg", "sizes": "any" }]
     }
   ]
 }

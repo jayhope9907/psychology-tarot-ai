@@ -36,7 +36,7 @@
       background: #eef3ff; color: #1a56db;
     }
     .app-tabs {
-      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
       background: #fff; border-bottom: 1px solid #e5e8eb;
     }
     .app-tabs button {
@@ -131,7 +131,6 @@
     <button type="button" data-tab="checkin" id="tabCheckin">오늘 마음</button>
     <button type="button" data-tab="chat" id="tabChat">AI 대화</button>
     <button type="button" data-tab="clinical" id="tabClinical">마음 돌보기</button>
-    <button type="button" data-tab="picto" id="tabPicto">그림 마음</button>
   </nav>
 
   <div class="organism-bar" id="organismBar" aria-label="마음 기능 연결"></div>
@@ -141,7 +140,6 @@
     <iframe class="app-frame" id="frameCheckin" title="오늘 마음 체크인" src="/home?embed=1"></iframe>
     <iframe class="app-frame" id="frameChat" title="AI 마음 대화" src="/chat?embed=1"></iframe>
     <iframe class="app-frame" id="frameClinical" title="마음 돌보기" src="/clinical?embed=1"></iframe>
-    <iframe class="app-frame" id="framePicto" title="그림 마음 모드" src="/picto?embed=1"></iframe>
   </main>
 
   <footer class="app-footer">
@@ -164,7 +162,6 @@
       checkin: document.getElementById("frameCheckin"),
       chat: document.getElementById("frameChat"),
       clinical: document.getElementById("frameClinical"),
-      picto: document.getElementById("framePicto"),
     };
     const tabs = document.querySelectorAll(".app-tabs button");
 
@@ -179,7 +176,8 @@
     tabs.forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 
     const hash = (location.hash || `#${DEFAULT_TAB}`).replace("#", "");
-    if (frames[hash]) switchTab(hash);
+    const tab = hash === "picto" ? "checkin" : hash;
+    if (frames[tab]) switchTab(tab);
     else switchTab(DEFAULT_TAB);
 
     async function loadConsent() {

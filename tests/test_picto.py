@@ -64,7 +64,15 @@ def test_picto_card_reply():
 
 
 def test_picto_ui_route():
-    response = client.get("/picto")
+    stub = client.get("/picto")
+    assert stub.status_code == 200
+    assert "별도" in stub.text or "따로" in stub.text
+
+    hub = client.get("/disability")
+    assert hub.status_code == 200
+    assert "그림마음" in hub.text or "보관" in hub.text
+
+    response = client.get("/disability/picto")
     assert response.status_code == 200
     assert "picto-btn" in response.text
     assert "telModal" in response.text

@@ -20,30 +20,26 @@ FEATURE_NODES: Dict[str, Dict[str, str]] = {
     "checkin": {"emoji": "💚", "label": "오늘 마음", "tab": "checkin", "route": "/home"},
     "tarot": {"emoji": "✦", "label": "타로", "tab": "tarot", "route": "/tarot"},
     "chat": {"emoji": "💬", "label": "AI 대화", "tab": "chat", "route": "/chat"},
-    "picto": {"emoji": "🖼️", "label": "그림 마음", "tab": "picto", "route": "/picto"},
     "clinical": {"emoji": "💚", "label": "마음 돌보기", "tab": "clinical", "route": "/clinical"},
 }
 
-# 기능 간 기본 연결 (거미줄 골격)
+# 기능 간 기본 연결 (거미줄 골격) — 장애인용 picto는 별도 제품으로 분리
 DEFAULT_EDGES: List[Tuple[str, str, str]] = [
     ("checkin", "chat", "기분 → 대화"),
     ("checkin", "tarot", "기분 → 타로"),
     ("tarot", "chat", "타로 → 대화"),
-    ("picto", "checkin", "그림 → 기분"),
-    ("picto", "chat", "그림 → 대화"),
     ("checkin", "clinical", "기분 → 검사"),
     ("chat", "clinical", "대화 → 검사"),
     ("clinical", "chat", "검사 → 대화"),
-    ("tarot", "picto", "타로 → 그림"),
-    ("clinical", "picto", "표현 → 그림"),
 ]
 
 EVENT_FEATURE_MAP: Dict[str, str] = {
     "mood_checkin": "checkin",
-    "picto_checkin": "picto",
-    "picto_chat": "picto",
-    "picto_card": "picto",
-    "picto_caregiver_alert": "picto",
+    # 장애인용 picto 이벤트는 유저 앱 노드에 없으므로 체크인으로 묶어 표시
+    "picto_checkin": "checkin",
+    "picto_chat": "chat",
+    "picto_card": "chat",
+    "picto_caregiver_alert": "clinical",
     "tarot_draw": "tarot",
     "tarot_exploration": "tarot",
     "counseling_session": "chat",
@@ -60,7 +56,7 @@ def _event_feature(event_type: str, payload: Dict[str, Any]) -> str:
     if event_type in EVENT_FEATURE_MAP:
         return EVENT_FEATURE_MAP[event_type]
     if event_type == "mood_checkin" and "[그림" in str(payload.get("note") or ""):
-        return "picto"
+        return "checkin"
     return "chat"
 
 
@@ -290,7 +286,7 @@ def _build_next_actions(
         )
     if len(actions) < 3:
         actions.append(
-            {"tab": "picto", "emoji": "🖼️", "label": "그림으로 표현", "reason": "기분·대화와 연결"}
+            {"tab": "chat", "emoji": "💬", "label": "마음 이야기", "reason": "편하게 이어가기"}
         )
     return actions[:4]
 
@@ -323,7 +319,7 @@ def build_organism_state(user_id: str) -> Dict[str, Any]:
     return {
         "user_id": user_id,
         "mode": "organism",
-        "description": "기분·타로·대화·그림·마음 돌보기가 하나의 마음 이야기로 연결됩니다.",
+        "description": "기분·타로·대화·마음 돌보기가 하나의 마음 이야기로 연결됩니다.",
         "unified_session_id": unified_session,
         "nodes": nodes,
         "edges": _build_edges(events, pulse),

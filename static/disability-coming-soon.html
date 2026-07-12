@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>마음쉼터 · 장애인용은 별도 준비</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: "IBM Plex Sans KR", sans-serif; color: #eef2f6;
+      background: radial-gradient(ellipse 50% 40% at 50% 0%, rgba(126,168,142,0.18), transparent 60%), #141816;
+      padding: 24px; text-align: center;
+    }
+    .card { max-width: 520px; }
+    h1 { font-family: "Fraunces", serif; font-size: 1.55rem; margin: 0 0 12px; }
+    p { color: rgba(238,242,246,0.72); line-height: 1.65; margin: 0 auto 14px; }
+    .inventory {
+      text-align: left; margin: 18px auto; padding: 14px 16px; border-radius: 14px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(126,168,142,0.25);
+      font-size: 0.82rem; color: rgba(238,242,246,0.78); line-height: 1.55;
+    }
+    .inventory strong { color: #a8d5c0; display: block; margin-bottom: 6px; }
+    .inventory code { font-size: 0.75rem; color: #9ec9b8; }
+    .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+    a.btn {
+      display: inline-block; padding: 12px 18px; border-radius: 10px; text-decoration: none;
+      background: #5a8f78; color: #fff; font-weight: 600;
+    }
+    a.ghost { background: transparent; border: 1px solid rgba(126,168,142,0.45); color: #cfe8da; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>장애인용은 따로 만들 예정이에요</h1>
+    <p>
+      지금 이 앱은 일반 유저용입니다. 그림마음(AAC)·큰 버튼·소리 읽기·보호자 알림 등
+      접근성 전용 경험은 유저 앱과 분리해 <strong>별도 제품</strong>으로 정리해 두었습니다.
+    </p>
+    <div class="inventory">
+      <strong>보관 중인 자산 (삭제하지 않음)</strong>
+      UI · <code>/disability/picto</code> · <code>static/picto.html</code><br/>
+      장면 · <code>static/js/picto-scene.js</code><br/>
+      어휘 · <code>app/services/picto_vocabulary.py</code><br/>
+      API · <code>/api/v1/picto/*</code><br/>
+      번들 · <code>static/picto-catalog.bundle.json</code><br/>
+      문서 · <code>docs/disability-product.md</code>
+    </div>
+    <div class="actions">
+      <a class="btn" href="/home">유저 홈으로</a>
+      <a class="btn ghost" href="/disability/picto">보관 UI 미리보기</a>
+    </div>
+  </div>
+</body>
+</html>

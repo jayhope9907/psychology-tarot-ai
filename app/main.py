@@ -861,12 +861,15 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "legal": "/legal",
         "innovation": "/innovation",
         "agent_lab": "/agent-lab",
-        "picto": "/picto",
+        "picto": "/disability",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
+        "disability": "/disability",
+        "disability_picto": "/disability/picto",
         "expressive": "/expressive",
         "theories": "/theories",
         "psychometrics": "/psychometrics",
+        "associations": "/associations",
         "health": "/health",
         "tarot_deck_api": "/api/v1/tarot/deck",
         "research_kpis": "/api/v1/research/grant-kpis",
@@ -878,6 +881,8 @@ def _public_urls(public_base: str) -> Dict[str, str]:
 
 @app.get("/health")
 async def health_check(request: Request):
+    from app.services.product_surfaces import product_surfaces
+
     public_base = _resolve_public_base(request)
     urls = _public_urls(public_base)
     return {
@@ -887,20 +892,20 @@ async def health_check(request: Request):
         "public": bool(public_base),
         "public_base": public_base or None,
         "urls": urls,
+        "product_lines": product_surfaces(),
         "share_links": {
             "앱": urls.get("app", "/"),
             "홈": urls.get("home", "/home"),
             "AI 대화": urls.get("chat", "/chat"),
             "3D 타로": urls.get("tarot", "/tarot"),
-            "그림 마음": urls.get("picto", "/picto"),
             "마음 돌보기": urls.get("clinical", "/clinical"),
             "그림 표현": urls.get("picture_assessment", "/picture-assessment"),
             "이용 안내": urls.get("legal", "/legal"),
             "혁신·IP": urls.get("innovation", "/innovation"),
             "에이전트 랩": urls.get("agent_lab", "/agent-lab"),
-            "이론·학자": urls.get("theories", "/theories"),
             "MBTI·탐색": urls.get("psychometrics", "/psychometrics"),
-            "표현·역할": urls.get("expressive", "/expressive"),
+            "학회 라이선스": urls.get("associations", "/associations"),
+            "장애인용(보관)": urls.get("disability", "/disability"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -916,10 +921,42 @@ async def tarot_ui():
 
 @app.get("/picto")
 async def picto_ui():
+    # 유저용에서는 진입만 막고, 실제 UI는 /disability/picto 에 보관
+    path = STATIC_DIR / "disability-coming-soon.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Disability product stub not found")
+
+
+@app.get("/disability")
+async def disability_product_hub():
+    path = STATIC_DIR / "disability-coming-soon.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Disability product stub not found")
+
+
+@app.get("/disability/picto")
+async def disability_picto_ui():
+    """장애인용 그림마음 — 별도 제품용으로 보관된 UI."""
     picto_path = STATIC_DIR / "picto.html"
     if picto_path.exists():
         return FileResponse(str(picto_path))
     raise HTTPException(status_code=404, detail="Picto UI not found")
+
+
+@app.get("/api/v1/disability/manifest")
+async def disability_manifest_api():
+    from app.services.disability_product import disability_product_manifest
+
+    return disability_product_manifest()
+
+
+@app.get("/api/v1/product/surfaces")
+async def product_surfaces_api():
+    from app.services.product_surfaces import product_surfaces
+
+    return product_surfaces()
 
 
 @app.get("/picture-assessment")
@@ -988,8 +1025,8 @@ async def legal_ui():
 
 @app.get("/associations")
 async def associations_ui():
-    # 유저용 앱에서는 기관 라이선스 UI를 노출하지 않음 (별도 B2B 제품)
-    path = STATIC_DIR / "b2b-coming-soon.html"
+    # 기관 라이선스 허브 (이론·학자·미술치료·표현 도구 포함)
+    path = STATIC_DIR / "associations.html"
     if path.exists():
         return FileResponse(str(path))
     raise HTTPException(status_code=404, detail="Associations page not found")

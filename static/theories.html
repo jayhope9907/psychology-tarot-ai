@@ -70,20 +70,42 @@
     }
     .cat { margin: 18px 0 8px; font-size: 0.82rem; color: var(--accent); font-weight: 700; }
     .hidden { display: none; }
+    .license-gate {
+      position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+      background: rgba(10,14,18,0.92); padding: 24px; text-align: center;
+    }
+    .license-gate[hidden] { display: none; }
+    .license-gate .card {
+      max-width: 420px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 16px; padding: 22px 18px;
+    }
+    .license-gate a {
+      display: inline-block; margin-top: 14px; padding: 10px 16px; border-radius: 10px;
+      background: var(--accent); color: #102028; font-weight: 700; text-decoration: none;
+    }
   </style>
 </head>
 <body>
+  <div class="license-gate" id="licenseGate" hidden>
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-family:Fraunces,serif">라이선스 전용</h2>
+      <p style="margin:0;color:var(--muted);font-size:0.9rem;line-height:1.5">
+        이론·학자·미술치료는 학회 라이선스 영역입니다. 유저용 「오늘 마음」에서는 제공하지 않아요.
+      </p>
+      <a href="/associations">라이선스에서 열기</a>
+      <div style="margin-top:12px"><a href="/home" style="background:transparent;color:var(--muted);font-weight:500">유저 홈으로</a></div>
+    </div>
+  </div>
   <div class="wrap">
     <nav>
-      <a class="logo" href="/">마음쉼터</a>
+      <a class="logo" href="/associations">라이선스</a>
       <div>
+        <a href="/associations">학회 라이선스</a>
         <a href="/expressive">표현·미술</a>
-        <a href="/clinical">마음 돌보기</a>
-        <a href="/chat">AI 대화</a>
       </div>
     </nav>
     <h1>이론 · 학자 · 미술치료</h1>
-    <p class="lead">상담심리학 이론과 기법, 미술·표현예술 학자를 한곳에서 살펴보세요.</p>
+    <p class="lead">Association License · 상담심리학 이론과 기법, 미술·표현예술 학자를 한곳에서 살펴보세요.</p>
     <div class="notice" id="disclaimer">불러오는 중…</div>
     <div class="stats" id="stats"></div>
     <div class="tabs">
@@ -99,6 +121,11 @@
     <div id="viewTechniques" class="hidden"></div>
   </div>
   <script>
+    const LICENSE_KEY = "psychology_ai_association_license";
+    if (!localStorage.getItem(LICENSE_KEY)) {
+      document.getElementById("licenseGate").hidden = false;
+    }
+
     let corpus = null;
     let activeTab = "theories";
 

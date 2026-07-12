@@ -345,7 +345,7 @@
       <div class="brand-mark" aria-hidden="true"><canvas id="brandCanvas" width="72" height="72"></canvas></div>
       <div class="brand-text">
         <strong>그림마음 <span id="offlineBadge" class="offline-badge" hidden aria-label="오프라인">📴</span></strong>
-        <span id="brandSub">입체 장면으로 마음 표현</span>
+        <span id="brandSub">장애인용 · AAC 보관</span>
       </div>
     </div>
     <div class="top-actions">
@@ -1143,9 +1143,9 @@
       window.addEventListener("online", () => { isOnline = true; updateOnlineBadge(); flushCheckinQueue(); });
       window.addEventListener("offline", () => { isOnline = false; updateOnlineBadge(); });
 
-      fillCompactNav(document.getElementById("moodDoneHome"), "talk_want_home", "처음", "홈으로");
+      fillCompactNav(document.getElementById("moodDoneHome"), "nav_history", "처음", "홈 메뉴");
       fillCompactNav(document.getElementById("talkMoreBtn"), "nav_talk", "더 말하기", "장면 추가");
-      fillCompactNav(document.getElementById("cardDoneHome"), "talk_want_home", "처음", "홈으로");
+      fillCompactNav(document.getElementById("cardDoneHome"), "nav_history", "처음", "홈 메뉴");
       fillCompactNav(document.getElementById("historyToMood"), "nav_mood", "기분 고르기", "감정 장면");
       fillCompactNav(document.getElementById("telConfirm"), "talk_yes", "전화", "연결");
       fillCompactNav(document.getElementById("telCancel"), "talk_no", "취소", "닫기");

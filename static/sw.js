@@ -1,10 +1,9 @@
-const CACHE = "maum-cache-v7";
+const CACHE = "maum-cache-v8";
 const ASSETS = [
   "/",
   "/home",
   "/chat",
   "/tarot",
-  "/picto",
   "/clinical",
   "/picture-assessment",
   "/legal",
@@ -19,15 +18,12 @@ const ASSETS = [
   "/static/js/tarot-image-settings.js",
   "/static/js/chat-offline.js",
   "/static/js/maum-organism.js",
-  "/static/js/picto-scene.js",
   "/static/js/vendor/three.min.js",
-  "/static/picto-catalog.bundle.json",
   "/static/tarot-deck.bundle.json",
   "/static/counsel-offline.bundle.json",
 ];
 
 const BUNDLE_PATHS = new Set([
-  "/static/picto-catalog.bundle.json",
   "/static/tarot-deck.bundle.json",
   "/static/counsel-offline.bundle.json",
 ]);

@@ -15,7 +15,8 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
         "primary_lens": "사례(Case) · 개입(Intervention) · 숙제(Homework)",
         "what_we_optimize": [
             "라포 → 개념화 → 개입 → 종결 5단계 상담 흐름",
-            "19개 상담 이론·학파 (로저스, 벡, IPT, DBT, 가족치료 등)",
+            "19개+ 상담 이론·학파 · 학자 · 미술치료 기법 코퍼스 (라이선스 전용)",
+            "표현·역할·빈 의자·낙서·만다라 교육 가이드 (라이선스 전용)",
             "타로·투사를 은유·거울로 활용 (깊은 무의식 해석 최소)",
             "SCT·애착·행동 회피 등 대화형 탐색",
             "마음 돌보기 허브 · 그림·이야기 표현 (HTP·DAP·KFD·SCT)",
