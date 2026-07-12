@@ -1,5 +1,9 @@
 # Backend Architecture for Psychology Tarot AI
 
+> **Status (2026):** Historical sketch. The live product is a **non-diagnostic AI wellness / association-training** platform.
+> Prefer `README.md`, `docs/ip/invention-disclosure.md`, `app/main.py`, and `/innovation` for current architecture.
+> Do **not** use older “치료·전문 상담” wording as product claims.
+
 ## 1. 목표
 - 내담자의 심리 상태를 정교하게 리딩하고, 인지행동치료(CBT) 관점에서 현실적인 상담 조언을 제공한다.
 - 타로 카드 해석과 상담 심리학적 프레임워크를 결합한 응답을 안정적으로 생성한다.

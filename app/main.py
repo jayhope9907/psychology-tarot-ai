@@ -52,6 +52,8 @@ async def startup_init_db():
     init_db()
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DOCS_DIR = ROOT_DIR / "docs"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -857,11 +859,13 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "test": "/test",
         "legal": "/legal",
         "associations": "/associations",
+        "innovation": "/innovation",
         "picto": "/picto",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
         "health": "/health",
         "tarot_deck_api": "/api/v1/tarot/deck",
+        "research_kpis": "/api/v1/research/grant-kpis",
     }
     if public_base:
         return {name: f"{public_base}{path}" for name, path in paths.items()}
@@ -888,6 +892,7 @@ async def health_check(request: Request):
             "마음 돌보기": urls.get("clinical", "/clinical"),
             "그림 표현": urls.get("picture_assessment", "/picture-assessment"),
             "이용 안내": urls.get("legal", "/legal"),
+            "혁신·IP": urls.get("innovation", "/innovation"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -947,6 +952,82 @@ async def associations_ui():
     if path.exists():
         return FileResponse(str(path))
     raise HTTPException(status_code=404, detail="Associations page not found")
+
+
+@app.get("/innovation")
+async def innovation_ui():
+    path = STATIC_DIR / "innovation.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Innovation hub not found")
+
+
+@app.get("/docs/{doc_path:path}")
+async def docs_markdown(doc_path: str):
+    """Serve grant/IP markdown docs for reviewers."""
+    safe = Path(doc_path)
+    if ".." in safe.parts:
+        raise HTTPException(status_code=400, detail="invalid_path")
+    target = (DOCS_DIR / safe).resolve()
+    if not str(target).startswith(str(DOCS_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="invalid_path")
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="doc_not_found")
+    media = "text/markdown; charset=utf-8" if target.suffix.lower() == ".md" else "text/plain; charset=utf-8"
+    return FileResponse(str(target), media_type=media)
+
+
+class ResearchExportRequest(BaseModel):
+    research_consent: bool = False
+    include_sessions: bool = True
+    limit: int = 500
+
+
+@app.get("/api/v1/research/consent")
+async def research_consent():
+    from app.services.research_export import research_consent_document
+
+    return research_consent_document()
+
+
+@app.get("/api/v1/research/codebook")
+async def research_codebook():
+    from app.services.research_export import build_codebook
+
+    return build_codebook()
+
+
+@app.get("/api/v1/research/inventions")
+async def research_inventions():
+    from app.services.research_export import build_innovation_catalog
+
+    return build_innovation_catalog()
+
+
+@app.get("/api/v1/research/grant-kpis")
+async def research_grant_kpis():
+    from app.services.research_export import build_grant_kpis
+
+    return build_grant_kpis()
+
+
+@app.post("/api/v1/research/export")
+async def research_export(request: ResearchExportRequest):
+    from app.services.research_export import build_research_export
+    from app.services.vault import write_audit_event
+
+    payload = build_research_export(
+        include_sessions=request.include_sessions,
+        limit=min(max(request.limit, 1), 2000),
+        research_consent=request.research_consent,
+    )
+    if payload.get("ok"):
+        write_audit_event(
+            "RESEARCH_EXPORT",
+            "research",
+            {"session_rows": (payload.get("summary") or {}).get("session_rows", 0)},
+        )
+    return payload
 
 
 @app.get("/api/v1/legal/consent")
