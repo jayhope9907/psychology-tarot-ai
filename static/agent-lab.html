@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>마음쉼터 · 개인 AI 에이전트 랩</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #10161f;
+      --panel: #182230;
+      --ink: #e8eef6;
+      --muted: rgba(232,238,246,0.62);
+      --line: rgba(120,150,180,0.22);
+      --accent: #3d8bfd;
+      --good: #3d9b7a;
+      --warm: #d4a017;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans KR", sans-serif;
+      background:
+        radial-gradient(ellipse 80% 50% at 0% 0%, rgba(61,139,253,0.18), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 10%, rgba(61,155,122,0.12), transparent 50%),
+        var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 20px 16px 80px; }
+    nav { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; margin-left: 12px; }
+    nav a:hover { color: var(--accent); }
+    .logo { font-weight: 700; color: var(--ink); text-decoration: none; }
+    h1 { margin: 0 0 8px; font-size: 1.55rem; letter-spacing: -0.03em; }
+    .lead { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; }
+    .notice {
+      padding: 12px 14px; border-radius: 12px; margin-bottom: 18px;
+      background: rgba(212,160,23,0.1); border: 1px solid rgba(212,160,23,0.28);
+      font-size: 0.8rem; color: var(--muted);
+    }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 0.95rem; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    button, .btn {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--ink);
+      border-radius: 10px; padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer;
+      text-decoration: none; display: inline-flex; align-items: center;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.good { background: var(--good); border-color: var(--good); color: #fff; }
+    .meta { font-family: "JetBrains Mono", monospace; font-size: 0.75rem; color: var(--muted); word-break: break-all; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+    .kpi { background: rgba(0,0,0,0.22); border-radius: 12px; padding: 12px; }
+    .kpi .v { font-size: 1.15rem; font-weight: 700; color: var(--accent); }
+    .kpi .l { font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+    .pattern {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 8px;
+      background: rgba(255,255,255,0.03);
+    }
+    .pattern strong { display: block; margin-bottom: 4px; }
+    .pattern span { font-size: 0.78rem; color: var(--muted); }
+    .bars { display: grid; gap: 8px; }
+    .bar-row { display: grid; grid-template-columns: 110px 1fr 42px; gap: 8px; align-items: center; font-size: 0.78rem; }
+    .bar-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, var(--good), var(--accent)); }
+    pre {
+      margin: 0; max-height: 260px; overflow: auto; background: #0b1016; border-radius: 12px;
+      padding: 12px; font-size: 0.72rem; color: #c9d4e3; white-space: pre-wrap;
+    }
+    textarea {
+      width: 100%; min-height: 90px; border-radius: 12px; border: 1px solid var(--line);
+      background: rgba(0,0,0,0.25); color: var(--ink); font: inherit; padding: 10px; resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="/">마음쉼터</a>
+      <div>
+        <a href="/test">테스트 허브</a>
+        <a href="/chat">AI 대화</a>
+        <a href="/innovation">혁신·IP</a>
+      </div>
+    </nav>
+
+    <h1>개인 AI 에이전트 · 패턴 랩</h1>
+    <p class="lead">유저마다 고유 알고리즘 ID·학파 prior·지표 EMA·패턴을 쌓아 심리 추적을 정밀화합니다. (비진단)</p>
+    <div class="notice">학습·패턴은 자기성찰·웰니스 개인화용이며 정신과 진단·치료 효과를 의미하지 않습니다.</div>
+
+    <section class="panel">
+      <h2>세션</h2>
+      <div class="meta" id="userMeta">user 로딩…</div>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="primary" id="btnLoad">지문 불러오기</button>
+        <button type="button" class="good" id="btnSim">샘플 대화로 학습</button>
+        <button type="button" id="btnChat">대화에서 쌓기</button>
+        <a class="btn" href="/test">테스트 허브</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>고유 알고리즘 요약</h2>
+      <div class="kpi-grid" id="kpiGrid"></div>
+      <p class="meta" id="summaryLine" style="margin-top:12px"></p>
+    </section>
+
+    <section class="panel">
+      <h2>학파 Prior · 지표 EMA</h2>
+      <div class="bars" id="schoolBars"></div>
+      <div class="bars" id="quantBars" style="margin-top:14px"></div>
+    </section>
+
+    <section class="panel">
+      <h2>감지된 패턴</h2>
+      <div id="patternList"><span class="meta">아직 패턴이 없어요. 학습을 실행해 보세요.</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>커스텀 학습 메시지</h2>
+      <textarea id="customMsgs" placeholder="한 줄에 하나씩 메시지를 넣고 학습을 실행하세요"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button type="button" id="btnCustomSim">이 메시지로 학습</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>원본 JSON</h2>
+      <pre id="rawJson">{}</pre>
+    </section>
+  </div>
+
+  <script>
+    const userId = localStorage.getItem("psychology_ai_user_id") || `user-${crypto.randomUUID().slice(0, 8)}`;
+    localStorage.setItem("psychology_ai_user_id", userId);
+    document.getElementById("userMeta").textContent = `user_id = ${userId}`;
+
+    function pct(v) { return Math.round((Number(v) || 0) * 100); }
+
+    function renderBars(el, obj, labelMap) {
+      const entries = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      if (!entries.length) {
+        el.innerHTML = '<span class="meta">데이터 없음</span>';
+        return;
+      }
+      el.innerHTML = entries.map(([k, v]) => `
+        <div class="bar-row">
+          <div>${labelMap[k] || k}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, pct(v))}%"></div></div>
+          <div>${pct(v)}%</div>
+        </div>
+      `).join("");
+    }
+
+    function render(bundle) {
+      const fp = bundle.agent_fingerprint || {};
+      const kpis = [
+        ["알고리즘", fp.algo_id || "—"],
+        ["샘플 턴", fp.sample_turns || 0],
+        ["신뢰도", pct(fp.confidence) + "%"],
+        ["패턴", bundle.pattern_count || 0],
+      ];
+      document.getElementById("kpiGrid").innerHTML = kpis.map(([l, v]) =>
+        `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`
+      ).join("");
+      document.getElementById("summaryLine").textContent = fp.algorithm_summary_ko || bundle.disclaimer_ko || "";
+      renderBars(document.getElementById("schoolBars"), fp.school_priors, {});
+      renderBars(document.getElementById("quantBars"), fp.quant_ema, {
+        psychological_readiness_index: "준비도",
+        tree_energy_index: "에너지",
+        psychiatric_stress_weight: "스트레스",
+        attachment_matrix_score: "애착",
+      });
+      const patterns = bundle.patterns || [];
+      const list = document.getElementById("patternList");
+      if (!patterns.length) {
+        list.innerHTML = '<span class="meta">감지된 패턴 없음</span>';
+      } else {
+        list.innerHTML = patterns.map(p => `
+          <div class="pattern">
+            <strong>${p.label_ko} · ${pct(p.confidence)}%</strong>
+            <span>${p.guidance_ko || ""}</span>
+          </div>
+        `).join("");
+      }
+      document.getElementById("rawJson").textContent = JSON.stringify(bundle, null, 2);
+    }
+
+    async function loadAgent() {
+      const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/agent`);
+      const data = await res.json();
+      render(data);
+    }
+
+    async function simulate(messages) {
+      const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/agent/simulate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messages || null }),
+      });
+      const data = await res.json();
+      render(data);
+    }
+
+    document.getElementById("btnLoad").onclick = () => loadAgent().catch(alert);
+    document.getElementById("btnSim").onclick = () => simulate(null).catch(alert);
+    document.getElementById("btnChat").onclick = () => { location.href = "/chat"; };
+    document.getElementById("btnCustomSim").onclick = () => {
+      const lines = document.getElementById("customMsgs").value.split("\n").map(s => s.trim()).filter(Boolean);
+      if (!lines.length) return alert("메시지를 한 줄 이상 입력해 주세요");
+      simulate(lines).catch(alert);
+    };
+
+    loadAgent().catch(() => {});
+  </script>
+</body>
+</html>

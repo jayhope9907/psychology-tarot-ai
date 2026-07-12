@@ -583,6 +583,12 @@ async def run_chat_turn(
 
     from app.services.counseling_style import resolve_counseling_style
     from app.services.persistence import get_user_settings
+    from app.services.user_agent_algorithm import (
+        apply_fingerprint_bias,
+        fingerprint_prompt_block,
+        get_user_agent_bundle,
+        seed_quant_from_fingerprint,
+    )
 
     counselor_default: Optional[ClinicalSchool] = None
     if explicit_school is None:
@@ -594,11 +600,20 @@ async def run_chat_turn(
             except ValueError:
                 counselor_default = None
 
+    agent_bundle = get_user_agent_bundle(state.user_id, refresh_patterns=False)
+    fingerprint = agent_bundle.get("agent_fingerprint") or {}
+    fingerprint_patterns = agent_bundle.get("patterns") or []
+
     routing = route_clinical_persona(
         user_message,
         explicit_school,
         state.messages,
         counselor_default_school=counselor_default,
+    )
+    routing = apply_fingerprint_bias(
+        routing,
+        fingerprint,
+        user_explicit=explicit_school is not None,
     )
     state.persona_routing = {
         "school": routing["school"].value,
@@ -606,9 +621,24 @@ async def run_chat_turn(
         "reason": routing["reason"],
         "persona_label": routing["persona_label"],
         "detected_distortions": routing["detected_distortions"],
+        "fingerprint_bias": bool(routing.get("fingerprint_bias")),
+        "algo_id": fingerprint.get("algo_id"),
     }
     state.preferred_school = routing["school"].value
-    state.quant_features = extract_chat_quant_features(user_message, state)
+    state.quant_features = seed_quant_from_fingerprint(
+        extract_chat_quant_features(user_message, state),
+        fingerprint,
+    )
+    state.phase_notes["user_agent"] = {
+        "algo_id": fingerprint.get("algo_id"),
+        "confidence": fingerprint.get("confidence"),
+        "summary": fingerprint.get("algorithm_summary_ko"),
+        "patterns": [
+            {"id": p.get("pattern_id"), "label": p.get("label_ko"), "confidence": p.get("confidence")}
+            for p in fingerprint_patterns[:4]
+        ],
+    }
+    agent_prompt_extra = fingerprint_prompt_block(fingerprint, fingerprint_patterns)
 
     if assessment_response:
         recorded = record_assessment_answer(state, assessment_response)
@@ -646,7 +676,12 @@ async def run_chat_turn(
     ctx = resolve_mood_context(state.user_id)
     style = resolve_counseling_style(get_user_settings(state.user_id))
     counselor_name = style["counselor_name"]
-    style_block = build_style_system_block(style) + "\n\n" + build_legal_system_block()
+    style_block = (
+        build_style_system_block(style)
+        + "\n\n"
+        + build_legal_system_block()
+        + (agent_prompt_extra or "")
+    )
     state.phase_notes["counseling_style"] = {
         "counselor_id": style["counselor_id"],
         "counselor_name": counselor_name,
@@ -772,6 +807,7 @@ async def run_chat_turn(
         "tarot_blended": state.tarot_blended,
         "homework": homework_package or None,
         "today_mood": ctx.to_dict(),
+        "user_agent": state.phase_notes.get("user_agent"),
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload

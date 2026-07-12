@@ -273,6 +273,17 @@ def sync_after_counseling(
     )
     profile["pipeline_status"] = build_pipeline_status(profile)
     save_profile(user_id, profile)
+
+    try:
+        from app.services.user_agent_algorithm import sync_user_agent_from_session
+
+        agent_bundle = sync_user_agent_from_session(user_id, session)
+        profile = load_profile(user_id) or profile
+        profile["agent_fingerprint"] = agent_bundle.get("agent_fingerprint")
+        profile["pattern_hits"] = agent_bundle.get("patterns")
+    except Exception:
+        pass
+
     return profile
 
 

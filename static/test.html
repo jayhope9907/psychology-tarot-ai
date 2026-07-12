@@ -207,14 +207,28 @@
   </section>
 
   <section class="test-section">
+    <h2>개인 AI 에이전트 · 패턴 추적</h2>
+    <p class="desc">유저 고유 알고리즘·패턴·종단 데이터를 확인·학습합니다</p>
+    <div class="test-info" id="agentInfo">에이전트 불러오는 중…</div>
+    <div class="test-grid">
+      <button type="button" class="test-btn primary" id="btnAgentLoad">지문 불러오기</button>
+      <button type="button" class="test-btn" id="btnAgentSim">샘플로 학습</button>
+      <a class="test-link" href="/agent-lab">에이전트 랩 <span>→</span></a>
+      <button type="button" class="test-btn" data-api="agent">GET /users/…/agent</button>
+    </div>
+  </section>
+
+  <section class="test-section">
     <h2>바로가기</h2>
     <p class="desc">실제 사용자 화면으로 이동</p>
     <div class="test-grid">
       <a class="test-link" href="/">통합 앱 <span>→</span></a>
       <a class="test-link" href="/chat">AI 대화 <span>→</span></a>
+      <a class="test-link" href="/agent-lab">에이전트 랩 <span>→</span></a>
       <a class="test-link" href="/tarot">3D 타로 <span>→</span></a>
       <a class="test-link" href="/picture-assessment">그림·이야기 표현 <span>→</span></a>
       <a class="test-link" href="/picto">그림 마음 <span>→</span></a>
+      <a class="test-link" href="/innovation">혁신·IP <span>→</span></a>
       <a class="test-link" href="https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai" target="_blank" rel="noopener">Render 배포 <span>↗</span></a>
     </div>
   </section>
@@ -254,6 +268,7 @@
     <p class="desc">페이지 로드 시 자동 점검</p>
     <ul class="check-list" id="checkList">
       <li data-check="health"><span class="check-icon">·</span><span>서버 /health 응답</span></li>
+      <li data-check="agent"><span class="check-icon">·</span><span>개인 에이전트 API</span></li>
       <li data-check="chat"><span class="check-icon">·</span><span>AI 대화 페이지 로드</span></li>
       <li data-check="tarot"><span class="check-icon">·</span><span>타로 페이지 로드</span></li>
       <li data-check="css"><span class="check-icon">·</span><span>토스 UI 스타일시트</span></li>
@@ -444,12 +459,63 @@
         log(`✓ catalog → ${(d.instruments || d.domains || []).length || "OK"}`);
         return d;
       },
+      async agent() {
+        const uid = localStorage.getItem("psychology_ai_user_id") || "user-test";
+        const res = await fetch(`/api/v1/users/${encodeURIComponent(uid)}/agent`);
+        const d = await res.json();
+        const fp = d.agent_fingerprint || {};
+        log(`✓ agent → ${fp.algo_id || "?"} · turns ${fp.sample_turns || 0} · patterns ${d.pattern_count || 0}`);
+        setCheck("agent", !!fp.algo_id);
+        renderAgentInfo(d);
+        return d;
+      },
       async all() {
-        for (const key of ["health", "deck", "draw", "personas", "catalog"]) {
+        for (const key of ["health", "deck", "draw", "personas", "catalog", "agent"]) {
           try { await apiTests[key](); } catch (e) { log(`✗ ${key} → ${e.message}`); }
         }
       },
     };
+
+    function renderAgentInfo(data) {
+      const el = document.getElementById("agentInfo");
+      if (!el) return;
+      const fp = data.agent_fingerprint || {};
+      const patterns = (data.patterns || []).slice(0, 3).map((p) => p.label_ko).join(" · ") || "없음";
+      el.innerHTML = `
+        <strong>algo</strong> ${fp.algo_id || "—"}<br/>
+        <strong>샘플 턴</strong> ${fp.sample_turns || 0} · <strong>신뢰도</strong> ${Math.round((fp.confidence || 0) * 100)}%<br/>
+        <strong>요약</strong> ${fp.algorithm_summary_ko || "아직 학습 전"}<br/>
+        <strong>패턴</strong> ${patterns}
+      `;
+    }
+
+    async function loadAgentPanel() {
+      const uid = localStorage.getItem("psychology_ai_user_id");
+      if (!uid) {
+        document.getElementById("agentInfo").textContent = "user_id가 없습니다. 홈/대화에서 한 번 접속하세요.";
+        return;
+      }
+      const res = await fetch(`/api/v1/users/${encodeURIComponent(uid)}/agent`);
+      renderAgentInfo(await res.json());
+    }
+
+    document.getElementById("btnAgentLoad")?.addEventListener("click", () => {
+      loadAgentPanel().catch((e) => log(`✗ agent load → ${e.message}`));
+    });
+    document.getElementById("btnAgentSim")?.addEventListener("click", async () => {
+      const uid = localStorage.getItem("psychology_ai_user_id") || `user-${crypto.randomUUID().slice(0, 8)}`;
+      localStorage.setItem("psychology_ai_user_id", uid);
+      refreshSessionInfo();
+      const res = await fetch(`/api/v1/users/${encodeURIComponent(uid)}/agent/simulate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      renderAgentInfo(data);
+      log(`✓ agent simulate → ${data.algo_id} · patterns ${data.pattern_count}`);
+      setCheck("agent", true);
+    });
 
     document.querySelectorAll("[data-api]").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -508,6 +574,7 @@
       try {
         await apiTests.health();
         await apiTests.deck();
+        await apiTests.agent();
       } catch (e) {
         healthBadge.textContent = "서버 연결 실패";
         healthBadge.className = "test-badge fail";
@@ -518,6 +585,7 @@
     refreshSessionInfo();
     renderShareLinks();
     loadTechnicalCatalog();
+    loadAgentPanel().catch(() => {});
     runPageChecks();
   </script>
 </body>

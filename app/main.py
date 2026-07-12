@@ -860,6 +860,7 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "legal": "/legal",
         "associations": "/associations",
         "innovation": "/innovation",
+        "agent_lab": "/agent-lab",
         "picto": "/picto",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
@@ -893,6 +894,7 @@ async def health_check(request: Request):
             "그림 표현": urls.get("picture_assessment", "/picture-assessment"),
             "이용 안내": urls.get("legal", "/legal"),
             "혁신·IP": urls.get("innovation", "/innovation"),
+            "에이전트 랩": urls.get("agent_lab", "/agent-lab"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -936,6 +938,14 @@ async def test_hub():
     if test_path.exists():
         return FileResponse(str(test_path))
     raise HTTPException(status_code=404, detail="Test hub not found")
+
+
+@app.get("/agent-lab")
+async def agent_lab_ui():
+    path = STATIC_DIR / "agent-lab.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Agent lab not found")
 
 
 @app.get("/legal")
@@ -1520,6 +1530,30 @@ async def user_psych_timeline(user_id: str, limit: int = 30):
     from app.services.psych_timeline import list_events
 
     return {"user_id": user_id, "events": list_events(user_id, min(max(limit, 1), 100))}
+
+
+@app.get("/api/v1/users/{user_id}/agent")
+async def user_agent_algorithm(user_id: str):
+    from app.services.user_agent_algorithm import get_user_agent_bundle
+
+    return get_user_agent_bundle(user_id, refresh_patterns=True)
+
+
+class AgentSimulateRequest(BaseModel):
+    messages: Optional[List[str]] = None
+
+
+@app.post("/api/v1/users/{user_id}/agent/simulate")
+async def user_agent_simulate(user_id: str, request: AgentSimulateRequest):
+    from app.services.user_agent_algorithm import simulate_learning_pass
+
+    msgs = request.messages or [
+        "회사에서 너무 지치고 불안해요",
+        "항상 제가 잘못하는 것 같아요",
+        "가족 관계가 반복해서 힘들어요",
+        "잠도 잘 안 오고 무기력해요",
+    ]
+    return simulate_learning_pass(user_id, msgs[:12])
 
 
 @app.get("/api/v1/associations/catalog")
