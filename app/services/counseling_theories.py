@@ -10,6 +10,7 @@ THEORY_CATEGORIES: Dict[str, str] = {
     "psychodynamic": "정신역동 · 분석",
     "systemic": "관계 · 체계",
     "brief_emotion": "단기 · 감정 · 트라우마",
+    "expressive": "표현 · 역할 · 연극",
     "integrative": "통합 · 마음챙김",
 }
 
@@ -19,6 +20,7 @@ USER_CATEGORY_LABELS: Dict[str, str] = {
     "psychodynamic": "마음 깊이",
     "systemic": "관계·가족",
     "brief_emotion": "감정·변화",
+    "expressive": "표현·역할",
     "integrative": "맞춤 상담",
 }
 
@@ -41,6 +43,8 @@ USER_THEORY_LABELS: Dict[ClinicalSchool, Dict[str, str]] = {
     ClinicalSchool.BOWEN_SYSTEMS: {"user_label": "가족상담", "user_short_label": "가족"},
     ClinicalSchool.TRAUMA_INFORMED: {"user_label": "마음 회복 상담", "user_short_label": "회복 상담"},
     ClinicalSchool.MINDFULNESS: {"user_label": "마음챙김 상담", "user_short_label": "챙김"},
+    ClinicalSchool.PSYCHODRAMA: {"user_label": "역할·장면 상담", "user_short_label": "역할극"},
+    ClinicalSchool.DRAMA_THERAPY: {"user_label": "연극·표현 상담", "user_short_label": "연극치료"},
     ClinicalSchool.INTEGRATIVE: {"user_label": "맞춤 상담", "user_short_label": "맞춤"},
 }
 
@@ -108,17 +112,28 @@ THEORY_CATALOG: Dict[ClinicalSchool, Dict[str, Any]] = {
         "weight_profile": {"empathy": 0.65, "interpretation": 0.55, "structure": 0.6, "confrontation": 0.3},
     },
     ClinicalSchool.GESTALT: {
-        "label": "게슈탈트 · 지금-여기",
+        "label": "게슈탈트 · 지금-여기 · 빈 의자",
         "short_label": "게슈탈트",
-        "subtitle": "Perls · 알아차림·미완성·접촉",
+        "subtitle": "Fritz Perls · 알아차림·빈 의자·미완성",
         "category": "humanistic",
         "founder": "Fritz Perls",
-        "techniques": ["지금-여기 초점", "의자 기법", "신체 감각", "미완성 과제", "접촉 경계"],
-        "routing_keywords": ("지금", "몸", "긴장", "숨", "느껴", "감각", "당장", "여기"),
+        "techniques": [
+            "지금-여기 초점",
+            "빈 의자 기법",
+            "역할 바꾸기",
+            "신체 감각",
+            "미완성 과제",
+            "접촉 경계",
+        ],
+        "routing_keywords": (
+            "지금", "몸", "긴장", "숨", "느껴", "감각", "당장", "여기",
+            "빈 의자", "빈의자", "의자", "말하고 싶", "표현이 어렵",
+        ),
         "counselor_tone": "생생하고 직접적인 알아차림",
         "directive": (
             "게슈탈트 상담자처럼: 과거 분석보다 지금-여기의 감정·신체·관계 경험에 초점을 두세요. "
-            "'지금 이 순간 무엇이 느껴지나요?'처럼 알아차림을 촉진합니다."
+            "말이 어려운 내담자에게는 빈 의자·역할 바꾸기를 부드럽게 제안할 수 있습니다. "
+            "'지금 이 순간 무엇이 느껴지나요?'처럼 알아차림을 촉진하고, 압도되면 즉시 멈춥니다."
         ),
         "weight_profile": {"empathy": 0.6, "interpretation": 0.5, "structure": 0.4, "confrontation": 0.45},
     },
@@ -317,6 +332,58 @@ THEORY_CATALOG: Dict[ClinicalSchool, Dict[str, Any]] = {
             "과도한 해석보다 알아차림을 우선합니다."
         ),
         "weight_profile": {"empathy": 0.7, "interpretation": 0.3, "structure": 0.45, "confrontation": 0.1},
+    },
+    ClinicalSchool.PSYCHODRAMA: {
+        "label": "사이코드라마 · 역할극",
+        "short_label": "사이코드라마",
+        "subtitle": "J.L. Moreno · 역할·장면·자발성",
+        "category": "expressive",
+        "founder": "Jacob L. Moreno",
+        "techniques": [
+            "역할극(Role-play)",
+            "역할 바꾸기(Role reversal)",
+            "더블링(Doubling)",
+            "미러링(Mirroring)",
+            "장면 구성(Scene setting)",
+            "자발성 워밍업",
+        ],
+        "routing_keywords": (
+            "역할", "역할극", "사이코드라마", "장면", "연기", "말 못", "말로",
+            "표현이 어렵", "글이 안", "말하기 힘들", "역할 놀이", "바꿔 보",
+        ),
+        "counselor_tone": "안전하고 놀이적인 자발성",
+        "directive": (
+            "모레노 사이코드라마 가이드처럼: 말이 어려운 내담자에게 역할·장면·몸 움직임을 "
+            "안전한 선택지로 제안하세요. 강요하지 말고, 워밍업→역할→탈역할(de-role) 순서를 지키며 "
+            "압도되면 즉시 멈춥니다. 진단·재연 강요 금지."
+        ),
+        "weight_profile": {"empathy": 0.7, "interpretation": 0.4, "structure": 0.55, "confrontation": 0.25},
+    },
+    ClinicalSchool.DRAMA_THERAPY: {
+        "label": "연극치료 · 표현 치료",
+        "short_label": "연극치료",
+        "subtitle": "Renee Emunah / Phil Jones · 상징·연극·거리두기",
+        "category": "expressive",
+        "founder": "Renee Emunah / Phil Jones",
+        "techniques": [
+            "연극적 거리두기",
+            "상징·소품 표현",
+            "즉흥 장면",
+            "스토리 만들기",
+            "감정 외현화",
+            "안전한 종결 의식",
+        ],
+        "routing_keywords": (
+            "연극", "연극치료", "표현치료", "상징", "소품", "즉흥", "스토리",
+            "말로 하기 어려", "글쓰기 어려", "그림으로", "몸으",
+        ),
+        "counselor_tone": "상징적이고 안전한 표현 촉진",
+        "directive": (
+            "연극치료 가이드처럼: 직접 말하기보다 상징·역할·짧은 장면으로 "
+            "감정을 외현화하도록 돕습니다. '연기'가 아닌 자기 표현임을 안내하고, "
+            "거리두기·종결 의식으로 안전을 확보하세요. 의료 진단 금지."
+        ),
+        "weight_profile": {"empathy": 0.75, "interpretation": 0.35, "structure": 0.5, "confrontation": 0.2},
     },
     ClinicalSchool.INTEGRATIVE: {
         "label": "통합 · 맞춤 혼합",

@@ -16,6 +16,8 @@ def test_theory_catalog_covers_major_approaches():
         "ACT",
         "TRAUMA_INFORMED",
         "INTEGRATIVE",
+        "PSYCHODRAMA",
+        "DRAMA_THERAPY",
     ):
         assert expected in schools
 

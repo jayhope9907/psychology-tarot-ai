@@ -862,6 +862,7 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "innovation": "/innovation",
         "agent_lab": "/agent-lab",
         "case_notes": "/case-notes",
+        "expressive": "/expressive",
         "picto": "/picto",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
@@ -897,6 +898,7 @@ async def health_check(request: Request):
             "혁신·IP": urls.get("innovation", "/innovation"),
             "에이전트 랩": urls.get("agent_lab", "/agent-lab"),
             "케이스 노트": urls.get("case_notes", "/case-notes"),
+            "표현·역할": urls.get("expressive", "/expressive"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -956,6 +958,14 @@ async def case_notes_ui():
     if path.exists():
         return FileResponse(str(path))
     raise HTTPException(status_code=404, detail="Case notes UI not found")
+
+
+@app.get("/expressive")
+async def expressive_ui():
+    path = STATIC_DIR / "expressive.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Expressive therapy UI not found")
 
 
 @app.get("/legal")
@@ -1562,6 +1572,20 @@ class CaseNoteGenerateRequest(BaseModel):
     save: bool = True
 
 
+class ExpressiveStartRequest(BaseModel):
+    user_id: str
+    session_id: Optional[str] = None
+    mode_id: str
+
+
+class ExpressiveStepRequest(BaseModel):
+    user_id: str
+    session_id: str
+    expressive_session_id: str
+    response: Optional[Dict[str, Any]] = None
+    stop: bool = False
+
+
 @app.post("/api/v1/users/{user_id}/agent/simulate")
 async def user_agent_simulate(user_id: str, request: AgentSimulateRequest):
     from app.services.user_agent_algorithm import simulate_learning_pass
@@ -1629,6 +1653,47 @@ async def case_notes_list(user_id: str, entry_type: Optional[str] = None, limit:
         "user_id": user_id,
         "entries": list_journal_entries(user_id, entry_type=entry_type, limit=min(max(limit, 1), 100)),
     }
+
+
+@app.get("/api/v1/expressive/catalog")
+async def expressive_catalog_api():
+    from app.services.expressive_therapy import expressive_catalog
+
+    return expressive_catalog()
+
+
+@app.post("/api/v1/expressive/start")
+async def expressive_start(request: ExpressiveStartRequest):
+    from app.services.expressive_therapy import start_expressive_session
+
+    session = get_or_create_session(request.user_id, request.session_id, "EXPRESSIVE")
+    result = start_expressive_session(session, request.mode_id)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "start_failed")
+    school = (result.get("session") or {}).get("school")
+    if school:
+        session.preferred_school = school
+    result["session_id"] = session.session_id
+    result["user_id"] = request.user_id
+    return result
+
+
+@app.post("/api/v1/expressive/step")
+async def expressive_step(request: ExpressiveStepRequest):
+    from app.services.expressive_therapy import advance_expressive_step
+
+    session = get_session(request.session_id)
+    if not session or session.user_id != request.user_id:
+        raise HTTPException(status_code=404, detail="session_not_found")
+    result = advance_expressive_step(
+        session,
+        expressive_session_id=request.expressive_session_id,
+        response=request.response,
+        stop=request.stop,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "step_failed")
+    return result
 
 
 @app.get("/api/v1/associations/catalog")

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2420" />
+  <meta name="description" content="빈 의자 · 역할극 · 연극치료 — 말·글이 어려울 때 표현하기" />
+  <title>마음쉼터 · 표현·역할·연극</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+  <script src="/static/js/embed-bridge.js"></script>
+  <script src="/static/js/maum-organism.js"></script>
+  <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
+  <style>
+    :root {
+      --bg: #141c18;
+      --panel: #1c2822;
+      --ink: #eef4ef;
+      --muted: rgba(238,244,239,0.62);
+      --line: rgba(126,168,142,0.28);
+      --accent: #7ea88e;
+      --warm: #d4a574;
+      --danger: #c45c5c;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans KR", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 65% 40% at 90% -5%, rgba(212,165,116,0.14), transparent 55%),
+        radial-gradient(ellipse 55% 45% at 0% 15%, rgba(126,168,142,0.16), transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 18px 14px 96px; }
+    nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.82rem; margin-left: 12px; }
+    .logo { color: var(--ink); font-weight: 700; text-decoration: none; margin-left: 0 !important; }
+    h1 {
+      font-family: "Fraunces", serif; font-size: clamp(1.45rem, 4.2vw, 1.95rem);
+      margin: 0 0 8px; letter-spacing: -0.02em;
+    }
+    .lead { color: var(--muted); margin: 0 0 14px; font-size: 0.9rem; }
+    .notice {
+      padding: 11px 13px; border-radius: 12px; margin-bottom: 14px; font-size: 0.78rem; color: var(--muted);
+      background: rgba(126,168,142,0.1); border: 1px solid var(--line);
+    }
+    .crisis { font-size: 0.74rem; color: var(--warm); margin: 0 0 16px; }
+    .screen { display: none; animation: fade 0.28s ease; }
+    .screen.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .mode-card, .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 14px; margin-bottom: 12px;
+    }
+    .mode-card { cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
+    .mode-card:hover, .mode-card:focus-visible { border-color: var(--accent); transform: translateY(-1px); outline: none; }
+    .mode-card h2 { margin: 0 0 4px; font-size: 1.02rem; }
+    .mode-card .meta { font-size: 0.74rem; color: var(--warm); margin-bottom: 6px; }
+    .mode-card p { margin: 0; font-size: 0.84rem; color: var(--muted); }
+    .scholar-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+    .scholar-chip {
+      font-size: 0.72rem; padding: 5px 10px; border-radius: 999px;
+      background: rgba(212,165,116,0.12); color: var(--warm); border: 1px solid rgba(212,165,116,0.25);
+    }
+    .progress-wrap { margin-bottom: 12px; }
+    .progress-bar { height: 7px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #5a8f78); transition: width 0.35s ease; }
+    .progress-text { font-size: 0.72rem; color: var(--muted); margin-top: 6px; }
+    .step-title { margin: 0 0 6px; font-size: 1.05rem; }
+    .step-prompt { margin: 0 0 14px; color: var(--muted); font-size: 0.9rem; }
+    .choice-grid, .picto-grid, .role-grid {
+      display: grid; gap: 8px; margin-bottom: 12px;
+    }
+    .choice-grid { grid-template-columns: 1fr; }
+    .picto-grid, .role-grid { grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 480px) {
+      .picto-grid, .role-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .pick {
+      border: 1px solid var(--line); background: rgba(0,0,0,0.22); color: var(--ink);
+      border-radius: 12px; padding: 12px 10px; font: inherit; cursor: pointer; text-align: center;
+    }
+    .pick:hover, .pick.selected { border-color: var(--accent); background: rgba(126,168,142,0.18); }
+    .pick .emoji { display: block; font-size: 1.45rem; margin-bottom: 4px; }
+    .pick .lbl { font-size: 0.78rem; }
+    textarea {
+      width: 100%; min-height: 88px; border-radius: 12px; border: 1px solid var(--line);
+      background: rgba(0,0,0,0.28); color: var(--ink); font: inherit; padding: 12px; resize: vertical;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    button.btn {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--ink);
+      border-radius: 10px; padding: 11px 14px; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    button.primary { background: linear-gradient(135deg, var(--accent), #3d6b5a); border: none; color: #fff; }
+    button.danger { color: #e8a0a0; border-color: rgba(196,92,92,0.35); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .summary-card h2 { margin: 0 0 8px; font-size: 1.1rem; }
+    .summary-card p { color: var(--muted); font-size: 0.88rem; }
+    .hl { font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="/">마음쉼터</a>
+      <div>
+        <a href="/clinical">마음 돌보기</a>
+        <a href="/picture-assessment">그림 표현</a>
+        <a href="/chat">AI 대화</a>
+      </div>
+    </nav>
+
+    <div id="viewHome" class="screen active">
+      <h1>표현 · 역할 · 연극</h1>
+      <p class="lead" id="homeLead">말이나 글이 어려울 때, 역할·빈 의자·상징으로 마음을 남겨 보세요.</p>
+      <div class="notice" id="homeDisclaimer"></div>
+      <p class="crisis" id="homeCrisis"></p>
+      <div class="scholar-row" id="scholarRow"></div>
+      <div id="modeList"></div>
+    </div>
+
+    <div id="viewStep" class="screen">
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText"></div>
+      </div>
+      <div class="panel">
+        <p class="meta" id="stepModeMeta" style="font-size:0.74rem;color:var(--warm);margin:0 0 8px"></p>
+        <h2 class="step-title" id="stepTitle"></h2>
+        <p class="step-prompt" id="stepPrompt"></p>
+        <div id="stepInput"></div>
+        <div class="row">
+          <button type="button" class="btn danger" id="btnStop">그만하기</button>
+          <button type="button" class="btn primary" id="btnNext" disabled>다음</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewDone" class="screen">
+      <div class="panel summary-card">
+        <h2 id="doneTitle">연습 마무리</h2>
+        <p id="doneMsg"></p>
+        <p id="doneReflect"></p>
+        <div id="doneHighlights"></div>
+        <div class="row">
+          <button type="button" class="btn primary" id="btnAgain">다른 기법 해보기</button>
+          <a class="btn" href="/chat" style="text-decoration:none;display:inline-block">대화로 이어가기</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const USER_KEY = "psychology_ai_user_id";
+    const SESSION_KEY = "psychology_ai_session_id";
+    let catalog = null;
+    let userId = localStorage.getItem(USER_KEY);
+    let chatSessionId = localStorage.getItem(SESSION_KEY);
+    let expressiveSessionId = null;
+    let currentStep = null;
+    let pendingResponse = null;
+    let roleCards = [];
+    let pictoCards = [];
+
+    if (!userId) {
+      userId = (window.MaumOrganism && MaumOrganism.userId()) || `user-${crypto.randomUUID().slice(0, 8)}`;
+      localStorage.setItem(USER_KEY, userId);
+    }
+
+    function show(id) {
+      document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
+    function setProgress(index, total) {
+      const pct = total ? Math.round((index / total) * 100) : 0;
+      document.getElementById("progressFill").style.width = pct + "%";
+      document.getElementById("progressText").textContent = `${index} / ${total} 단계`;
+    }
+
+    async function loadCatalog() {
+      const res = await fetch("/api/v1/expressive/catalog");
+      catalog = await res.json();
+      document.getElementById("homeLead").textContent = catalog.subtitle || "";
+      document.getElementById("homeDisclaimer").textContent = catalog.disclaimer || "";
+      document.getElementById("homeCrisis").textContent =
+        (catalog.safety && catalog.safety.crisis) ? ("위기 시 " + catalog.safety.crisis) : "";
+      roleCards = catalog.role_cards || [];
+      pictoCards = catalog.picto_responses || [];
+
+      const scholarRow = document.getElementById("scholarRow");
+      scholarRow.innerHTML = (catalog.scholars || []).map((s) =>
+        `<span class="scholar-chip">${s.name_ko} · ${s.focus.split("·")[0].trim()}</span>`
+      ).join("");
+
+      const list = document.getElementById("modeList");
+      list.innerHTML = (catalog.modes || []).map((m) => `
+        <button type="button" class="mode-card" data-mode="${m.mode_id}">
+          <div class="meta">${m.scholar} · ${m.duration_hint}</div>
+          <h2>${m.title}</h2>
+          <p>${m.user_blurb}</p>
+        </button>
+      `).join("");
+      list.querySelectorAll("[data-mode]").forEach((btn) => {
+        btn.addEventListener("click", () => startMode(btn.dataset.mode));
+      });
+    }
+
+    async function startMode(modeId) {
+      const res = await fetch("/api/v1/expressive/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, session_id: chatSessionId || undefined, mode_id: modeId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        alert(data.detail || "시작할 수 없어요");
+        return;
+      }
+      chatSessionId = data.session_id;
+      localStorage.setItem(SESSION_KEY, chatSessionId);
+      expressiveSessionId = data.session.session_id;
+      document.getElementById("stepModeMeta").textContent =
+        `${data.session.title} · ${data.session.scholar}`;
+      renderStep(data.step, data.session);
+      show("viewStep");
+    }
+
+    function renderStep(step, session) {
+      currentStep = step;
+      pendingResponse = null;
+      document.getElementById("btnNext").disabled = true;
+      document.getElementById("stepTitle").textContent = step.title;
+      document.getElementById("stepPrompt").textContent = step.prompt;
+      setProgress((session.step_index || 0) + 1, session.step_total || 1);
+      const box = document.getElementById("stepInput");
+      box.innerHTML = "";
+      const input = step.input;
+
+      if (input === "choice") {
+        const grid = document.createElement("div");
+        grid.className = "choice-grid";
+        (step.choices || []).forEach((c) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "pick";
+          b.textContent = c;
+          b.addEventListener("click", () => {
+            grid.querySelectorAll(".pick").forEach((x) => x.classList.remove("selected"));
+            b.classList.add("selected");
+            pendingResponse = { choice: c };
+            document.getElementById("btnNext").disabled = false;
+          });
+          grid.appendChild(b);
+        });
+        box.appendChild(grid);
+      } else if (input === "picto") {
+        box.appendChild(buildPictoGrid());
+      } else if (input === "role" || input === "role_or_text") {
+        box.appendChild(buildRoleGrid());
+        if (input === "role_or_text") box.appendChild(buildTextArea("또는 짧게 적어 보세요 (선택)"));
+      } else if (input === "text_or_picto") {
+        box.appendChild(buildPictoGrid());
+        box.appendChild(buildTextArea("말로도 남길 수 있어요 (선택)"));
+      } else {
+        box.appendChild(buildTextArea());
+      }
+    }
+
+    function buildPictoGrid() {
+      const grid = document.createElement("div");
+      grid.className = "picto-grid";
+      pictoCards.forEach((p) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "pick";
+        b.innerHTML = `<span class="emoji">${p.emoji}</span><span class="lbl">${p.label}</span>`;
+        b.addEventListener("click", () => {
+          grid.querySelectorAll(".pick").forEach((x) => x.classList.remove("selected"));
+          b.classList.add("selected");
+          pendingResponse = { ...(pendingResponse || {}), picto_id: p.id, picto_label: p.label };
+          document.getElementById("btnNext").disabled = false;
+        });
+        grid.appendChild(b);
+      });
+      return grid;
+    }
+
+    function buildRoleGrid() {
+      const grid = document.createElement("div");
+      grid.className = "role-grid";
+      roleCards.forEach((r) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "pick";
+        b.innerHTML = `<span class="emoji">${r.emoji}</span><span class="lbl">${r.label}</span>`;
+        b.title = r.prompt;
+        b.addEventListener("click", () => {
+          grid.querySelectorAll(".pick").forEach((x) => x.classList.remove("selected"));
+          b.classList.add("selected");
+          pendingResponse = { ...(pendingResponse || {}), role_id: r.id, role_label: r.label };
+          document.getElementById("btnNext").disabled = false;
+        });
+        grid.appendChild(b);
+      });
+      return grid;
+    }
+
+    function buildTextArea(placeholder) {
+      const ta = document.createElement("textarea");
+      ta.placeholder = placeholder || "편하게 적어 보세요 (없어도 괜찮아요)";
+      ta.addEventListener("input", () => {
+        const text = ta.value.trim();
+        pendingResponse = { ...(pendingResponse || {}), text };
+        if (text || pendingResponse.picto_id || pendingResponse.role_id || pendingResponse.choice) {
+          document.getElementById("btnNext").disabled = false;
+        }
+      });
+      return ta;
+    }
+
+    async function submitStep(stop) {
+      const res = await fetch("/api/v1/expressive/step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: chatSessionId,
+          expressive_session_id: expressiveSessionId,
+          response: stop ? undefined : (pendingResponse || {}),
+          stop: !!stop,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        alert((data.detail && (data.detail.error || data.detail)) || "잠시 후 다시 시도해 주세요");
+        return;
+      }
+      if (data.completed || data.stopped) {
+        showDone(data);
+        return;
+      }
+      renderStep(data.step, data.session);
+    }
+
+    function showDone(data) {
+      const summary = data.summary || {};
+      document.getElementById("doneTitle").textContent = summary.title || "연습 마무리";
+      document.getElementById("doneMsg").textContent = data.message_ko || (data.stopped ? "안전하게 멈췄어요." : "마쳤어요.");
+      document.getElementById("doneReflect").textContent = summary.reflection_ko || "";
+      const hl = document.getElementById("doneHighlights");
+      hl.innerHTML = (summary.highlights || []).map((h) => {
+        const r = h.response || {};
+        const bits = [r.choice, r.role_label, r.picto_label, r.text].filter(Boolean).join(" · ");
+        return bits ? `<div class="hl">${h.step_id}: ${bits}</div>` : "";
+      }).join("");
+      show("viewDone");
+    }
+
+    document.getElementById("btnNext").addEventListener("click", () => submitStep(false));
+    document.getElementById("btnStop").addEventListener("click", () => submitStep(true));
+    document.getElementById("btnAgain").addEventListener("click", () => show("viewHome"));
+
+    loadCatalog().catch((e) => {
+      document.getElementById("homeDisclaimer").textContent = "목록을 불러오지 못했어요. 새로고침 해 주세요.";
+      console.error(e);
+    });
+  </script>
+</body>
+</html>

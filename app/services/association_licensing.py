@@ -493,6 +493,7 @@ def resolve_entitlements(
     # 클로버 노트형 케이스 어시스턴트 — 라이선스 기본 제공
     flags.setdefault("case_note_assistant", True)
     flags.setdefault("case_note_backdate", True)
+    flags.setdefault("expressive_therapy", True)
 
     instruments: Set[str]
     allowed = profile.get("allowed_instruments")

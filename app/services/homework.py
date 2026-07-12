@@ -207,6 +207,8 @@ def select_homework_types(state: ChatSessionState) -> List[str]:
         selected.extend(["thought_record", "emotion_journal"])
     elif school == "FREUDIAN":
         selected.extend(["day_review", "emotion_journal"])
+    elif school in ("GESTALT", "PSYCHODRAMA", "DRAMA_THERAPY"):
+        selected.extend(["emotion_journal", "grounding_log"])
     else:
         selected.extend(["emotion_journal", "day_review"])
 
