@@ -220,7 +220,8 @@
     const LICENSE_KEY = "psychology_ai_association_license";
     const STORAGE_KEY = "psychology_ai_user_id";
     const SESSION_KEY = "psychology_ai_session_id";
-    let licenseKey = localStorage.getItem(LICENSE_KEY) || "";
+    let licenseKey = "";
+    try { localStorage.removeItem(LICENSE_KEY); } catch (e) {}
 
     let catalog = null, userId = localStorage.getItem(STORAGE_KEY);
     let sessionId = localStorage.getItem(SESSION_KEY);

@@ -722,9 +722,16 @@ async def run_chat_turn(
         return
 
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING and not state.assessment_package_ready:
+        from app.services.consumer_access import unlock_session_for_consumer
+
+        unlock_session_for_consumer(state)
         package = build_assessment_package(state, user_message)
         package = enrich_package_with_mood(package, ctx, state)
+        package["payment_required"] = False
+        package["consumer_open"] = True
         mark_package_presented(state, package)
+        # 유저용: 결제 대기 없이 바로 검사 단계로
+        state.assessment_paid = True
         yield {"event": "assessment_package", "data": package}
         briefing = build_assessment_briefing_reply(ctx, package)
         yield {"event": "mood_briefing", "data": {"message": briefing, "mood": ctx.to_dict()}}

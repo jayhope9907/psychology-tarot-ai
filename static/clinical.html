@@ -117,10 +117,6 @@
         <span class="emoji">🎭</span>
         <div><div class="title">역할·빈 의자·미술 표현</div><div class="desc">말·글이 어려울 때 역할극·낙서·만다라</div></div>
       </a>
-      <a class="c-track-btn" href="/case-notes" style="text-decoration:none;color:inherit">
-        <span class="emoji">📝</span>
-        <div><div class="title">케이스 노트 AI</div><div class="desc">상담 녹음 문자화 · 관찰일지 · 백데이팅</div></div>
-      </a>
     </div>
     <div class="c-section" id="dreamSeedBox">
       <h2>🌱 꿈을 심는 시간</h2>
@@ -161,7 +157,8 @@
     let catalog = null, summary = null;
     let userId = localStorage.getItem(USER_KEY);
     let sessionId = localStorage.getItem(SESSION_KEY);
-    let licenseKey = localStorage.getItem(LICENSE_KEY) || "";
+    let licenseKey = "";
+    try { localStorage.removeItem(LICENSE_KEY); } catch (e) {}
     let formalQueue = [], formalIdx = 0, selectedValue = null;
 
     if (!userId) {
@@ -305,7 +302,7 @@
       const res = await fetch("/api/v1/picture-assessment/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, session_id: sessionId, association_license: licenseKey || null }),
+        body: JSON.stringify({ user_id: userId, session_id: sessionId }),
       });
       if (res.ok) {
         const d = await res.json();

@@ -251,7 +251,7 @@ class AssessmentSubmitRequest(BaseModel):
 
 class CheckoutRequest(BaseModel):
     user_id: str
-    session_id: str
+    session_id: Optional[str] = None
     tier_id: Optional[str] = None
 
 
@@ -858,16 +858,14 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "tarot": "/tarot",
         "test": "/test",
         "legal": "/legal",
-        "associations": "/associations",
         "innovation": "/innovation",
         "agent_lab": "/agent-lab",
-        "case_notes": "/case-notes",
-        "expressive": "/expressive",
-        "theories": "/theories",
-        "psychometrics": "/psychometrics",
         "picto": "/picto",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
+        "expressive": "/expressive",
+        "theories": "/theories",
+        "psychometrics": "/psychometrics",
         "health": "/health",
         "tarot_deck_api": "/api/v1/tarot/deck",
         "research_kpis": "/api/v1/research/grant-kpis",
@@ -899,10 +897,9 @@ async def health_check(request: Request):
             "이용 안내": urls.get("legal", "/legal"),
             "혁신·IP": urls.get("innovation", "/innovation"),
             "에이전트 랩": urls.get("agent_lab", "/agent-lab"),
-            "케이스 노트": urls.get("case_notes", "/case-notes"),
-            "표현·역할": urls.get("expressive", "/expressive"),
             "이론·학자": urls.get("theories", "/theories"),
             "MBTI·탐색": urls.get("psychometrics", "/psychometrics"),
+            "표현·역할": urls.get("expressive", "/expressive"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -956,14 +953,6 @@ async def agent_lab_ui():
     raise HTTPException(status_code=404, detail="Agent lab not found")
 
 
-@app.get("/case-notes")
-async def case_notes_ui():
-    path = STATIC_DIR / "case-notes.html"
-    if path.exists():
-        return FileResponse(str(path))
-    raise HTTPException(status_code=404, detail="Case notes UI not found")
-
-
 @app.get("/expressive")
 async def expressive_ui():
     path = STATIC_DIR / "expressive.html"
@@ -998,10 +987,19 @@ async def legal_ui():
 
 @app.get("/associations")
 async def associations_ui():
-    path = STATIC_DIR / "associations.html"
+    # 유저용 앱에서는 기관 라이선스 UI를 노출하지 않음 (별도 B2B 제품)
+    path = STATIC_DIR / "b2b-coming-soon.html"
     if path.exists():
         return FileResponse(str(path))
     raise HTTPException(status_code=404, detail="Associations page not found")
+
+
+@app.get("/case-notes")
+async def case_notes_ui():
+    path = STATIC_DIR / "b2b-coming-soon.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Case notes UI not found")
 
 
 @app.get("/innovation")
@@ -1811,6 +1809,12 @@ async def list_association_orgs(request: Request, limit: int = 20):
 @app.get("/api/v1/clinical/catalog")
 async def clinical_catalog_api(license_key: Optional[str] = None, user_id: Optional[str] = None):
     from app.services.clinical_catalog import unified_clinical_catalog
+    from app.services.consumer_access import consumer_open
+
+    # 유저용: 라이선스 필터 없이 전체 카탈로그
+    if consumer_open() or not license_key:
+        return unified_clinical_catalog(None)
+
     from app.services.clinical_user_voice import HUB
     from app.services.association_context import resolve_api_license
 
@@ -1842,10 +1846,12 @@ async def clinical_catalog_api(license_key: Optional[str] = None, user_id: Optio
 @app.get("/api/v1/clinical/summary/{user_id}")
 async def clinical_summary_api(user_id: str, license_key: Optional[str] = None):
     from app.services.clinical_catalog import build_user_clinical_summary
-    from app.services.persistence import load_latest_session_for_user
-    from app.services.association_context import bind_license_to_session
+    from app.services.consumer_access import consumer_open
 
-    if license_key:
+    if license_key and not consumer_open():
+        from app.services.persistence import load_latest_session_for_user
+        from app.services.association_context import bind_license_to_session
+
         session = load_latest_session_for_user(user_id) or get_or_create_session(user_id, plan="PLUS")
         bind_license_to_session(session, license_key)
         save_session(session)
@@ -1856,6 +1862,11 @@ async def clinical_summary_api(user_id: str, license_key: Optional[str] = None):
 @app.get("/api/v1/picture-assessment/catalog")
 async def picture_assessment_catalog_api(license_key: Optional[str] = None, user_id: Optional[str] = None):
     from app.services.picture_assessment import picture_assessment_catalog
+    from app.services.consumer_access import consumer_open
+
+    if consumer_open() or not license_key:
+        return picture_assessment_catalog(None)
+
     from app.services.clinical_user_voice import PICTURE_HUB
     from app.services.association_context import resolve_api_license
 
@@ -1878,13 +1889,16 @@ async def picture_assessment_catalog_api(license_key: Optional[str] = None, user
 @app.post("/api/v1/picture-assessment/start")
 async def picture_assessment_start(request: PictureAssessmentStartRequest):
     session = get_or_create_session(request.user_id, request.session_id, "PICTURE_ASSESSMENT_TEST")
-    if request.association_license:
+    from app.services.consumer_access import consumer_open, unlock_session_for_consumer
+
+    unlock_session_for_consumer(session)
+    if request.association_license and not consumer_open():
         from app.services.association_context import bind_license_to_session
 
         bind_license_to_session(session, request.association_license)
     from app.services.picture_assessment import picture_assessment_catalog
 
-    catalog = picture_assessment_catalog(session.org_entitlements)
+    catalog = picture_assessment_catalog(None if consumer_open() else session.org_entitlements)
     save_session(session)
     return {
         "session_id": session.session_id,
@@ -1987,17 +2001,30 @@ async def get_assessment_package(session_id: str):
     session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    from app.services.consumer_access import unlock_session_for_consumer
+
+    unlock_session_for_consumer(session)
     if session.assessment_package:
         package = dict(session.assessment_package)
-        package["payment_required"] = not session.assessment_paid
+        package["payment_required"] = False
+        package["consumer_open"] = True
         return package
     package = build_assessment_package(session)
+    package["payment_required"] = False
     mark_package_presented(session, package)
     return package
 
 
 @app.get("/api/v1/assessments/packages/catalog")
 async def assessment_package_catalog():
+    from app.services.consumer_access import B2B_SEPARATE_NOTE_KO, consumer_open
+
+    if consumer_open():
+        return {
+            "tiers": [],
+            "consumer_open": True,
+            "note_ko": "유저용 앱에서는 구독·결제 패키지를 사용하지 않습니다. " + B2B_SEPARATE_NOTE_KO,
+        }
     return {"tiers": PACKAGE_TIERS}
 
 
@@ -2008,6 +2035,27 @@ async def checkout_assessment_package(session_id: str, request: CheckoutRequest)
         raise HTTPException(status_code=404, detail="Session not found")
     if session.user_id != request.user_id:
         raise HTTPException(status_code=403, detail="Session user mismatch")
+    from app.services.consumer_access import consumer_open, unlock_session_for_consumer
+
+    unlock_session_for_consumer(session)
+    if consumer_open():
+        session.assessment_paid = True
+        if not session.assessment_package_ready:
+            package = build_assessment_package(session)
+            mark_package_presented(session, package)
+        save_session(session)
+        return {
+            "success": True,
+            "already_paid": True,
+            "consumer_open": True,
+            "payment_required": False,
+            "payment_id": session.payment_id or "open_access",
+            "message": "유저용 앱에서는 결제 없이 바로 진행합니다.",
+            "session_id": session.session_id,
+            "counseling_phase": session.counseling_phase,
+            "assessment_package": session.assessment_package,
+        }
+
     if session.assessment_paid:
         return {
             "success": True,
@@ -2096,7 +2144,11 @@ async def chat_stream(request: ChatStreamRequest):
     session = get_or_create_session(request.user_id, request.session_id, request.plan)
     if request.preferred_school:
         session.preferred_school = request.preferred_school.value
-    if request.association_license:
+    from app.services.consumer_access import consumer_open, unlock_session_for_consumer
+
+    unlock_session_for_consumer(session)
+    # 유저용 앱: 기관 라이선스 바인딩 비활성 (B2B는 별도 제품)
+    if request.association_license and not consumer_open():
         from app.services.association_context import bind_license_to_session
 
         bind_license_to_session(session, request.association_license)

@@ -209,6 +209,19 @@ def build_assessment_package(state: ChatSessionState, user_message: str = "") ->
         ),
         "payment_required": not state.assessment_paid,
     }
+    try:
+        from app.services.consumer_access import consumer_open
+
+        if consumer_open():
+            package["payment_required"] = False
+            package["price_krw"] = 0
+            package["price_label"] = "무료"
+            package["tier_label"] = package.get("tier_label") or "마음 탐색"
+            package["tier_description"] = "유저용 앱에서는 결제 없이 바로 이어갑니다."
+            package["consumer_open"] = True
+            state.assessment_paid = True
+    except Exception:
+        pass
     ctx = resolve_mood_context(state.user_id)
     if ctx.has_checkin and ctx.score <= 2:
         tier_id = "essential"

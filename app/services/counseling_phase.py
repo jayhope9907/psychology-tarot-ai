@@ -30,7 +30,7 @@ PHASE_ORDER: tuple[str, ...] = (
 
 PHASE_LABELS_KO: Dict[str, str] = {
     PHASE_RAPPORT: "관계 형성",
-    PHASE_ASSESSMENT_BRIEFING: "검사 안내·결제",
+    PHASE_ASSESSMENT_BRIEFING: "검사 안내",
     PHASE_ASSESSMENT: "문제 평가·탐색",
     PHASE_CONCEPTUALIZATION: "사례 개념화",
     PHASE_INTERVENTION: "상담 개입",
@@ -39,7 +39,7 @@ PHASE_LABELS_KO: Dict[str, str] = {
 
 PHASE_DESCRIPTIONS_KO: Dict[str, str] = {
     PHASE_RAPPORT: "신뢰·안전감을 만들고 상담의 틀(비밀·속도·목표)을 안내합니다.",
-    PHASE_ASSESSMENT_BRIEFING: "주호소에 맞는 검사 패키지와 진행 과정을 안내하고 결제를 진행합니다.",
+    PHASE_ASSESSMENT_BRIEFING: "주호소에 맞는 마음 확인 방법을 안내하고, 부담 없이 탐색을 이어갑니다.",
     PHASE_ASSESSMENT: "주호소와 현재 상태를 듣고, 짧은 심리검사로 객관적 단서를 모읍니다.",
     PHASE_CONCEPTUALIZATION: "수집된 정보로 패턴·신념·경험을 연결하고 상담 목표를 구체화합니다.",
     PHASE_INTERVENTION: "CBT·통찰 등 기법으로 목표 달성을 돕고 작은 변화를 시도합니다.",
@@ -241,6 +241,13 @@ def _phase_description(phase: str, rapport: Dict[str, Any] | None) -> str:
 
 
 def assessments_unlocked(state: ChatSessionState) -> bool:
+    try:
+        from app.services.consumer_access import consumer_open
+
+        if consumer_open():
+            return True
+    except Exception:
+        pass
     return bool(state.assessment_paid)
 
 
