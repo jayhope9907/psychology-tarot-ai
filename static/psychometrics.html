@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MBTI·이상심리 탐색 검사 — AI 에이전트 자동 동기화" />
+  <title>마음쉼터 · MBTI·심리 탐색</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #14161c; --panel: #1c2030; --ink: #eef1f7; --muted: rgba(238,241,247,0.62);
+      --line: rgba(150,170,210,0.25); --accent: #8aa4d4; --warm: #d4a574; --good: #5a8f78;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "IBM Plex Sans KR", sans-serif; color: var(--ink);
+      background: radial-gradient(ellipse 60% 40% at 90% 0%, rgba(138,164,212,0.16), transparent 55%), var(--bg);
+      min-height: 100vh; line-height: 1.55;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 18px 14px 90px; }
+    nav { display: flex; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.82rem; margin-left: 12px; }
+    .logo { color: var(--ink); font-weight: 700; margin-left: 0 !important; }
+    h1 { font-family: "Fraunces", serif; font-size: clamp(1.4rem, 4vw, 1.9rem); margin: 0 0 8px; }
+    .lead { color: var(--muted); font-size: 0.88rem; }
+    .notice {
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line);
+      background: rgba(138,164,212,0.08); margin: 12px 0; font-size: 0.78rem; color: var(--muted);
+    }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    .panel h2 { margin: 0 0 6px; font-size: 1rem; }
+    .meta { font-size: 0.74rem; color: var(--warm); margin-bottom: 8px; }
+    button, .pick {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--ink);
+      border-radius: 10px; padding: 10px 12px; font: inherit; cursor: pointer; text-align: left;
+    }
+    button.primary { background: linear-gradient(135deg, var(--good), #3d6b5a); border: none; color: #fff; font-weight: 600; }
+    .grid { display: grid; gap: 8px; }
+    .pick.selected { border-color: var(--accent); background: rgba(138,164,212,0.18); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+    .chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; background: rgba(90,143,120,0.18); color: #9fd0b8; margin-right: 6px; }
+    .screen { display: none; } .screen.active { display: block; }
+    .inst { cursor: pointer; } .inst:hover { border-color: var(--accent); }
+    a.inline { color: var(--warm); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="/">마음쉼터</a>
+      <div>
+        <a href="/clinical">마음 돌보기</a>
+        <a href="/agent-lab">에이전트</a>
+        <a href="/chat">AI 대화</a>
+      </div>
+    </nav>
+    <div id="viewList" class="screen active">
+      <h1>MBTI · 심리 탐색</h1>
+      <p class="lead">이상심리 교육용 짧은 탐색과 MBTI 선호. 답할수록 AI 에이전트에 자동 저장·동기화되어 당신을 더 입체적으로 이해합니다.</p>
+      <div class="notice">진단이 아닙니다. 기분·관계는 「힘들어 보이시네요」처럼 부드럽게 풀어 가며, 설문처럼 몰아 묻지 않습니다.</div>
+      <div class="panel" id="agentBox"><span class="chip">에이전트 동기화 대기</span></div>
+      <div id="list"></div>
+    </div>
+    <div id="viewRun" class="screen">
+      <button type="button" id="btnBack">← 목록</button>
+      <div class="panel" style="margin-top:12px">
+        <div class="meta" id="runMeta"></div>
+        <h2 id="runFraming"></h2>
+        <p id="runPrompt" style="font-size:0.95rem;margin:10px 0"></p>
+        <div class="grid" id="runOptions"></div>
+        <div class="row">
+          <button type="button" id="btnSkip">지금은 넘어갈게요</button>
+          <button type="button" class="primary" id="btnNext" disabled>다음</button>
+        </div>
+      </div>
+    </div>
+    <div id="viewDone" class="screen">
+      <div class="panel">
+        <h2>에이전트에 반영했어요</h2>
+        <p class="lead" id="doneMsg"></p>
+        <pre id="doneJson" style="white-space:pre-wrap;font-size:0.75rem;color:var(--muted);background:#0d0f14;padding:10px;border-radius:10px"></pre>
+        <div class="row">
+          <button type="button" class="primary" id="btnAgain">다른 탐색</button>
+          <a class="inline" href="/chat">대화로 이어가기 →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const USER_KEY = "psychology_ai_user_id";
+    const SESSION_KEY = "psychology_ai_session_id";
+    const FOCUS = new Set([
+      "mbti_preference","ocd_probe","social_anxiety_probe","panic_probe","mania_probe",
+      "adhd_probe","alcohol_probe","eating_probe","dissociation_probe","somatic_probe","anger_probe",
+      "phq9","gad7","attachment_ecr","pcl5","pss","isi","rses"
+    ]);
+    let userId = localStorage.getItem(USER_KEY) || `user-${crypto.randomUUID().slice(0,8)}`;
+    localStorage.setItem(USER_KEY, userId);
+    let sessionId = localStorage.getItem(SESSION_KEY);
+    let catalog = [];
+    let current = null, itemIdx = 0, selected = null;
+
+    function show(id) {
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
+    async function ensureSession() {
+      if (sessionId) return sessionId;
+      const res = await fetch(`/api/v1/chat/sessions/new?user_id=${encodeURIComponent(userId)}&plan=PLUS`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      sessionId = data.session_id;
+      if (sessionId) localStorage.setItem(SESSION_KEY, sessionId);
+      return sessionId;
+    }
+
+    async function loadAgent() {
+      try {
+        const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/agent`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const mbti = data.agent_fingerprint?.psychometric_profile?.mbti?.type_code_hint;
+        const hist = Object.keys(data.agent_fingerprint?.assessment_hist || {}).length;
+        document.getElementById("agentBox").innerHTML =
+          `<span class="chip">${data.algo_id || "ALG"}</span>` +
+          `<span class="meta">동기화 검사 ${hist}개` + (mbti ? ` · MBTI 힌트 ${mbti}` : "") + `</span>`;
+      } catch (e) {}
+    }
+
+    function renderList() {
+      const list = document.getElementById("list");
+      if (!catalog.length) {
+        list.innerHTML = "<p class='lead'>목록을 불러오지 못했어요.</p>";
+        return;
+      }
+      list.innerHTML = catalog.map((i) => `
+        <div class="panel inst" data-id="${i.instrument_id}">
+          <div class="meta">${i.school || i.domain_label || ""} · ${i.item_count || (i.items || []).length}문항</div>
+          <h2>${i.user_title || i.display_name}</h2>
+          <p class="lead">${i.intro || i.focus || ""}</p>
+        </div>
+      `).join("");
+      list.querySelectorAll(".inst").forEach((el) => el.addEventListener("click", () => start(el.dataset.id)));
+    }
+
+    function start(id) {
+      current = catalog.find((c) => c.instrument_id === id);
+      if (!current || !current.items?.length) return;
+      itemIdx = 0;
+      selected = null;
+      renderItem();
+      show("viewRun");
+    }
+
+    function renderItem() {
+      const item = current.items[itemIdx];
+      document.getElementById("runMeta").textContent =
+        `${current.user_title || current.display_name} · ${itemIdx + 1}/${current.items.length}`;
+      document.getElementById("runFraming").textContent = item.framing || "편하게 골라 주세요";
+      document.getElementById("runPrompt").textContent = item.prompt;
+      const box = document.getElementById("runOptions");
+      box.innerHTML = (item.options || []).map((o) =>
+        `<button type="button" class="pick" data-v="${o.value}">${o.label}</button>`
+      ).join("");
+      selected = null;
+      document.getElementById("btnNext").disabled = true;
+      box.querySelectorAll(".pick").forEach((b) => b.addEventListener("click", () => {
+        box.querySelectorAll(".pick").forEach((x) => x.classList.remove("selected"));
+        b.classList.add("selected");
+        selected = Number(b.dataset.v);
+        document.getElementById("btnNext").disabled = false;
+      }));
+    }
+
+    async function submit(skipped) {
+      await ensureSession();
+      const item = current.items[itemIdx];
+      const res = await fetch("/api/v1/assessments/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId,
+          instrument: current.instrument_id,
+          item_id: item.item_id,
+          value: skipped ? undefined : selected,
+          skipped: !!skipped,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(typeof data.detail === "string" ? data.detail : "저장에 실패했어요");
+        return;
+      }
+      itemIdx += 1;
+      if (itemIdx >= current.items.length) {
+        document.getElementById("doneMsg").textContent =
+          "답변이 AI 에이전트에 자동 저장·동기화되었습니다. 대화에서 더 부드럽게 맞춰 드릴게요.";
+        document.getElementById("doneJson").textContent = JSON.stringify(
+          data.agent_sync || data.formal_scores?.[current.instrument_id] || {},
+          null,
+          2
+        );
+        show("viewDone");
+        loadAgent();
+        return;
+      }
+      renderItem();
+    }
+
+    document.getElementById("btnBack").onclick = () => show("viewList");
+    document.getElementById("btnAgain").onclick = () => show("viewList");
+    document.getElementById("btnSkip").onclick = () => submit(true);
+    document.getElementById("btnNext").onclick = () => submit(false);
+
+    fetch("/api/v1/clinical/catalog")
+      .then((r) => r.json())
+      .then((data) => {
+        catalog = (data.formal_instruments || []).filter((i) => FOCUS.has(i.instrument_id));
+        renderList();
+      })
+      .catch(() => {
+        document.getElementById("list").innerHTML = "<p class='lead'>카탈로그 로드 실패</p>";
+      });
+    loadAgent();
+  </script>
+</body>
+</html>

@@ -74,6 +74,61 @@ ASSESSMENT_DOMAINS: Dict[str, Dict[str, Any]] = {
         "school": "투사·SCT",
         "instruments": ["sct"],
     },
+    "personality_mbti": {
+        "label": "MBTI 선호 탐색",
+        "school": "성격심리·유형론(교육용)",
+        "instruments": ["mbti_preference"],
+    },
+    "abnormal_ocd": {
+        "label": "강박 탐색",
+        "school": "이상심리·Y-BOCS 정보제공",
+        "instruments": ["ocd_probe"],
+    },
+    "abnormal_social": {
+        "label": "사회불안 탐색",
+        "school": "이상심리·LSAS 정보제공",
+        "instruments": ["social_anxiety_probe"],
+    },
+    "abnormal_panic": {
+        "label": "공황 반응 탐색",
+        "school": "이상심리·PDSS 정보제공",
+        "instruments": ["panic_probe"],
+    },
+    "abnormal_mania": {
+        "label": "기분 고조 탐색",
+        "school": "이상심리·MDQ 정보제공",
+        "instruments": ["mania_probe"],
+    },
+    "abnormal_adhd": {
+        "label": "주의·실행기능 탐색",
+        "school": "이상심리·ASRS 정보제공",
+        "instruments": ["adhd_probe"],
+    },
+    "abnormal_alcohol": {
+        "label": "음주 패턴 탐색",
+        "school": "이상심리·AUDIT-C 정보제공",
+        "instruments": ["alcohol_probe"],
+    },
+    "abnormal_eating": {
+        "label": "식사·몸 이미지 탐색",
+        "school": "이상심리·SCOFF 정보제공",
+        "instruments": ["eating_probe"],
+    },
+    "abnormal_dissociation": {
+        "label": "해리·거리감 탐색",
+        "school": "이상심리",
+        "instruments": ["dissociation_probe"],
+    },
+    "abnormal_somatic": {
+        "label": "신체화·몸 신호",
+        "school": "이상심리",
+        "instruments": ["somatic_probe"],
+    },
+    "abnormal_anger": {
+        "label": "분노·과민 탐색",
+        "school": "이상심리",
+        "instruments": ["anger_probe"],
+    },
 }
 
 INSTRUMENT_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -174,6 +229,83 @@ INSTRUMENT_PROFILES: Dict[str, Dict[str, Any]] = {
         "focus": "자기·관계·미래에 대한 마음 글씨",
         "keywords": ("나는", "자신", "느끼", "힘들", "앞으로", "관계", "엄마", "아버지"),
         "counseling_fit": ("나는", "자신", "느끼는", "써", "말해"),
+    },
+    "mbti_preference": {
+        "display_name": "MBTI 선호",
+        "domain": "personality_mbti",
+        "focus": "외향·내향·감각·직관·사고·감정·판단·인식 선호",
+        "keywords": ("MBTI", "성격", "유형", "외향", "내향", "선호", "에너지"),
+        "counseling_fit": ("성격", "MBTI", "유형", "어떤 사람"),
+    },
+    "ocd_probe": {
+        "display_name": "강박 탐색",
+        "domain": "abnormal_ocd",
+        "focus": "반복 사고·확인 행동",
+        "keywords": ("강박", "확인", "반복", "불안해서 또", "씻"),
+        "counseling_fit": ("강박", "확인", "반복해서"),
+    },
+    "social_anxiety_probe": {
+        "display_name": "사회불안 탐색",
+        "domain": "abnormal_social",
+        "focus": "대인 긴장·회피",
+        "keywords": ("사람들 앞", "발표", "시선", "부끄", "사회불안", "모임"),
+        "counseling_fit": ("사람들", "발표", "눈치", "모임"),
+    },
+    "panic_probe": {
+        "display_name": "공황 탐색",
+        "domain": "abnormal_panic",
+        "focus": "급격한 불안·신체 반응",
+        "keywords": ("공황", "두근거", "숨이", "질식", "패닉"),
+        "counseling_fit": ("공황", "숨이", "심장이"),
+    },
+    "mania_probe": {
+        "display_name": "기분 고조 탐색",
+        "domain": "abnormal_mania",
+        "focus": "에너지·수면·충동 변화",
+        "keywords": ("잠 안", "에너지", "들뜬", "충동", "조증"),
+        "counseling_fit": ("너무 들떠", "잠이 필요", "충동"),
+    },
+    "adhd_probe": {
+        "display_name": "주의력 탐색",
+        "domain": "abnormal_adhd",
+        "focus": "집중·실행·안절부절",
+        "keywords": ("집중", "산만", "ADHD", "미루", "생각 많"),
+        "counseling_fit": ("집중이", "산만", "정리가 안"),
+    },
+    "alcohol_probe": {
+        "display_name": "음주 탐색",
+        "domain": "abnormal_alcohol",
+        "focus": "스트레스 음주·조절",
+        "keywords": ("술", "음주", "취해", "술로"),
+        "counseling_fit": ("술", "마시면", "음주"),
+    },
+    "eating_probe": {
+        "display_name": "식사·몸 탐색",
+        "domain": "abnormal_eating",
+        "focus": "식사 통제·체형 염려",
+        "keywords": ("다이어트", "폭식", "체중", "몸무게", "식사"),
+        "counseling_fit": ("먹는", "몸무게", "다이어트"),
+    },
+    "dissociation_probe": {
+        "display_name": "해리 탐색",
+        "domain": "abnormal_dissociation",
+        "focus": "비현실감·공백감",
+        "keywords": ("비현실", "안개", "나 같지", "공백", "멍"),
+        "counseling_fit": ("현실이", "멍해", "나 같지"),
+    },
+    "somatic_probe": {
+        "display_name": "몸 신호 탐색",
+        "domain": "abnormal_somatic",
+        "focus": "신체 불편·건강 염려",
+        "keywords": ("두통", "가슴", "배가", "몸이", "긴장", "통증"),
+        "counseling_fit": ("몸이", "두통", "가슴이"),
+    },
+    "anger_probe": {
+        "display_name": "분노 탐색",
+        "domain": "abnormal_anger",
+        "focus": "분노·과민·관계 영향",
+        "keywords": ("화", "짜증", "분노", "폭발", "참기"),
+        "counseling_fit": ("화가", "짜증", "참기 힘들"),
     },
 }
 

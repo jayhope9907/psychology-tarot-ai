@@ -233,6 +233,8 @@ def _profile_summary(profile: Dict[str, Any], chief: str) -> str:
 
 
 def rapport_phase_prompt(state: ChatSessionState, user_message: str = "") -> str:
+    from app.services.gentle_reflection import gentle_reflection_system_block
+
     readiness = rapport_readiness(state, user_message)
     base = (
         "## 현재 상담 단계: 관계 형성·고객 파악 (초기)\n"
@@ -241,6 +243,7 @@ def rapport_phase_prompt(state: ChatSessionState, user_message: str = "") -> str
         f"- 고객 파악 진행도: {int(readiness['score'] * 100)}% "
         f"(목표 {int(readiness['threshold'] * 100)}%)\n"
     )
+    base += "\n" + gentle_reflection_system_block(state, user_message)
 
     if readiness["ready"]:
         base += (
@@ -254,6 +257,8 @@ def rapport_phase_prompt(state: ChatSessionState, user_message: str = "") -> str
         f"- 아직 부족한 파악: {missing_text}\n"
         "- 위 항목을 **한 번에 하나씩** 부드럽게 탐색하세요. 설문조사처럼 연속 질문하지 마세요.\n"
         "- 해결책·진단·검사를 서두르지 말고, 감정 반영 후 개방형 질문 1개로 마무리하세요.\n"
+        "- ‘지금 기분 어떠세요?’ ‘대인관계는요?’처럼 직접 묻기보다, "
+        "「제가 봤을 때는… 힘들어 보이시네요」관찰 문장으로 풀어 가세요.\n"
     )
     if readiness["profile_summary"] != "고객 파악 진행 중":
         base += f"- 지금까지 파악: {readiness['profile_summary']}\n"

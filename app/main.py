@@ -864,6 +864,7 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "case_notes": "/case-notes",
         "expressive": "/expressive",
         "theories": "/theories",
+        "psychometrics": "/psychometrics",
         "picto": "/picto",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
@@ -901,6 +902,7 @@ async def health_check(request: Request):
             "케이스 노트": urls.get("case_notes", "/case-notes"),
             "표현·역할": urls.get("expressive", "/expressive"),
             "이론·학자": urls.get("theories", "/theories"),
+            "MBTI·탐색": urls.get("psychometrics", "/psychometrics"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -976,6 +978,14 @@ async def theories_ui():
     if path.exists():
         return FileResponse(str(path))
     raise HTTPException(status_code=404, detail="Theories hub not found")
+
+
+@app.get("/psychometrics")
+async def psychometrics_ui():
+    path = STATIC_DIR / "psychometrics.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Psychometrics UI not found")
 
 
 @app.get("/legal")
@@ -2056,10 +2066,23 @@ async def assessments_submit(request: AssessmentSubmitRequest):
     battery = sync_session_battery(session)
     insight = sync_session_insight(session)
     save_session(session)
+    agent_sync = None
+    try:
+        from app.services.user_agent_algorithm import sync_agent_after_assessment
+
+        agent_sync = sync_agent_after_assessment(
+            session.user_id,
+            session,
+            instrument=request.instrument,
+            item_id=request.item_id,
+        )
+    except Exception:
+        agent_sync = None
     return {
         "recorded": recorded,
         "battery_coverage": battery,
         "clinical_insight": insight,
+        "agent_sync": agent_sync,
         "formal_scores": {
             instrument_id: ALL_INSTRUMENTS[instrument_id].score_partial(answers)
             for instrument_id, answers in session.formal_answers.items()

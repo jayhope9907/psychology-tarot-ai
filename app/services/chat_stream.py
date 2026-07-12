@@ -639,6 +639,15 @@ async def run_chat_turn(
         ],
     }
     agent_prompt_extra = fingerprint_prompt_block(fingerprint, fingerprint_patterns)
+    try:
+        from app.services.gentle_reflection import build_dimensional_profile_snippet, gentle_reflection_system_block
+
+        agent_prompt_extra += "\n\n" + gentle_reflection_system_block(state, user_message)
+        dim = build_dimensional_profile_snippet(agent_bundle)
+        if dim:
+            agent_prompt_extra += "\n\n" + dim
+    except Exception:
+        pass
 
     if assessment_response:
         recorded = record_assessment_answer(state, assessment_response)

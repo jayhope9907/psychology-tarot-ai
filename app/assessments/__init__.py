@@ -1,6 +1,8 @@
 from app.assessments.base import AssessmentItem, AssessmentInstrument, ResponseType
+from app.assessments.abnormal_psych_screens import ABNORMAL_INSTRUMENTS
 from app.assessments.clinical_screens import ISIInstrument, PCL5Instrument, PSSInstrument
 from app.assessments.gad7 import GAD7Instrument
+from app.assessments.mbti_preference import MBTIPreferenceInstrument
 from app.assessments.micro_emotion import EmotionScaleInstrument
 from app.assessments.phq9 import PHQ9Instrument
 from app.assessments.projective import HTPProjectiveInstrument, TarotProjectiveInstrument
@@ -23,6 +25,8 @@ FORMAL_INSTRUMENTS = {
     "htp": HTPProjectiveInstrument(),
     "tarot_reflect": TarotProjectiveInstrument(),
     "sct": SCTInstrument(),
+    "mbti_preference": MBTIPreferenceInstrument(),
+    **ABNORMAL_INSTRUMENTS,
 }
 
 MICRO_INSTRUMENTS = {

@@ -49,6 +49,8 @@ def empty_fingerprint(user_id: str = "") -> Dict[str, Any]:
         "theme_hist": {},
         "phase_hist": {},
         "persona_reason_counts": {},
+        "assessment_hist": {},
+        "psychometric_profile": {},
         "last_school": None,
         "confidence": 0.0,
         "updated_at": None,
@@ -93,6 +95,8 @@ def evolve_fingerprint(
     fp.setdefault("theme_hist", {})
     fp.setdefault("phase_hist", {})
     fp.setdefault("persona_reason_counts", {})
+    fp.setdefault("assessment_hist", {})
+    fp.setdefault("psychometric_profile", {})
     fp.setdefault("created_at", _utc_now())
 
     routing = persona_routing or {}
@@ -351,25 +355,92 @@ def seed_quant_from_fingerprint(
     return out
 
 
+def absorb_assessments_into_fingerprint(user_id: str, session: Any, profile: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """formal_answers 점수를 에이전트 지문에 자동 저장·동기화해 유저를 입체화."""
+    from app.assessments import ALL_INSTRUMENTS
+
+    profile = profile if profile is not None else (load_profile(user_id) or {"user_id": user_id})
+    fp = dict(profile.get("agent_fingerprint") or empty_fingerprint(user_id))
+    fp.setdefault("assessment_hist", {})
+    fp.setdefault("psychometric_profile", {})
+    psych = dict(fp.get("psychometric_profile") or {})
+    signals = dict(psych.get("abnormal_signals") or {})
+    hist = dict(fp.get("assessment_hist") or {})
+
+    formal = getattr(session, "formal_answers", None) or {}
+    for instrument_id, answers in formal.items():
+        if instrument_id not in ALL_INSTRUMENTS or not isinstance(answers, dict):
+            continue
+        scored = ALL_INSTRUMENTS[instrument_id].score_partial(answers)
+        hist[instrument_id] = {
+            "completed_items": scored.get("completed_items"),
+            "completion_rate": scored.get("completion_rate"),
+            "severity_hint": scored.get("severity_hint"),
+            "partial_score": scored.get("partial_score"),
+            "updated_at": _utc_now(),
+        }
+        if instrument_id == "mbti_preference":
+            psych["mbti"] = {
+                "type_code_hint": scored.get("type_code_hint"),
+                "preference_leanings": scored.get("preference_leanings"),
+                "non_diagnostic": True,
+            }
+        elif instrument_id.endswith("_probe") or instrument_id in (
+            "phq9", "gad7", "isi", "pss", "pcl5", "rses", "attachment_ecr",
+        ):
+            signals[instrument_id] = {
+                "severity_hint": scored.get("severity_hint"),
+                "signal_ratio": scored.get("signal_ratio"),
+                "partial_score": scored.get("partial_score"),
+                "non_diagnostic": True,
+            }
+
+    psych["abnormal_signals"] = signals
+    psych["synced_at"] = _utc_now()
+    fp["assessment_hist"] = hist
+    fp["psychometric_profile"] = psych
+    fp["updated_at"] = _utc_now()
+    fp["algorithm_summary_ko"] = summarize_fingerprint(fp)
+    profile["agent_fingerprint"] = fp
+    profile["user_id"] = user_id
+    return profile
+
+
 def fingerprint_prompt_block(fingerprint: Optional[Dict[str, Any]], patterns: Optional[List[Dict[str, Any]]] = None) -> str:
     if not fingerprint or int(fingerprint.get("sample_turns") or 0) < 1:
-        return ""
+        # still allow psychometric-only profiles
+        psych = (fingerprint or {}).get("psychometric_profile") or {}
+        if not psych.get("mbti") and not psych.get("abnormal_signals"):
+            return ""
     lines = [
         "\n\n## [유저 고유 에이전트 알고리즘 — 참고용·비진단]",
-        f"- 알고리즘 ID: {fingerprint.get('algo_id')}",
-        f"- 요약: {fingerprint.get('algorithm_summary_ko') or summarize_fingerprint(fingerprint)}",
-        f"- 신뢰도: {fingerprint.get('confidence')}",
+        f"- 알고리즘 ID: {(fingerprint or {}).get('algo_id')}",
+        f"- 요약: {(fingerprint or {}).get('algorithm_summary_ko') or summarize_fingerprint(fingerprint or {})}",
+        f"- 신뢰도: {(fingerprint or {}).get('confidence')}",
     ]
-    ema = fingerprint.get("quant_ema") or {}
+    ema = (fingerprint or {}).get("quant_ema") or {}
     if ema:
         lines.append(
             "- 개인화 지표(EMA): "
             + ", ".join(f"{k}={ema.get(k)}" for k in QUANT_KEYS if k in ema)
         )
+    psych = (fingerprint or {}).get("psychometric_profile") or {}
+    mbti = psych.get("mbti") or {}
+    if mbti.get("type_code_hint"):
+        lines.append(f"- MBTI 선호 힌트(교육용·비진단): {mbti.get('type_code_hint')}")
+    signals = psych.get("abnormal_signals") or {}
+    elevated = [k for k, v in signals.items() if isinstance(v, dict) and v.get("severity_hint") in ("elevated", "mild", "moderate")]
+    if elevated:
+        lines.append("- 탐색 신호 영역: " + ", ".join(elevated[:5]))
+        lines.append("- 위 영역은 진단이 아닙니다. 관찰·공감 문장으로만 부드럽게 확인하세요.")
     if patterns:
         top = patterns[:3]
         lines.append("- 감지된 패턴: " + "; ".join(f"{p.get('label_ko')}({p.get('confidence')})" for p in top))
         lines.append("- 패턴은 자기이해 참고용이며 진단이 아닙니다. 강요하지 마세요.")
+    lines.append(
+        "- 기분·대인관계를 물을 때: 「제가 봤을 때는 현재 감정이나 하고 있는 일에 많이 힘들어 보이시네요」처럼 "
+        "관찰로 풀어 주세요. 설문형 연속 질문 금지."
+    )
     lines.append("- 이전과 같은 문장을 반복하지 말고, 이 유저의 고유 패턴에 맞춰 한 단계 깊게 반응하세요.")
     return "\n".join(lines)
 
@@ -386,6 +457,7 @@ def sync_user_agent_from_session(user_id: str, session: Any) -> Dict[str, Any]:
         counseling_phase=getattr(session, "counseling_phase", None),
         message_themes=themes,
     )
+    profile = absorb_assessments_into_fingerprint(user_id, session, profile=profile)
     fp = profile["agent_fingerprint"]
     patterns = detect_user_patterns(user_id, fingerprint=fp, profile=profile)
     profile["pattern_hits"] = patterns
@@ -401,6 +473,7 @@ def sync_user_agent_from_session(user_id: str, session: Any) -> Dict[str, Any]:
             "confidence": fp.get("confidence"),
             "school_priors": fp.get("school_priors"),
             "quant_ema": fp.get("quant_ema"),
+            "psychometric_profile": fp.get("psychometric_profile"),
             "patterns": [{"pattern_id": p["pattern_id"], "confidence": p["confidence"]} for p in patterns[:5]],
             "non_diagnostic": True,
         },
@@ -410,6 +483,48 @@ def sync_user_agent_from_session(user_id: str, session: Any) -> Dict[str, Any]:
         "agent_fingerprint": fp,
         "patterns": patterns,
         "profile": profile,
+    }
+
+
+def sync_agent_after_assessment(
+    user_id: str,
+    session: Any,
+    *,
+    instrument: Optional[str] = None,
+    item_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """검사 응답 직후 에이전트에 자동 저장·동기화."""
+    profile = absorb_assessments_into_fingerprint(user_id, session)
+    # ensure algo id exists even before chat turns
+    fp = profile["agent_fingerprint"]
+    if not fp.get("algo_id") or fp.get("algo_id") == "ALG-NEW":
+        fp["algo_id"] = _algo_id(user_id)
+    if int(fp.get("sample_turns") or 0) < 1:
+        fp["sample_turns"] = 1
+        fp["confidence"] = max(float(fp.get("confidence") or 0), 0.2)
+    fp["algorithm_summary_ko"] = summarize_fingerprint(fp)
+    patterns = detect_user_patterns(user_id, fingerprint=fp, profile=profile)
+    profile["pattern_hits"] = patterns
+    profile["agent_updated_at"] = _utc_now()
+    profile["agent_fingerprint"] = fp
+    save_profile(user_id, profile)
+    record_event(
+        user_id,
+        "assessment_agent_sync",
+        {
+            "instrument": instrument,
+            "item_id": item_id,
+            "algo_id": fp.get("algo_id"),
+            "psychometric_profile": fp.get("psychometric_profile"),
+            "non_diagnostic": True,
+        },
+        source_id=f"assess:{getattr(session, 'session_id', '')}:{instrument}:{item_id}",
+    )
+    return {
+        "algo_id": fp.get("algo_id"),
+        "psychometric_profile": fp.get("psychometric_profile"),
+        "assessment_hist": fp.get("assessment_hist"),
+        "pattern_count": len(patterns),
     }
 
 
