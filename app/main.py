@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -861,6 +861,7 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "associations": "/associations",
         "innovation": "/innovation",
         "agent_lab": "/agent-lab",
+        "case_notes": "/case-notes",
         "picto": "/picto",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
@@ -895,6 +896,7 @@ async def health_check(request: Request):
             "이용 안내": urls.get("legal", "/legal"),
             "혁신·IP": urls.get("innovation", "/innovation"),
             "에이전트 랩": urls.get("agent_lab", "/agent-lab"),
+            "케이스 노트": urls.get("case_notes", "/case-notes"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -946,6 +948,14 @@ async def agent_lab_ui():
     if path.exists():
         return FileResponse(str(path))
     raise HTTPException(status_code=404, detail="Agent lab not found")
+
+
+@app.get("/case-notes")
+async def case_notes_ui():
+    path = STATIC_DIR / "case-notes.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Case notes UI not found")
 
 
 @app.get("/legal")
@@ -1543,6 +1553,15 @@ class AgentSimulateRequest(BaseModel):
     messages: Optional[List[str]] = None
 
 
+class CaseNoteGenerateRequest(BaseModel):
+    user_id: str = "anonymous"
+    transcript: str
+    license_key: Optional[str] = None
+    backdate_to: Optional[str] = None
+    client_label: str = "내담자"
+    save: bool = True
+
+
 @app.post("/api/v1/users/{user_id}/agent/simulate")
 async def user_agent_simulate(user_id: str, request: AgentSimulateRequest):
     from app.services.user_agent_algorithm import simulate_learning_pass
@@ -1554,6 +1573,62 @@ async def user_agent_simulate(user_id: str, request: AgentSimulateRequest):
         "잠도 잘 안 오고 무기력해요",
     ]
     return simulate_learning_pass(user_id, msgs[:12])
+
+
+@app.post("/api/v1/case-notes/transcribe")
+async def case_notes_transcribe(
+    audio: UploadFile = File(...),
+    license_key: Optional[str] = Form(None),
+    user_id: str = Form("anonymous"),
+):
+    from app.services.association_context import resolve_api_license
+    from app.services.case_note_assistant import entitlements_allow_assistant, transcribe_audio
+
+    lic = resolve_api_license(license_key, user_id)
+    if not entitlements_allow_assistant(lic.get("entitlements")):
+        raise HTTPException(status_code=403, detail="case_note_assistant_requires_license")
+    data = await audio.read()
+    import io
+
+    result = transcribe_audio(
+        io.BytesIO(data),
+        filename=audio.filename or "session.webm",
+        client=client,
+    )
+    result["license_org"] = lic.get("org_name")
+    return result
+
+
+@app.post("/api/v1/case-notes/generate")
+async def case_notes_generate(request: CaseNoteGenerateRequest):
+    from app.services.association_context import resolve_api_license
+    from app.services.case_note_assistant import process_clover_pipeline
+
+    lic = resolve_api_license(request.license_key, request.user_id)
+    result = process_clover_pipeline(
+        user_id=request.user_id,
+        transcript=request.transcript,
+        entitlements=lic.get("entitlements"),
+        client=client,
+        backdate_to=request.backdate_to,
+        client_label=request.client_label,
+        save=request.save,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=403, detail=result.get("error") or "forbidden")
+    result["license_org"] = lic.get("org_name")
+    result["license_valid"] = lic.get("license_valid")
+    return result
+
+
+@app.get("/api/v1/case-notes/{user_id}")
+async def case_notes_list(user_id: str, entry_type: Optional[str] = None, limit: int = 30):
+    from app.services.case_note_assistant import list_journal_entries
+
+    return {
+        "user_id": user_id,
+        "entries": list_journal_entries(user_id, entry_type=entry_type, limit=min(max(limit, 1), 100)),
+    }
 
 
 @app.get("/api/v1/associations/catalog")

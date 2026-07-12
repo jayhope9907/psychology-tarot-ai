@@ -371,6 +371,25 @@ def seed_org_demo_cases(
                 case_index=idx,
             )
         )
+
+    note_seeds: List[Dict[str, Any]] = []
+    try:
+        from app.services.case_note_assistant import seed_backdated_case_notes_for_demo
+
+        for case in cases[:2]:
+            uid = case.get("user_id")
+            if not uid:
+                continue
+            note_seeds.extend(
+                seed_backdated_case_notes_for_demo(
+                    uid,
+                    entitlements,
+                    backfill_days=min(backfill_days, 21),
+                )
+            )
+    except Exception:
+        note_seeds = []
+
     return {
         "org_id": org_id,
         "license_key": license_key,
@@ -378,6 +397,7 @@ def seed_org_demo_cases(
         "backfill_days": backfill_days,
         "case_count": len(cases),
         "demo_cases": cases,
+        "case_notes_seeded": len(note_seeds),
     }
 
 

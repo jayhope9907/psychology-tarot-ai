@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="라이선스 케이스 노트 AI — 상담 녹음 전사·관찰일지·백데이팅" />
+  <title>마음쉼터 · 케이스 노트 AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Literata:opsz,wght@7..72,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #14110f;
+      --panel: #1e1916;
+      --ink: #f3eee6;
+      --muted: rgba(243,238,230,0.62);
+      --line: rgba(196,165,116,0.22);
+      --accent: #c4a574;
+      --good: #5a8f78;
+      --danger: #c45c5c;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans KR", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 70% 45% at 80% -10%, rgba(196,165,116,0.16), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 0% 20%, rgba(90,143,120,0.12), transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 80px; }
+    nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.84rem; margin-left: 12px; }
+    .logo { color: var(--ink); font-weight: 700; text-decoration: none; }
+    h1 {
+      font-family: "Literata", serif; font-size: clamp(1.5rem, 4vw, 2rem);
+      margin: 0 0 8px; letter-spacing: -0.02em;
+    }
+    .lead { color: var(--muted); margin: 0 0 16px; font-size: 0.92rem; }
+    .notice {
+      padding: 12px 14px; border-radius: 12px; margin-bottom: 16px; font-size: 0.8rem; color: var(--muted);
+      background: rgba(196,165,116,0.08); border: 1px solid var(--line);
+    }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 0.95rem; }
+    label { display: block; font-size: 0.78rem; color: var(--muted); margin: 8px 0 4px; }
+    input, textarea, select {
+      width: 100%; border-radius: 10px; border: 1px solid var(--line);
+      background: rgba(0,0,0,0.28); color: var(--ink); font: inherit; padding: 10px 12px;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    button {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--ink);
+      border-radius: 10px; padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    button.primary { background: linear-gradient(135deg, var(--good), #3d6b5a); border: none; color: #fff; }
+    button.accent { background: var(--accent); border: none; color: #1a1510; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chip {
+      display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+      background: rgba(90,143,120,0.15); color: #9fd0b8; margin-right: 6px;
+    }
+    .chip.warn { background: rgba(196,92,92,0.15); color: #e8a0a0; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+    .note-card {
+      background: rgba(0,0,0,0.22); border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+      font-size: 0.84rem;
+    }
+    .note-card h3 { margin: 0 0 8px; font-size: 0.9rem; color: var(--accent); }
+    .note-card ul { margin: 6px 0; padding-left: 18px; color: var(--muted); }
+    .rec { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    .rec.recording .dot {
+      width: 10px; height: 10px; border-radius: 50%; background: var(--danger);
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 50% { opacity: 0.35; } }
+    .list-item {
+      border-bottom: 1px solid var(--line); padding: 10px 0; font-size: 0.82rem;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .meta { font-size: 0.72rem; color: var(--muted); }
+    pre {
+      margin: 0; max-height: 180px; overflow: auto; background: #0d0b0a; border-radius: 10px;
+      padding: 10px; font-size: 0.72rem; color: rgba(243,238,230,0.85); white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="/">마음쉼터</a>
+      <div>
+        <a href="/associations">라이선스</a>
+        <a href="/clinical">마음 돌보기</a>
+        <a href="/test">테스트</a>
+      </div>
+    </nav>
+
+    <h1>케이스 노트 AI · 클로버 노트형</h1>
+    <p class="lead">상담 녹음 → 자동 문자화 → 케이스 노트·관찰일지. 라이선스에서 회기일을 백데이팅해 수련 기록을 쌓습니다.</p>
+    <div class="notice">AI 수련·교육 보조입니다. 공식 의무기록·진단·처방을 대체하지 않으며 슈퍼바이저 검토를 전제로 합니다.</div>
+
+    <section class="panel">
+      <h2>라이선스</h2>
+      <label for="licenseKey">Association License 키</label>
+      <input id="licenseKey" placeholder="MSHT-CLINICAL-DEMO-2026" />
+      <div class="row">
+        <button type="button" id="btnValidate">라이선스 확인</button>
+        <button type="button" id="btnDemoKey">임상심리 수련 데모</button>
+      </div>
+      <p class="meta" id="licStatus" style="margin-top:10px">라이선스를 확인하면 전사·노트·백데이팅이 활성화됩니다.</p>
+    </section>
+
+    <section class="panel">
+      <h2>1. 상담 녹음 · 파일</h2>
+      <div class="rec" id="recStatus"><span class="dot" style="display:none"></span><span id="recLabel">대기 중</span></div>
+      <div class="row">
+        <button type="button" class="accent" id="btnRecord">녹음 시작</button>
+        <button type="button" id="btnStop" disabled>녹음 중지</button>
+        <label class="meta" style="margin:0">또는 오디오 파일
+          <input type="file" id="audioFile" accept="audio/*,video/webm,video/mp4" style="margin-top:6px" />
+        </label>
+      </div>
+      <div class="row">
+        <button type="button" class="primary" id="btnTranscribe" disabled>문자화 (Whisper)</button>
+      </div>
+      <label for="transcript">전사문</label>
+      <textarea id="transcript" placeholder="녹음 전사 결과가 여기 표시됩니다. 직접 붙여넣어도 됩니다."></textarea>
+    </section>
+
+    <section class="panel">
+      <h2>2. 케이스 노트 · 관찰일지 생성</h2>
+      <label for="backdate">회기일 (백데이팅)</label>
+      <input type="date" id="backdate" />
+      <div class="row">
+        <button type="button" class="primary" id="btnGenerate">노트 생성 · 저장</button>
+        <button type="button" id="btnSample">샘플 전사로 생성</button>
+      </div>
+      <p class="meta" id="genStatus" style="margin-top:10px"></p>
+    </section>
+
+    <section class="panel">
+      <h2>생성 결과</h2>
+      <div class="grid2">
+        <div class="note-card" id="caseCard"><h3>케이스 노트</h3><p class="meta">아직 없음</p></div>
+        <div class="note-card" id="obsCard"><h3>관찰일지</h3><p class="meta">아직 없음</p></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>저장된 기록</h2>
+      <div class="row"><button type="button" id="btnReload">목록 새로고침</button></div>
+      <div id="entryList" style="margin-top:10px"></div>
+    </section>
+  </div>
+
+  <script>
+    const LICENSE_KEY = "psychology_ai_association_license";
+    const userId = localStorage.getItem("psychology_ai_user_id") || `user-${crypto.randomUUID().slice(0, 8)}`;
+    localStorage.setItem("psychology_ai_user_id", userId);
+
+    const els = {
+      licenseKey: document.getElementById("licenseKey"),
+      licStatus: document.getElementById("licStatus"),
+      transcript: document.getElementById("transcript"),
+      backdate: document.getElementById("backdate"),
+      btnTranscribe: document.getElementById("btnTranscribe"),
+      btnRecord: document.getElementById("btnRecord"),
+      btnStop: document.getElementById("btnStop"),
+      recLabel: document.getElementById("recLabel"),
+      recStatus: document.getElementById("recStatus"),
+      audioFile: document.getElementById("audioFile"),
+      caseCard: document.getElementById("caseCard"),
+      obsCard: document.getElementById("obsCard"),
+      genStatus: document.getElementById("genStatus"),
+      entryList: document.getElementById("entryList"),
+    };
+
+    let mediaRecorder = null;
+    let chunks = [];
+    let audioBlob = null;
+    let licenseOk = false;
+
+    els.licenseKey.value = localStorage.getItem(LICENSE_KEY) || "";
+    els.backdate.value = new Date().toISOString().slice(0, 10);
+
+    function setLicStatus(ok, text) {
+      licenseOk = ok;
+      els.licStatus.innerHTML = ok
+        ? `<span class="chip">활성</span>${text}`
+        : `<span class="chip warn">필요</span>${text}`;
+      els.btnTranscribe.disabled = !ok || (!audioBlob && !els.audioFile.files?.[0]);
+    }
+
+    async function validateLicense() {
+      const key = els.licenseKey.value.trim();
+      if (!key) return setLicStatus(false, "키를 입력해 주세요");
+      const res = await fetch("/api/v1/associations/licenses/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ license_key: key }),
+      });
+      const data = await res.json();
+      if (!data.valid) {
+        setLicStatus(false, data.reason || "유효하지 않은 키");
+        return;
+      }
+      localStorage.setItem(LICENSE_KEY, data.license_key);
+      const flags = data.entitlements?.feature_flags || {};
+      const back = flags.case_note_backdate !== false;
+      setLicStatus(
+        true,
+        `${data.org_name} · ${data.entitlements?.discipline_label || ""} · 백데이트 ${back ? "가능" : "제한"}`
+      );
+    }
+
+    function renderNote(card, title, obj) {
+      if (!obj || typeof obj !== "object") {
+        card.innerHTML = `<h3>${title}</h3><p class="meta">없음</p>`;
+        return;
+      }
+      const issues = (obj.presenting_issues || []).map((x) => `<li>${x}</li>`).join("");
+      const interventions = (obj.interventions || []).map((x) => `<li>${x}</li>`).join("");
+      const qs = (obj.supervisor_questions || []).map((x) => `<li>${x}</li>`).join("");
+      card.innerHTML = `
+        <h3>${obj.title || title}</h3>
+        ${obj.chief_complaint ? `<p><strong>주호소</strong> ${obj.chief_complaint}</p>` : ""}
+        ${obj.session_summary ? `<p>${obj.session_summary}</p>` : ""}
+        ${obj.affect ? `<p><strong>정서</strong> ${obj.affect}</p>` : ""}
+        ${obj.behavior ? `<p><strong>행동</strong> ${obj.behavior}</p>` : ""}
+        ${obj.cognition ? `<p><strong>인지</strong> ${obj.cognition}</p>` : ""}
+        ${obj.environment ? `<p><strong>환경</strong> ${obj.environment}</p>` : ""}
+        ${obj.clinician_reflection ? `<p><strong>성찰</strong> ${obj.clinician_reflection}</p>` : ""}
+        ${obj.next_focus ? `<p><strong>다음 초점</strong> ${obj.next_focus}</p>` : ""}
+        ${issues ? `<p><strong>이슈</strong></p><ul>${issues}</ul>` : ""}
+        ${interventions ? `<p><strong>개입</strong></p><ul>${interventions}</ul>` : ""}
+        ${obj.homework ? `<p><strong>숙제</strong> ${obj.homework}</p>` : ""}
+        ${qs ? `<p><strong>슈퍼비전 질문</strong></p><ul>${qs}</ul>` : ""}
+      `;
+    }
+
+    async function transcribe() {
+      if (!licenseOk) return alert("라이선스를 먼저 확인해 주세요");
+      const file = els.audioFile.files?.[0];
+      const blob = file || audioBlob;
+      if (!blob) return alert("녹음하거나 파일을 선택해 주세요");
+      els.btnTranscribe.disabled = true;
+      els.genStatus.textContent = "문자화 중…";
+      const fd = new FormData();
+      fd.append("audio", blob, file?.name || "session.webm");
+      fd.append("license_key", els.licenseKey.value.trim());
+      fd.append("user_id", userId);
+      try {
+        const res = await fetch("/api/v1/case-notes/transcribe", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "전사 실패");
+        els.transcript.value = data.transcript || "";
+        els.genStatus.textContent = data.fallback
+          ? `오프라인/샘플 전사 (${data.engine})`
+          : `전사 완료 · ${data.engine}`;
+      } catch (e) {
+        els.genStatus.textContent = e.message || "전사 오류";
+      } finally {
+        els.btnTranscribe.disabled = false;
+      }
+    }
+
+    async function generate(sample) {
+      if (!licenseOk) return alert("라이선스를 먼저 확인해 주세요");
+      let transcript = els.transcript.value.trim();
+      if (sample) {
+        transcript = "내담자: 요즘 회사에서 마음이 많이 지치고, 집에 와서도 긴장이 안 풀려요. 상담자: 지치고 긴장이 남는 순간이 특히 언제인지 조금 더 말씀해 주실 수 있을까요? 내담자: 회의 끝나고 혼자 남았을 때, 제가 실수한 것 같다는 생각이 계속 나요.";
+        els.transcript.value = transcript;
+      }
+      if (!transcript) return alert("전사문을 입력해 주세요");
+      els.genStatus.textContent = "노트 생성 중…";
+      try {
+        const res = await fetch("/api/v1/case-notes/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            transcript,
+            license_key: els.licenseKey.value.trim(),
+            backdate_to: els.backdate.value || null,
+            save: true,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "생성 실패");
+        renderNote(els.caseCard, "케이스 노트", data.notes?.case_note);
+        renderNote(els.obsCard, "관찰일지", data.notes?.observation_journal);
+        const t = data.timing || {};
+        els.genStatus.textContent = `${data.notes?.engine || "ok"} · ${t.backdated ? "백데이트 저장" : "오늘 저장"}${t.backdate_blocked ? " (백데이트 제한됨)" : ""}`;
+        await loadEntries();
+      } catch (e) {
+        els.genStatus.textContent = e.message || "생성 오류";
+      }
+    }
+
+    async function loadEntries() {
+      const res = await fetch(`/api/v1/case-notes/${encodeURIComponent(userId)}?limit=20`);
+      const data = await res.json();
+      const entries = data.entries || [];
+      if (!entries.length) {
+        els.entryList.innerHTML = '<p class="meta">저장된 기록이 없습니다.</p>';
+        return;
+      }
+      els.entryList.innerHTML = entries.map((e) => {
+        const c = e.content || {};
+        return `<div class="list-item">
+          <strong>${e.entry_type}</strong> · ${c.title || ""}
+          <div class="meta">${e.created_at?.slice(0, 16) || ""} ${c.backdated ? "· 백데이트" : ""}</div>
+        </div>`;
+      }).join("");
+    }
+
+    document.getElementById("btnValidate").onclick = () => validateLicense().catch(alert);
+    document.getElementById("btnDemoKey").onclick = () => {
+      els.licenseKey.value = "MSHT-CLINICAL-DEMO-2026";
+      validateLicense();
+    };
+    document.getElementById("btnTranscribe").onclick = () => transcribe();
+    document.getElementById("btnGenerate").onclick = () => generate(false);
+    document.getElementById("btnSample").onclick = () => generate(true);
+    document.getElementById("btnReload").onclick = () => loadEntries();
+    els.audioFile.onchange = () => {
+      audioBlob = null;
+      els.btnTranscribe.disabled = !licenseOk || !els.audioFile.files?.[0];
+    };
+
+    document.getElementById("btnRecord").onclick = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        chunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          audioBlob = new Blob(chunks, { type: "audio/webm" });
+          stream.getTracks().forEach((t) => t.stop());
+          els.btnTranscribe.disabled = !licenseOk;
+          els.recLabel.textContent = `녹음 완료 (${Math.round(audioBlob.size / 1024)}KB)`;
+          els.recStatus.classList.remove("recording");
+          els.recStatus.querySelector(".dot").style.display = "none";
+        };
+        mediaRecorder.start();
+        els.btnRecord.disabled = true;
+        els.btnStop.disabled = false;
+        els.recStatus.classList.add("recording");
+        els.recStatus.querySelector(".dot").style.display = "inline-block";
+        els.recLabel.textContent = "녹음 중…";
+      } catch (e) {
+        alert("마이크 권한을 확인해 주세요");
+      }
+    };
+    document.getElementById("btnStop").onclick = () => {
+      mediaRecorder?.stop();
+      els.btnRecord.disabled = false;
+      els.btnStop.disabled = true;
+    };
+
+    if (els.licenseKey.value) validateLicense().catch(() => {});
+    loadEntries().catch(() => {});
+  </script>
+</body>
+</html>

@@ -469,6 +469,10 @@ def build_associations_catalog() -> Dict[str, Any]:
                 "description": "임상심리 수련 · 정신보건사회복지사 수련용 검사·사례관리 실습 라이선스",
             },
             {
+                "model": "케이스 노트 AI (클로버 노트형)",
+                "description": "상담 녹음 자동 문자화 · 케이스 노트·관찰일지 생성 · 회기 백데이팅",
+            },
+            {
                 "model": "연구·IRB",
                 "description": "익명 집계 export · 종단 psych timeline (동의 하)",
             },
@@ -486,6 +490,9 @@ def resolve_entitlements(
     tier = LICENSE_TIERS.get(tier_id) or LICENSE_TIERS[LicenseTier.SOCIETY.value]
     flags = dict(profile.get("feature_flags") or {})
     flags.update(TIER_FEATURE_OVERRIDES.get(tier_id, {}))
+    # 클로버 노트형 케이스 어시스턴트 — 라이선스 기본 제공
+    flags.setdefault("case_note_assistant", True)
+    flags.setdefault("case_note_backdate", True)
 
     instruments: Set[str]
     allowed = profile.get("allowed_instruments")
