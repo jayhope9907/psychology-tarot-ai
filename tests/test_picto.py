@@ -30,6 +30,12 @@ def test_picto_catalog_has_picture_only_structure():
     assert "mood_happy" in data["mood_ids"]
     assert "mood_ok" in data["mood_ids"]
     assert any(item["id"] == "talk_yes" for item in data["items"])
+    assert "therapy_concept" in data
+    assert "AAC" in data["therapy_concept"]["therapy_name"]
+    happy = next(i for i in data["items"] if i["id"] == "mood_happy")
+    assert happy["label_ko"] == "기쁨"
+    assert happy["meaning_ko"]
+    assert happy["scene"] == "mood_happy"
 
 
 def test_compose_picto_message_joins_phrases():
@@ -63,6 +69,9 @@ def test_picto_ui_route():
     assert "picto-btn" in response.text
     assert "telModal" in response.text
     assert "floatDock" in response.text
+    assert "picto-scene.js" in response.text
+    assert "conceptPanel" in response.text
+    assert "그림마음" in response.text
 
 
 def test_picto_catalog_api():
@@ -77,7 +86,8 @@ def test_picto_full_catalog_api():
     response = client.get("/api/v1/picto/catalog?full=1")
     assert response.status_code == 200
     data = response.json()
-    assert data["bundle_version"] == 1
+    assert data["bundle_version"] == 2
+    assert "therapy_concept" in data
     assert len(data["items"]) >= 40
     assert "card_replies" in data
     assert "offline_chat_templates" in data

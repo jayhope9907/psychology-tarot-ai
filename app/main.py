@@ -294,6 +294,7 @@ class PictoCardRequest(BaseModel):
 class PictoCaregiverAlertRequest(BaseModel):
     user_id: str
     picto_ids: Optional[List[str]] = None
+    note: Optional[str] = None
 
 
 class PictureAssessmentStartRequest(BaseModel):

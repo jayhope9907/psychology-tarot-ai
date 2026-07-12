@@ -3,50 +3,98 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#2d6a4f" />
-  <meta name="description" content="그림으로만 마음 표현 — 마음쉼터 쉬운 모드" />
+  <meta name="theme-color" content="#1e4d3a" />
+  <meta name="description" content="그림마음 — AAC·감정인식 입체 장면으로 마음을 전하는 표현치료 모드" />
   <link rel="manifest" href="/static/manifest.json" />
   <link rel="prefetch" href="/static/picto-catalog.bundle.json" />
-  <title>마음쉼터 · 그림 모드</title>
+  <title>마음쉼터 · 그림마음</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/embed.css" />
   <script src="/static/js/embed-bridge.js"></script>
   <script src="/static/js/maum-organism.js"></script>
+  <script src="/static/js/picto-scene.js"></script>
   <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
   <style>
     :root {
-      --bg: #f0f7f4;
-      --tile: #fff;
-      --accent: #2d6a4f;
-      --accent-soft: #d8f3dc;
-      --danger: #c1121f;
-      --tile-size: clamp(88px, 22vw, 120px);
-      --gap: 12px;
-      --radius: 22px;
+      --bg0: #dceee4;
+      --bg1: #f4faf6;
+      --ink: #14352a;
+      --muted: #3d5c4e;
+      --tile: #ffffff;
+      --accent: #1e6b4a;
+      --accent-soft: #c8e6d4;
+      --danger: #b42318;
+      --tile-size: clamp(112px, 42vw, 168px);
+      --gap: 14px;
+      --radius: 20px;
+      --shadow: 0 10px 28px rgba(20, 53, 42, 0.12);
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; margin: 0; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: #1b4332;
+      font-family: "Noto Sans KR", "Outfit", system-ui, sans-serif;
+      color: var(--ink);
       display: flex;
       flex-direction: column;
       min-height: 100%;
       user-select: none;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #b7e0c8 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #9ec9b8 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 40%, #eef6f1);
     }
-    body.show-labels .picto-label { display: block; }
-    .picto-label { display: none; font-size: 0.72rem; font-weight: 700; margin-top: 6px; text-align: center; line-height: 1.2; }
+    .picto-label {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-top: 8px;
+      text-align: center;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+    .picto-meaning {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-top: 3px;
+      text-align: center;
+      line-height: 1.35;
+      max-width: 100%;
+    }
+    body.hide-meanings .picto-meaning { display: none; }
 
     .top-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 14px; background: #fff; border-bottom: 3px solid var(--accent-soft);
+      padding: 10px 14px; background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(30,107,74,0.12);
       flex-shrink: 0;
     }
-    .top-bar h1 { margin: 0; font-size: 1.1rem; }
+    .brand-lock {
+      display: flex; align-items: center; gap: 10px; min-width: 0;
+    }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 4px 12px rgba(30,107,74,0.25);
+      flex-shrink: 0;
+    }
+    .brand-mark canvas { width: 100%; height: 100%; display: block; }
+    .brand-text { min-width: 0; }
+    .brand-text strong {
+      display: block; font-family: Outfit, sans-serif;
+      font-size: 1.05rem; font-weight: 800; letter-spacing: -0.03em;
+    }
+    .brand-text span {
+      display: block; font-size: 0.68rem; color: var(--muted); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; max-width: 42vw;
+    }
     .top-actions { display: flex; gap: 8px; }
     .icon-btn {
-      width: 48px; height: 48px; border: 2px solid var(--accent-soft);
-      border-radius: 14px; background: #fff; font-size: 1.4rem; cursor: pointer;
+      width: 46px; height: 46px; border: 1.5px solid rgba(30,107,74,0.18);
+      border-radius: 14px; background: #fff; font-size: 1.25rem; cursor: pointer;
       display: grid; place-items: center;
     }
     .icon-btn:active { transform: scale(0.94); background: var(--accent-soft); }
@@ -54,121 +102,203 @@
 
     main { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 
-    .screen { display: none; animation: fade 0.25s ease; }
+    .screen { display: none; animation: fade 0.28s ease; }
     .screen.active { display: block; }
-    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .concept-panel {
+      max-width: 560px; margin: 0 auto 18px;
+      padding: 18px 18px 16px;
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(200,230,212,0.55));
+      border: 1px solid rgba(30,107,74,0.14);
+      box-shadow: var(--shadow);
+    }
+    .concept-panel .therapy-pill {
+      display: inline-block;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;
+      padding: 5px 10px; border-radius: 999px;
+      background: var(--accent); color: #fff; margin-bottom: 10px;
+    }
+    .concept-panel h2 {
+      margin: 0 0 8px; font-family: Outfit, "Noto Sans KR", sans-serif;
+      font-size: 1.45rem; font-weight: 800; letter-spacing: -0.03em;
+    }
+    .concept-panel .lead {
+      margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; line-height: 1.5;
+    }
+    .concept-panel .schools {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+    }
+    .concept-panel .schools span {
+      font-size: 0.7rem; font-weight: 600; color: var(--accent);
+      background: rgba(30,107,74,0.08); padding: 4px 8px; border-radius: 8px;
+    }
+    .concept-panel ol {
+      margin: 0; padding-left: 1.15rem; color: var(--ink);
+      font-size: 0.82rem; line-height: 1.55;
+    }
+    .concept-panel .safety {
+      margin: 12px 0 0; font-size: 0.75rem; color: var(--danger); font-weight: 600;
+    }
+    .section-head {
+      max-width: 560px; margin: 0 auto 12px; text-align: center;
+    }
+    .section-head h2 {
+      margin: 0; font-family: Outfit, sans-serif; font-size: 1.2rem; font-weight: 800;
+    }
+    .section-head p { margin: 4px 0 0; color: var(--muted); font-size: 0.82rem; }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: var(--gap);
-      max-width: 480px;
+      max-width: 560px;
       margin: 0 auto;
     }
-    .grid-3 { grid-template-columns: repeat(3, 1fr); }
-    .grid-1 { grid-template-columns: 1fr; max-width: 280px; }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 520px) {
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    }
+    .grid-1 { grid-template-columns: 1fr; max-width: 360px; }
 
     .picto-btn {
-      aspect-ratio: 1;
       min-height: var(--tile-size);
-      border: 3px solid transparent;
+      border: 2px solid transparent;
       border-radius: var(--radius);
       background: var(--tile);
-      box-shadow: 0 4px 14px rgba(45,106,79,0.12);
+      box-shadow: var(--shadow);
       cursor: pointer;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
+      align-items: stretch;
+      padding: 0 0 12px;
+      overflow: hidden;
       transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      text-align: center;
     }
-    .picto-btn .emoji { font-size: clamp(2.8rem, 10vw, 3.6rem); line-height: 1; }
-    .picto-btn:active { transform: scale(0.92); }
+    .picto-btn .scene-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 5 / 4;
+      background: #cfe8da;
+      overflow: hidden;
+    }
+    .picto-btn canvas.scene {
+      width: 100%; height: 100%; display: block;
+    }
+    .picto-btn .tag {
+      position: absolute; left: 8px; top: 8px;
+      font-size: 0.62rem; font-weight: 700;
+      padding: 3px 7px; border-radius: 999px;
+      background: rgba(255,255,255,0.88); color: var(--accent);
+      backdrop-filter: blur(4px);
+    }
+    .picto-btn .copy { padding: 0 10px; }
+    .picto-btn:active { transform: scale(0.96); }
     .picto-btn.selected {
       border-color: var(--accent);
-      box-shadow: 0 0 0 4px var(--accent-soft);
+      box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow);
     }
-    .picto-btn.nav-tile { background: linear-gradient(160deg, #fff, var(--accent-soft)); }
-    .picto-btn.help-tile { border-color: #ffc8c8; background: #fff5f5; }
-    .picto-btn.help-tile .emoji { font-size: 2.4rem; }
+    .picto-btn.nav-tile .scene-wrap { aspect-ratio: 16 / 11; }
+    .picto-btn.help-tile { border-color: #f5c2c0; }
+    .picto-btn.compact {
+      width: 120px; min-height: 0; margin: 0 auto;
+      padding-bottom: 10px;
+    }
+    .picto-btn.compact .scene-wrap { aspect-ratio: 1; }
 
     .sentence-strip {
       position: sticky; bottom: 0; left: 0; right: 0;
-      background: #fff; border-top: 3px solid var(--accent-soft);
+      background: rgba(255,255,255,0.96); border-top: 2px solid var(--accent-soft);
       padding: 12px 14px; display: flex; gap: 8px; align-items: center;
-      min-height: 72px; flex-wrap: wrap;
+      min-height: 76px; flex-wrap: wrap; backdrop-filter: blur(8px);
     }
     .sentence-strip .chip {
-      font-size: 2rem; padding: 4px 8px; border-radius: 12px;
-      background: var(--accent-soft); animation: pop 0.2s ease;
+      width: 44px; height: 44px; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); animation: pop 0.2s ease;
     }
+    .sentence-strip .chip canvas { width: 100%; height: 100%; display: block; }
     @keyframes pop { from { transform: scale(0.5); } to { transform: scale(1); } }
     .send-btn {
       margin-left: auto; width: 64px; height: 64px; border: none;
       border-radius: 50%; background: var(--accent); color: #fff;
       font-size: 1.8rem; cursor: pointer; flex-shrink: 0;
+      box-shadow: 0 8px 20px rgba(30,107,74,0.35);
     }
-    .send-btn:disabled { opacity: 0.4; }
+    .send-btn:disabled { opacity: 0.4; box-shadow: none; }
 
-    .feedback {
-      text-align: center; padding: 32px 16px;
+    .feedback { text-align: center; padding: 28px 16px; }
+    .feedback .done-scene {
+      width: min(220px, 70vw); aspect-ratio: 1; margin: 0 auto 16px;
+      border-radius: 24px; overflow: hidden; box-shadow: var(--shadow);
     }
-    .feedback .big-emoji { font-size: 5rem; margin-bottom: 16px; animation: bounce 0.6s ease; }
-    @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+    .feedback .done-scene canvas { width: 100%; height: 100%; display: block; }
+    .feedback .done-label { font-size: 1.15rem; font-weight: 800; margin-bottom: 4px; }
+    .feedback .done-meaning { color: var(--muted); font-size: 0.88rem; margin-bottom: 18px; }
 
     .reply-area {
-      max-width: 480px; margin: 16px auto 0;
-      padding: 16px; background: #fff; border-radius: var(--radius);
-      border: 2px solid var(--accent-soft);
+      max-width: 520px; margin: 16px auto 0;
+      padding: 16px; background: rgba(255,255,255,0.92); border-radius: var(--radius);
+      border: 1px solid rgba(30,107,74,0.12); box-shadow: var(--shadow);
     }
     .reply-pictos { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-    .reply-pictos span { font-size: 2.4rem; }
+    .reply-pictos .reply-btn, .reply-pictos .reply-static {
+      width: 72px; border: none; background: transparent; cursor: pointer; padding: 0;
+    }
+    .reply-pictos .reply-static { cursor: default; }
+    .reply-pictos .mini-scene {
+      width: 72px; height: 60px; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .reply-pictos canvas { width: 100%; height: 100%; display: block; }
+    .reply-pictos .picto-label { font-size: 0.7rem; margin-top: 4px; }
 
-    .loading { text-align: center; padding: 40px; font-size: 3rem; animation: pulse 1s infinite; }
+    .loading { text-align: center; padding: 40px; font-size: 2.4rem; animation: pulse 1s infinite; }
     @keyframes pulse { 50% { opacity: 0.5; } }
 
-    body.big-touch { --tile-size: clamp(104px, 28vw, 148px); --gap: 16px; }
-    body.big-touch .picto-btn .emoji { font-size: clamp(3.2rem, 12vw, 4.2rem); }
-    body.big-touch .send-btn { width: 76px; height: 76px; }
+    body.big-touch { --tile-size: clamp(128px, 48vw, 190px); --gap: 16px; }
     body.high-contrast {
-      --bg: #000; --tile: #111; --accent: #ffd60a; --accent-soft: #333;
-      color: #fff;
+      --bg0: #000; --bg1: #111; --ink: #fff; --muted: #ddd;
+      --tile: #1a1a1a; --accent: #ffd60a; --accent-soft: #333;
+      background: #000;
     }
-    body.high-contrast .picto-btn { border-color: #fff; color: #fff; box-shadow: none; }
-    body.high-contrast .picto-btn.selected { border-color: #ffd60a; box-shadow: 0 0 0 4px #665500; }
-    body.high-contrast .top-bar, body.high-contrast .sentence-strip,
-    body.high-contrast .reply-area, body.high-contrast .float-dock {
-      background: #111; border-color: #444;
-    }
+    body.high-contrast .picto-btn,
+    body.high-contrast .concept-panel,
+    body.high-contrast .reply-area,
+    body.high-contrast .top-bar,
+    body.high-contrast .sentence-strip { background: #111; border-color: #555; color: #fff; }
+    body.high-contrast .picto-meaning { color: #ccc; }
 
-    .grid-home { grid-template-columns: repeat(2, 1fr); max-width: 520px; }
+    .grid-home { grid-template-columns: repeat(2, 1fr); max-width: 560px; }
     .grid-home .span-full { grid-column: 1 / -1; justify-self: center; width: calc(50% - var(--gap) / 2); }
 
     .fav-row {
       display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px;
-      max-width: 520px; margin: 0 auto 14px; scrollbar-width: none;
+      max-width: 560px; margin: 0 auto 14px; scrollbar-width: none;
     }
     .fav-row:empty { display: none; }
     .fav-chip {
-      flex: 0 0 auto; min-width: 72px; min-height: 72px; border-radius: 18px;
-      border: 2px dashed var(--accent); background: #fff; font-size: 1.6rem;
-      cursor: pointer; display: grid; place-items: center; padding: 8px;
+      flex: 0 0 auto; width: 76px; height: 76px; border-radius: 18px;
+      border: 2px dashed var(--accent); background: #fff; overflow: hidden;
+      cursor: pointer; padding: 0;
     }
+    .fav-chip canvas { width: 100%; height: 100%; display: block; }
 
     .timeline-row {
       display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
-      max-width: 520px; margin: 0 auto;
+      max-width: 560px; margin: 0 auto;
     }
     .timeline-day {
       display: flex; flex-direction: column; align-items: center; gap: 6px;
-      min-width: 56px; padding: 10px 6px; border-radius: 16px; background: #fff;
-      box-shadow: 0 2px 8px rgba(45,106,79,0.1);
+      min-width: 64px; padding: 8px; border-radius: 16px; background: #fff;
+      box-shadow: 0 2px 8px rgba(20,53,42,0.1);
     }
-    .timeline-day .emoji { font-size: 2.2rem; }
+    .timeline-day .mini-scene { width: 52px; height: 44px; border-radius: 10px; overflow: hidden; }
+    .timeline-day canvas { width: 100%; height: 100%; display: block; }
     .timeline-day .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-soft); }
     .timeline-day.is-today { outline: 3px solid var(--accent); }
-    .timeline-day.empty .emoji { opacity: 0.25; filter: grayscale(1); }
+    .timeline-day.empty { opacity: 0.45; }
 
     .float-dock {
       position: fixed; bottom: max(12px, env(safe-area-inset-bottom));
@@ -190,120 +320,144 @@
       background: #fff; border-radius: 24px; padding: 24px; text-align: center;
       max-width: 320px; width: 100%;
     }
-    .tel-card .big { font-size: 4rem; margin-bottom: 16px; }
-    .tel-actions { display: flex; gap: 12px; justify-content: center; }
-    .tel-actions .picto-btn { width: 100px; height: 100px; min-height: 0; }
-
-    .reply-pictos button, .reply-pictos .reply-btn {
-      font-size: 2.4rem; border: none; background: var(--accent-soft);
-      border-radius: 16px; padding: 10px 14px; cursor: pointer;
+    .tel-card .tel-scene {
+      width: 140px; height: 120px; margin: 0 auto 12px; border-radius: 18px; overflow: hidden;
     }
-    .reply-pictos button:active { transform: scale(0.92); }
+    .tel-card canvas { width: 100%; height: 100%; display: block; }
+    .tel-actions { display: flex; gap: 12px; justify-content: center; }
+    .tel-actions .picto-btn { width: 100px; min-height: 0; }
 
     main.has-dock { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
-    main.has-strip { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+    main.has-strip { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
     .save-fav-btn {
       margin: 12px auto 0; display: block; width: 88px; height: 88px;
       border: 2px dashed var(--accent); border-radius: 20px; background: #fff;
       font-size: 2rem; cursor: pointer;
     }
-    .offline-badge { font-size: 1.15rem; line-height: 1; }
+    .offline-badge { font-size: 1rem; margin-left: 4px; }
   </style>
 </head>
 <body>
   <header class="top-bar app-hide-embed">
-    <button type="button" class="icon-btn" id="btnBack" aria-label="뒤로">🔙</button>
-    <h1 aria-hidden="true">🌿 <span id="offlineBadge" class="offline-badge" hidden aria-label="오프라인">📴</span></h1>
+    <div class="brand-lock">
+      <button type="button" class="icon-btn" id="btnBack" aria-label="뒤로" hidden>🔙</button>
+      <div class="brand-mark" aria-hidden="true"><canvas id="brandCanvas" width="72" height="72"></canvas></div>
+      <div class="brand-text">
+        <strong>그림마음 <span id="offlineBadge" class="offline-badge" hidden aria-label="오프라인">📴</span></strong>
+        <span id="brandSub">입체 장면으로 마음 표현</span>
+      </div>
+    </div>
     <div class="top-actions">
-      <button type="button" class="icon-btn" id="btnBigTouch" aria-label="큰 버튼">⬛</button>
-      <button type="button" class="icon-btn" id="btnContrast" aria-label="선명하게">🌓</button>
-      <button type="button" class="icon-btn" id="btnLabels" aria-label="글자 보기">👁️</button>
-      <button type="button" class="icon-btn" id="btnSpeak" aria-label="소리 듣기">🔊</button>
+      <button type="button" class="icon-btn" id="btnBigTouch" aria-label="큰 버튼" title="큰 버튼">⬛</button>
+      <button type="button" class="icon-btn" id="btnContrast" aria-label="선명하게" title="선명하게">🌓</button>
+      <button type="button" class="icon-btn" id="btnMeanings" aria-label="뜻 보기" title="뜻 보기">👁️</button>
+      <button type="button" class="icon-btn" id="btnSpeak" aria-label="소리 듣기" title="소리 듣기">🔊</button>
     </div>
   </header>
 
   <main>
-    <!-- 홈 -->
     <section class="screen active" id="screenHome" aria-label="메인 메뉴">
+      <div class="concept-panel" id="conceptPanel">
+        <div class="therapy-pill" id="therapyPill">표현치료 · AAC</div>
+        <h2 id="conceptTitle">그림마음</h2>
+        <p class="lead" id="conceptLead">불러오는 중…</p>
+        <div class="schools" id="conceptSchools"></div>
+        <ol id="conceptHow"></ol>
+        <p class="safety" id="conceptSafety"></p>
+      </div>
+      <div class="section-head">
+        <h2>무엇을 할까요?</h2>
+        <p>입체 장면을 눌러 시작해요</p>
+      </div>
       <div class="fav-row" id="homeFavorites"></div>
       <div class="grid grid-home" id="homeGrid"></div>
     </section>
 
-    <!-- 기분 -->
     <section class="screen" id="screenMood" aria-label="기분 고르기">
+      <div class="section-head">
+        <h2>지금 기분은?</h2>
+        <p>감정인식 · 장면을 보고 골라요</p>
+      </div>
       <div class="grid grid-3" id="moodGrid"></div>
     </section>
     <section class="screen" id="screenMoodDone" aria-label="기분 저장됨">
       <div class="feedback">
-        <div class="big-emoji" id="moodDoneEmoji">💚</div>
-        <button type="button" class="picto-btn nav-tile" style="width:120px;height:120px;margin:0 auto" data-go="home">
-          <span class="emoji">🏠</span>
-          <span class="picto-label">처음</span>
-        </button>
+        <div class="done-scene" id="moodDoneScene"></div>
+        <div class="done-label" id="moodDoneLabel">저장했어요</div>
+        <div class="done-meaning" id="moodDoneMeaning"></div>
+        <button type="button" class="picto-btn nav-tile compact" data-go="home" id="moodDoneHome"></button>
       </div>
     </section>
 
-    <!-- 말하기 -->
     <section class="screen" id="screenTalk" aria-label="그림 말하기">
+      <div class="section-head">
+        <h2>그림으로 말하기</h2>
+        <p>AAC · 하고 싶은 말을 장면으로 고르세요</p>
+      </div>
       <div class="fav-row" id="talkFavorites"></div>
       <div class="grid grid-3" id="talkGrid"></div>
     </section>
     <section class="screen" id="screenTalkReply" aria-label="답변">
       <div class="reply-area">
+        <div class="section-head" style="margin-bottom:0">
+          <h2 style="font-size:1rem">응답 장면</h2>
+          <p id="talkReplyText" style="margin-top:8px"></p>
+        </div>
         <div class="reply-pictos" id="replyPictos"></div>
         <div class="loading" id="talkLoading" hidden>💭</div>
       </div>
       <button type="button" class="save-fav-btn" id="btnSaveFav" hidden aria-label="즐겨찾기 저장">⭐</button>
       <div style="text-align:center;margin-top:20px">
-        <button type="button" class="picto-btn nav-tile" style="width:100px;height:100px;margin:0 auto" data-go="talk">
-          <span class="emoji">➕</span>
-          <span class="picto-label">더 말하기</span>
-        </button>
+        <button type="button" class="picto-btn nav-tile compact" data-go="talk" id="talkMoreBtn"></button>
       </div>
     </section>
 
-    <!-- 카드 -->
     <section class="screen" id="screenCards" aria-label="카드 고르기">
+      <div class="section-head">
+        <h2>상징 카드</h2>
+        <p>상징·표현치료 · 마음에 닿는 장면을 골라요</p>
+      </div>
       <div class="grid grid-3" id="cardGrid"></div>
     </section>
     <section class="screen" id="screenCardDone" aria-label="카드 결과">
       <div class="feedback">
-        <div class="big-emoji" id="cardDoneEmoji">⭐</div>
+        <div class="done-scene" id="cardDoneScene"></div>
+        <div class="done-label" id="cardDoneLabel"></div>
+        <div class="done-meaning" id="cardDoneMeaning"></div>
         <div class="reply-pictos" id="cardReplyPictos"></div>
-        <button type="button" class="picto-btn nav-tile" style="width:100px;height:100px;margin:16px auto 0" data-go="home">
-          <span class="emoji">🏠</span>
-          <span class="picto-label">처음</span>
-        </button>
+        <button type="button" class="picto-btn nav-tile compact" data-go="home" id="cardDoneHome" style="margin-top:16px"></button>
       </div>
     </section>
 
-    <!-- 도움 -->
     <section class="screen" id="screenHelp" aria-label="도움 요청">
+      <div class="section-head">
+        <h2>도움 · 전화</h2>
+        <p>위기 때 전화하거나 보호자에게 알릴 수 있어요</p>
+      </div>
       <div class="grid grid-1" id="helpGrid"></div>
     </section>
 
     <section class="screen" id="screenHistory" aria-label="기분 기록">
+      <div class="section-head">
+        <h2>기분 기록</h2>
+        <p>최근 감정 장면의 흐름</p>
+      </div>
       <div class="timeline-row" id="moodTimeline"></div>
       <div style="text-align:center;margin-top:24px">
-        <button type="button" class="picto-btn nav-tile" style="width:100px;height:100px;margin:0 auto" data-go="mood">
-          <span class="emoji">💚</span>
-          <span class="picto-label">기분 고르기</span>
-        </button>
+        <button type="button" class="picto-btn nav-tile compact" data-go="mood" id="historyToMood"></button>
       </div>
     </section>
   </main>
 
   <div class="tel-modal" id="telModal" hidden>
     <div class="tel-card">
-      <div class="big" id="telModalEmoji">📞</div>
-      <div class="tel-actions">
-        <button type="button" class="picto-btn help-tile" id="telConfirm" aria-label="전화">
-          <span class="emoji">✅</span>
-        </button>
-        <button type="button" class="picto-btn nav-tile" id="telCancel" aria-label="취소">
-          <span class="emoji">❌</span>
-        </button>
+      <div class="tel-scene" id="telModalScene"></div>
+      <div class="picto-label" id="telModalLabel">전화</div>
+      <div class="picto-meaning" id="telModalMeaning"></div>
+      <div class="tel-actions" style="margin-top:16px">
+        <button type="button" class="picto-btn help-tile compact" id="telConfirm" aria-label="전화 걸기"></button>
+        <button type="button" class="picto-btn nav-tile compact" id="telCancel" aria-label="취소"></button>
       </div>
     </div>
   </div>
@@ -328,13 +482,13 @@
     let talkSelection = [];
     let lastSentIds = [];
     let pendingTel = null;
-    let labelsVisible = localStorage.getItem("picto_show_labels") === "1";
+    let meaningsVisible = localStorage.getItem("picto_hide_meanings") !== "1";
     let speakEnabled = localStorage.getItem("picto_speak") === "1";
     let bigTouch = localStorage.getItem("picto_big_touch") === "1";
     let highContrast = localStorage.getItem("picto_high_contrast") === "1";
     const isEmbed = document.documentElement.classList.contains("embed-mode");
     const FAV_KEY = "picto_favorites_v1";
-    const CATALOG_CACHE_KEY = "picto_catalog_bundle_v1";
+    const CATALOG_CACHE_KEY = "picto_catalog_bundle_v2";
     const CHECKIN_QUEUE_KEY = "picto_checkin_queue_v1";
     const LOCAL_MOOD_KEY = "picto_local_mood_v1";
     const BUNDLE_URL = "/static/picto-catalog.bundle.json";
@@ -357,6 +511,28 @@
 
     function buzz() {
       if (navigator.vibrate) navigator.vibrate(12);
+    }
+
+    function paintScene(canvasOrHost, sceneId) {
+      let canvas = canvasOrHost;
+      if (canvas && canvas.tagName !== "CANVAS") {
+        canvas.innerHTML = "";
+        canvas = document.createElement("canvas");
+        canvasOrHost.appendChild(canvas);
+      }
+      if (!canvas || !window.PictoScene) return;
+      requestAnimationFrame(() => {
+        try { PictoScene.paint(canvas, sceneId || "mood_ok"); } catch (_) {}
+      });
+      return canvas;
+    }
+
+    function labelOf(item) {
+      return item?.label_ko || item?.phrase || "";
+    }
+
+    function meaningOf(item) {
+      return item?.meaning_ko || item?.therapy_tag || "";
     }
 
     function updateOnlineBadge() {
@@ -501,9 +677,12 @@
         chip.type = "button";
         chip.className = "fav-chip";
         chip.setAttribute("aria-label", entry.label || favEmoji(entry.ids));
-        chip.textContent = entry.emoji || favEmoji(entry.ids);
+        const first = entry.ids?.[0] || "mood_calm";
+        const canvas = document.createElement("canvas");
+        chip.appendChild(canvas);
         chip.addEventListener("click", () => { buzz(); onPick(entry.ids); });
         el.appendChild(chip);
+        paintScene(canvas, first);
       });
     }
 
@@ -519,6 +698,12 @@
       if (name !== "talk") talkSelection = [];
       if (name === "history") loadMoodTimeline();
       updateTalkStrip();
+      requestAnimationFrame(() => {
+        document.querySelectorAll(".screen.active canvas.scene, .screen.active .done-scene canvas, .screen.active .mini-scene canvas").forEach((c) => {
+          const id = c.dataset.scene;
+          if (id && window.PictoScene) PictoScene.paint(c, id);
+        });
+      });
     }
 
     function itemMap() {
@@ -532,35 +717,81 @@
       btn.type = "button";
       btn.className = `picto-btn ${extraClass}`.trim();
       btn.dataset.id = item.id;
-      btn.setAttribute("aria-label", item.phrase);
-      btn.innerHTML = `<span class="emoji">${item.emoji}</span><span class="picto-label">${item.phrase}</span>`;
-      if (item.color) btn.style.background = `linear-gradient(160deg,#fff,${item.color}44)`;
+      const label = labelOf(item);
+      const meaning = meaningOf(item);
+      btn.setAttribute("aria-label", `${label}. ${meaning}`);
+      const sceneId = item.scene || item.id;
+      btn.innerHTML = `
+        <div class="scene-wrap">
+          <canvas class="scene" data-scene="${sceneId}"></canvas>
+          <span class="tag">${item.therapy_tag || item.category || ""}</span>
+        </div>
+        <div class="copy">
+          <span class="picto-label">${label}</span>
+          <span class="picto-meaning">${meaning}</span>
+        </div>`;
+      paintScene(btn.querySelector("canvas"), sceneId);
       return btn;
+    }
+
+    function fillCompactNav(btn, sceneId, label, meaning) {
+      if (!btn) return;
+      btn.innerHTML = `
+        <div class="scene-wrap">
+          <canvas class="scene" data-scene="${sceneId}"></canvas>
+        </div>
+        <div class="copy">
+          <span class="picto-label">${label}</span>
+          <span class="picto-meaning">${meaning || ""}</span>
+        </div>`;
+      paintScene(btn.querySelector("canvas"), sceneId);
     }
 
     function renderReplyPictos(container, pictos, clickable = false) {
       const el = typeof container === "string" ? document.getElementById(container) : container;
       el.innerHTML = "";
       (pictos || []).forEach((p) => {
+        const wrap = document.createElement(clickable ? "button" : "div");
+        wrap.type = clickable ? "button" : undefined;
+        wrap.className = clickable ? "reply-btn" : "reply-static";
+        wrap.setAttribute("aria-label", labelOf(p));
+        wrap.innerHTML = `
+          <div class="mini-scene"><canvas data-scene="${p.scene || p.id}"></canvas></div>
+          <span class="picto-label">${labelOf(p)}</span>`;
         if (clickable) {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "reply-btn";
-          btn.textContent = p.emoji;
-          btn.setAttribute("aria-label", p.phrase);
-          btn.addEventListener("click", () => {
+          wrap.addEventListener("click", () => {
             buzz();
             talkSelection = [p.id];
             sendTalk();
           });
-          el.appendChild(btn);
-        } else {
-          const span = document.createElement("span");
-          span.textContent = p.emoji;
-          span.title = p.phrase;
-          el.appendChild(span);
         }
+        el.appendChild(wrap);
+        paintScene(wrap.querySelector("canvas"), p.scene || p.id);
       });
+    }
+
+    function renderConcept() {
+      const c = catalog?.therapy_concept || {};
+      document.getElementById("therapyPill").textContent = c.therapy_name || "표현치료 · AAC";
+      document.getElementById("conceptTitle").textContent = c.title || "그림마음";
+      document.getElementById("conceptLead").textContent = c.what_it_is || catalog?.description || "";
+      document.getElementById("brandSub").textContent = c.subtitle || "입체 장면으로 마음 표현";
+      const schools = document.getElementById("conceptSchools");
+      schools.innerHTML = "";
+      (c.therapy_schools || []).forEach((s) => {
+        const span = document.createElement("span");
+        span.textContent = s;
+        schools.appendChild(span);
+      });
+      const how = document.getElementById("conceptHow");
+      how.innerHTML = "";
+      (c.how_to || []).forEach((step) => {
+        const li = document.createElement("li");
+        li.textContent = step;
+        how.appendChild(li);
+      });
+      document.getElementById("conceptSafety").textContent = c.safety || "";
+      paintScene(document.getElementById("brandCanvas"), "mood_calm");
     }
 
     function renderHome() {
@@ -577,7 +808,7 @@
           nav_mood: "mood", nav_talk: "talk", nav_cards: "cards",
           nav_help: "help", nav_history: "history",
         }[id];
-        btn.addEventListener("click", () => { buzz(); speak(item.phrase); showScreen(dest); });
+        btn.addEventListener("click", () => { buzz(); speak(labelOf(item)); showScreen(dest); });
         grid.appendChild(btn);
       });
       renderFavorites("homeFavorites", (ids) => {
@@ -632,9 +863,11 @@
 
     function openTelModal(item) {
       pendingTel = item.tel;
-      document.getElementById("telModalEmoji").textContent = item.emoji || "📞";
+      paintScene(document.getElementById("telModalScene"), item.scene || item.id);
+      document.getElementById("telModalLabel").textContent = labelOf(item);
+      document.getElementById("telModalMeaning").textContent = meaningOf(item);
       document.getElementById("telModal").hidden = false;
-      speak(item.phrase);
+      speak(labelOf(item));
     }
 
     function renderHelp() {
@@ -649,14 +882,14 @@
         } else if (id === "help_caregiver") {
           btn.addEventListener("click", () => { buzz(); alertCaregiver(item); });
         } else {
-          btn.addEventListener("click", () => { buzz(); speak(item.phrase); });
+          btn.addEventListener("click", () => { buzz(); speak(labelOf(item)); });
         }
         grid.appendChild(btn);
       });
     }
 
     async function alertCaregiver(item) {
-      speak(item?.phrase);
+      speak(labelOf(item));
       try {
         await fetch("/api/v1/picto/caregiver-alert", {
           method: "POST",
@@ -664,7 +897,9 @@
           body: JSON.stringify({ user_id: userId, picto_ids: ["help_caregiver"] }),
         });
       } catch (_) {}
-      document.getElementById("moodDoneEmoji").textContent = "👨‍👩‍👧";
+      paintScene(document.getElementById("moodDoneScene"), "help_caregiver");
+      document.getElementById("moodDoneLabel").textContent = labelOf(item);
+      document.getElementById("moodDoneMeaning").textContent = "보호자에게 알림을 남겼어요";
       showScreen("moodDone");
     }
 
@@ -684,15 +919,18 @@
       if (!rows.length) rows = loadLocalMoods();
       el.innerHTML = "";
       if (!rows.length) {
-        el.innerHTML = '<div class="timeline-day empty"><span class="emoji">💚</span><span class="picto-label">아직 없음</span></div>';
+        el.innerHTML = '<div class="timeline-day empty"><div class="mini-scene"><canvas></canvas></div><span class="picto-label">아직 없음</span></div>';
+        paintScene(el.querySelector("canvas"), "mood_ok");
         return;
       }
       rows.slice().reverse().forEach((row) => {
         const day = document.createElement("div");
         day.className = "timeline-day";
         if (row.date === todayStr()) day.classList.add("is-today");
-        day.innerHTML = `<span class="emoji">${row.emoji || "💚"}</span><span class="dot"></span>`;
+        const sceneId = row.mood_picto_id || "mood_ok";
+        day.innerHTML = `<div class="mini-scene"><canvas data-scene="${sceneId}"></canvas></div><span class="dot"></span>`;
         el.appendChild(day);
+        paintScene(day.querySelector("canvas"), sceneId);
       });
     }
 
@@ -704,7 +942,7 @@
       } else {
         talkSelection.push(id);
         btn.classList.add("selected");
-        speak(itemMap()[id]?.phrase);
+        speak(labelOf(itemMap()[id]));
       }
       updateTalkStrip();
     }
@@ -721,13 +959,20 @@
 
     function updateTalkStrip() {
       const chips = document.getElementById("talkChips");
-      const map = itemMap();
-      chips.innerHTML = talkSelection.map((id) => `<span class="chip">${map[id]?.emoji || "?"}</span>`).join("");
+      chips.innerHTML = "";
+      talkSelection.forEach((id) => {
+        const span = document.createElement("span");
+        span.className = "chip";
+        const canvas = document.createElement("canvas");
+        span.appendChild(canvas);
+        chips.appendChild(span);
+        paintScene(canvas, id);
+      });
       document.getElementById("btnSend").disabled = talkSelection.length === 0;
     }
 
     async function submitMood(moodId, item) {
-      speak(item?.phrase);
+      speak(labelOf(item));
       const localEntry = {
         date: todayStr(),
         emoji: item?.emoji || "💚",
@@ -747,14 +992,18 @@
         } catch (_) {}
       }
       if (!saved) queueCheckin({ user_id: userId, mood_picto_id: moodId });
-      document.getElementById("moodDoneEmoji").textContent = item?.emoji || "💚";
+      paintScene(document.getElementById("moodDoneScene"), moodId);
+      document.getElementById("moodDoneLabel").textContent = labelOf(item);
+      document.getElementById("moodDoneMeaning").textContent = meaningOf(item) + " · 기록했어요";
       if (window.MaumEmbed) MaumEmbed.refreshOrganism("picto_checkin");
       showScreen("moodDone");
     }
 
     async function submitCard(cardId, item) {
-      speak(item?.phrase);
-      document.getElementById("cardDoneEmoji").textContent = item?.emoji || "⭐";
+      speak(labelOf(item));
+      paintScene(document.getElementById("cardDoneScene"), cardId);
+      document.getElementById("cardDoneLabel").textContent = labelOf(item);
+      document.getElementById("cardDoneMeaning").textContent = meaningOf(item);
       const replyEl = document.getElementById("cardReplyPictos");
       replyEl.innerHTML = '<div class="loading">💭</div>';
       showScreen("cardDone");
@@ -770,6 +1019,7 @@
         } catch (_) {}
       }
       if (!data) data = offlineCardReply(cardId, item);
+      if (data.reply_text) document.getElementById("cardDoneMeaning").textContent = data.reply_text;
       renderReplyPictos(replyEl, data.reply_pictos, true);
       if (speakEnabled && data.reply_text) speakShort(data.reply_text);
     }
@@ -784,6 +1034,7 @@
       showScreen("talkReply");
       document.getElementById("talkLoading").hidden = false;
       document.getElementById("replyPictos").innerHTML = "";
+      document.getElementById("talkReplyText").textContent = "";
       document.getElementById("btnSaveFav").hidden = true;
       let data = null;
       if (isOnline) {
@@ -803,6 +1054,7 @@
         if (window.MaumEmbed) MaumEmbed.refreshOrganism("picto_chat");
       }
       document.getElementById("talkLoading").hidden = true;
+      document.getElementById("talkReplyText").textContent = data.reply_text || "";
       renderReplyPictos("replyPictos", data.reply_pictos, true);
       document.getElementById("btnSaveFav").hidden = !lastSentIds.length;
       if (speakEnabled && data.reply_text) speakShort(data.reply_text);
@@ -834,10 +1086,10 @@
     function speakShort(text) { speak(text.slice(0, 120)); }
 
     function applyA11yPrefs() {
-      document.body.classList.toggle("show-labels", labelsVisible);
+      document.body.classList.toggle("hide-meanings", !meaningsVisible);
       document.body.classList.toggle("big-touch", bigTouch);
       document.body.classList.toggle("high-contrast", highContrast);
-      document.getElementById("btnLabels").classList.toggle("active", labelsVisible);
+      document.getElementById("btnMeanings").classList.toggle("active", meaningsVisible);
       document.getElementById("btnSpeak").classList.toggle("active", speakEnabled);
       document.getElementById("btnBigTouch").classList.toggle("active", bigTouch);
       document.getElementById("btnContrast").classList.toggle("active", highContrast);
@@ -848,9 +1100,9 @@
     document.getElementById("dockBack").addEventListener("click", () => { buzz(); showScreen("home"); });
     document.getElementById("dockUndo").addEventListener("click", undoTalk);
 
-    document.getElementById("btnLabels").addEventListener("click", () => {
-      labelsVisible = !labelsVisible;
-      localStorage.setItem("picto_show_labels", labelsVisible ? "1" : "0");
+    document.getElementById("btnMeanings").addEventListener("click", () => {
+      meaningsVisible = !meaningsVisible;
+      localStorage.setItem("picto_hide_meanings", meaningsVisible ? "0" : "1");
       applyA11yPrefs();
     });
     document.getElementById("btnSpeak").addEventListener("click", () => {
@@ -891,12 +1143,20 @@
       window.addEventListener("online", () => { isOnline = true; updateOnlineBadge(); flushCheckinQueue(); });
       window.addEventListener("offline", () => { isOnline = false; updateOnlineBadge(); });
 
+      fillCompactNav(document.getElementById("moodDoneHome"), "talk_want_home", "처음", "홈으로");
+      fillCompactNav(document.getElementById("talkMoreBtn"), "nav_talk", "더 말하기", "장면 추가");
+      fillCompactNav(document.getElementById("cardDoneHome"), "talk_want_home", "처음", "홈으로");
+      fillCompactNav(document.getElementById("historyToMood"), "nav_mood", "기분 고르기", "감정 장면");
+      fillCompactNav(document.getElementById("telConfirm"), "talk_yes", "전화", "연결");
+      fillCompactNav(document.getElementById("telCancel"), "talk_no", "취소", "닫기");
+
       catalog = await loadCatalog();
       if (!catalog) {
         document.querySelector("main").innerHTML =
-          '<div class="feedback"><div class="big-emoji">📴</div><p class="picto-label">그림 사전을 불러오지 못했어요. 연결 후 다시 시도해 주세요.</p></div>';
+          '<div class="feedback"><div class="done-label">그림 사전을 불러오지 못했어요</div><p class="done-meaning">연결 후 다시 시도해 주세요.</p></div>';
         return;
       }
+      renderConcept();
       renderHome();
       renderMood();
       renderTalk();

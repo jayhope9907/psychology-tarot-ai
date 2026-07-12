@@ -1,7 +1,32 @@
 {
   "mode": "picture_only",
-  "description": "그림·이모지만으로 마음을 표현하는 쉬운 모드입니다.",
-  "accessibility_note": "보호자는 우측 상단 👁️으로 글자 라벨을 켤 수 있습니다.",
+  "description": "말 대신 입체 장면으로 마음을 전하는 표현 모드",
+  "therapy_concept": {
+    "title": "그림마음",
+    "subtitle": "말 대신 입체 장면으로 마음을 전하는 표현 모드",
+    "therapy_name": "그림 의사소통 · 감정 인식 (AAC / Pictorial Emotion Expression)",
+    "therapy_schools": [
+      "표현예술치료",
+      "감정인식 훈련",
+      "게슈탈트 알아차림",
+      "트라우마 정보 안정화"
+    ],
+    "scholars": [
+      "Margaret Naumburg",
+      "Edith Kramer",
+      "Cathy Malchiodi",
+      "AAC 의사소통 접근"
+    ],
+    "what_it_is": "그림마음은 글·말이 어렵거나 부담될 때, 입체 장면 카드를 골라 기분·욕구·도움을 전하는 방식입니다. 정식 진단을 하지 않으며, 자기표현·감정 알아차림·안전한 연결을 돕습니다.",
+    "how_to": [
+      "장면을 보고 라벨(무슨 마음인지)을 확인해요",
+      "지금 기분 또는 하고 싶은 말을 골라요",
+      "선택하면 AI·보호자와 연결되거나 기록이 남아요",
+      "힘들면 언제든 「도움·전화」로 1393·119·129에 연결할 수 있어요"
+    ],
+    "safety": "위급하면 1393 · 119 · 129. 그림 선택은 의료 진단이 아닙니다."
+  },
+  "accessibility_note": "모든 장면 아래에 이름과 뜻이 표시됩니다. 소리 듣기로 읽어 줄 수 있습니다.",
   "categories": [
     {
       "id": "nav",
@@ -34,37 +59,61 @@
       "id": "nav_mood",
       "emoji": "💚",
       "phrase": "지금 기분",
-      "category": "nav"
+      "category": "nav",
+      "label_ko": "지금 기분",
+      "meaning_ko": "오늘의 감정을 입체 장면으로 고르기",
+      "therapy_tag": "감정인식",
+      "scene": "nav_mood"
     },
     {
       "id": "nav_talk",
       "emoji": "💬",
       "phrase": "그림으로 말하기",
-      "category": "nav"
+      "category": "nav",
+      "label_ko": "그림으로 말하기",
+      "meaning_ko": "하고 싶은 말을 장면으로 조합하기",
+      "therapy_tag": "AAC 의사소통",
+      "scene": "nav_talk"
     },
     {
       "id": "nav_cards",
       "emoji": "🃏",
-      "phrase": "카드 그림",
-      "category": "nav"
+      "phrase": "상징 카드",
+      "category": "nav",
+      "label_ko": "상징 카드",
+      "meaning_ko": "희망·치유·길 같은 상징을 고르기",
+      "therapy_tag": "상징·표현치료",
+      "scene": "nav_cards"
     },
     {
       "id": "nav_help",
       "emoji": "🆘",
       "phrase": "도움·전화",
-      "category": "nav"
+      "category": "nav",
+      "label_ko": "도움·전화",
+      "meaning_ko": "위기 때 전화·보호자 연결",
+      "therapy_tag": "안전·위기",
+      "scene": "nav_help"
     },
     {
       "id": "nav_history",
       "emoji": "📅",
       "phrase": "기분 기록",
-      "category": "nav"
+      "category": "nav",
+      "label_ko": "기분 기록",
+      "meaning_ko": "최근 감정 장면 흐름 보기",
+      "therapy_tag": "자기모니터링",
+      "scene": "nav_history"
     },
     {
       "id": "mood_happy",
       "emoji": "😊",
       "phrase": "기쁨·좋아요",
       "category": "mood",
+      "label_ko": "기쁨",
+      "meaning_ko": "밝고 좋은 기분 · 해가 뜬 장면",
+      "therapy_tag": "감정인식",
+      "scene": "mood_happy",
       "color": "#FFE566"
     },
     {
@@ -72,6 +121,10 @@
       "emoji": "😌",
       "phrase": "편안해요",
       "category": "mood",
+      "label_ko": "편안함",
+      "meaning_ko": "안정·평온 · 잔잔한 호수 장면",
+      "therapy_tag": "감정인식",
+      "scene": "mood_calm",
       "color": "#A8E6CF"
     },
     {
@@ -79,6 +132,10 @@
       "emoji": "😐",
       "phrase": "그냥 그래요",
       "category": "mood",
+      "label_ko": "그저 그럼",
+      "meaning_ko": "특별할 것 없는 보통 기분",
+      "therapy_tag": "감정인식",
+      "scene": "mood_ok",
       "color": "#E0E0E0"
     },
     {
@@ -86,6 +143,10 @@
       "emoji": "😢",
       "phrase": "슬퍼요",
       "category": "mood",
+      "label_ko": "슬픔",
+      "meaning_ko": "가라앉은 마음 · 비 오는 장면",
+      "therapy_tag": "감정인식",
+      "scene": "mood_sad",
       "color": "#9EC5E8"
     },
     {
@@ -93,6 +154,10 @@
       "emoji": "😠",
       "phrase": "화나요",
       "category": "mood",
+      "label_ko": "화남",
+      "meaning_ko": "열이 오른 마음 · 불꽃 장면",
+      "therapy_tag": "감정인식",
+      "scene": "mood_angry",
       "color": "#FF8A80"
     },
     {
@@ -100,6 +165,10 @@
       "emoji": "😰",
       "phrase": "무서워요·불안",
       "category": "mood",
+      "label_ko": "불안·두려움",
+      "meaning_ko": "긴장·무서움 · 번개 장면",
+      "therapy_tag": "감정인식",
+      "scene": "mood_scared",
       "color": "#CE93D8"
     },
     {
@@ -107,6 +176,10 @@
       "emoji": "😴",
       "phrase": "피곤해요",
       "category": "mood",
+      "label_ko": "피곤함",
+      "meaning_ko": "에너지가 바닥난 상태 · 달밤",
+      "therapy_tag": "감정인식",
+      "scene": "mood_tired",
       "color": "#B0BEC5"
     },
     {
@@ -114,169 +187,281 @@
       "emoji": "😵‍💫",
       "phrase": "헷갈려요",
       "category": "mood",
+      "label_ko": "혼란",
+      "meaning_ko": "생각이 엉킨 느낌 · 소용돌이",
+      "therapy_tag": "감정인식",
+      "scene": "mood_confused",
       "color": "#D1C4E9"
     },
     {
       "id": "talk_want_chat",
       "emoji": "💬",
       "phrase": "이야기하고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "이야기하고 싶어요",
+      "meaning_ko": "누군가와 대화가 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_want_chat"
     },
     {
       "id": "talk_want_hug",
       "emoji": "🤗",
       "phrase": "안아주세요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "안아주세요",
+      "meaning_ko": "따뜻함·접촉이 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_want_hug"
     },
     {
       "id": "talk_want_quiet",
       "emoji": "🤫",
       "phrase": "조용히 쉬고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "조용히 쉴래요",
+      "meaning_ko": "자극을 줄이고 쉬고 싶어요",
+      "therapy_tag": "AAC",
+      "scene": "talk_want_quiet"
     },
     {
       "id": "talk_want_walk",
       "emoji": "🚶",
       "phrase": "나가고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "나가고 싶어요",
+      "meaning_ko": "밖으로 움직이고 싶어요",
+      "therapy_tag": "AAC",
+      "scene": "talk_want_walk"
     },
     {
       "id": "talk_want_home",
       "emoji": "🏠",
       "phrase": "집에 가고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "집에 가고 싶어요",
+      "meaning_ko": "안전한 집으로 돌아가고 싶어요",
+      "therapy_tag": "AAC",
+      "scene": "talk_want_home"
     },
     {
       "id": "talk_hurt",
       "emoji": "🤕",
       "phrase": "아파요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "아파요",
+      "meaning_ko": "몸이나 마음이 아파요",
+      "therapy_tag": "AAC",
+      "scene": "talk_hurt"
     },
     {
       "id": "talk_hungry",
       "emoji": "🍎",
       "phrase": "배고파요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "배고파요",
+      "meaning_ko": "음식이 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_hungry"
     },
     {
       "id": "talk_thirsty",
       "emoji": "💧",
       "phrase": "물 마시고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "목말라요",
+      "meaning_ko": "물이 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_thirsty"
     },
     {
       "id": "talk_alone",
       "emoji": "🧍",
       "phrase": "혼자 있고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "혼자 있을래요",
+      "meaning_ko": "잠시 혼자만의 공간이 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_alone"
     },
     {
       "id": "talk_together",
       "emoji": "👥",
       "phrase": "같이 있고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "같이 있고 싶어요",
+      "meaning_ko": "곁에 누군가 있으면 좋겠어요",
+      "therapy_tag": "AAC",
+      "scene": "talk_together"
     },
     {
       "id": "talk_yes",
       "emoji": "👍",
       "phrase": "네·좋아요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "네 / 좋아요",
+      "meaning_ko": "동의·수락",
+      "therapy_tag": "AAC",
+      "scene": "talk_yes"
     },
     {
       "id": "talk_no",
       "emoji": "👎",
       "phrase": "아니요·싫어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "아니요 / 싫어요",
+      "meaning_ko": "거절·싫음",
+      "therapy_tag": "AAC",
+      "scene": "talk_no"
     },
     {
       "id": "talk_stop",
       "emoji": "✋",
       "phrase": "그만·멈춰",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "그만 / 멈춰요",
+      "meaning_ko": "지금 활동을 멈춰 주세요",
+      "therapy_tag": "AAC",
+      "scene": "talk_stop"
     },
     {
       "id": "talk_wait",
       "emoji": "⏳",
       "phrase": "기다려 주세요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "기다려 주세요",
+      "meaning_ko": "시간이 더 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_wait"
     },
     {
       "id": "talk_thanks",
       "emoji": "🙏",
       "phrase": "고마워요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "고마워요",
+      "meaning_ko": "감사의 마음",
+      "therapy_tag": "AAC",
+      "scene": "talk_thanks"
     },
     {
       "id": "talk_help_me",
       "emoji": "🆘",
       "phrase": "도와주세요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "도와주세요",
+      "meaning_ko": "도움이 필요해요",
+      "therapy_tag": "안전",
+      "scene": "talk_help_me"
     },
     {
       "id": "talk_scared",
       "emoji": "😨",
       "phrase": "무서워요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "무서워요",
+      "meaning_ko": "두렵고 불안해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_scared"
     },
     {
       "id": "talk_bored",
       "emoji": "😑",
       "phrase": "심심해요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "심심해요",
+      "meaning_ko": "자극·활동이 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_bored"
     },
     {
       "id": "talk_rest",
       "emoji": "🛏️",
       "phrase": "자고 싶어요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "자고 싶어요",
+      "meaning_ko": "휴식·수면이 필요해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_rest"
     },
     {
       "id": "talk_love",
       "emoji": "💕",
       "phrase": "사랑해요·좋아해요",
-      "category": "talk"
+      "category": "talk",
+      "label_ko": "좋아해요",
+      "meaning_ko": "애정·호감을 전해요",
+      "therapy_tag": "AAC",
+      "scene": "talk_love"
     },
     {
       "id": "card_sun",
       "emoji": "☀️",
       "phrase": "밝음·희망",
-      "category": "card"
+      "category": "card",
+      "label_ko": "태양 · 밝음",
+      "meaning_ko": "희망과 생기 상징",
+      "therapy_tag": "상징치료",
+      "scene": "card_sun"
     },
     {
       "id": "card_moon",
       "emoji": "🌙",
       "phrase": "조용·꿈",
-      "category": "card"
+      "category": "card",
+      "label_ko": "달 · 고요",
+      "meaning_ko": "휴식과 내면의 꿈",
+      "therapy_tag": "상징치료",
+      "scene": "card_moon"
     },
     {
       "id": "card_star",
       "emoji": "⭐",
       "phrase": "희망·치유",
-      "category": "card"
+      "category": "card",
+      "label_ko": "별 · 치유",
+      "meaning_ko": "회복과 희망의 별",
+      "therapy_tag": "상징치료",
+      "scene": "card_star"
     },
     {
       "id": "card_heart",
       "emoji": "❤️",
       "phrase": "사랑·마음",
-      "category": "card"
+      "category": "card",
+      "label_ko": "하트 · 마음",
+      "meaning_ko": "사랑과 연결",
+      "therapy_tag": "상징치료",
+      "scene": "card_heart"
     },
     {
       "id": "card_tree",
       "emoji": "🌳",
       "phrase": "성장·힘",
-      "category": "card"
+      "category": "card",
+      "label_ko": "나무 · 성장",
+      "meaning_ko": "뿌리 내린 힘과 성장",
+      "therapy_tag": "상징치료",
+      "scene": "card_tree"
     },
     {
       "id": "card_path",
       "emoji": "🛤️",
       "phrase": "새 길",
-      "category": "card"
+      "category": "card",
+      "label_ko": "길 · 시작",
+      "meaning_ko": "새로운 선택의 길",
+      "therapy_tag": "상징치료",
+      "scene": "card_path"
     },
     {
       "id": "help_1393",
       "emoji": "📞",
       "phrase": "1393 자살예방",
       "category": "help",
+      "label_ko": "1393 전화",
+      "meaning_ko": "자살예방 상담전화",
+      "therapy_tag": "위기개입",
+      "scene": "help_1393",
       "tel": "1393"
     },
     {
@@ -284,6 +469,10 @@
       "emoji": "🚑",
       "phrase": "119 응급",
       "category": "help",
+      "label_ko": "119 응급",
+      "meaning_ko": "응급 구조·의료",
+      "therapy_tag": "위기개입",
+      "scene": "help_119",
       "tel": "119"
     },
     {
@@ -291,13 +480,21 @@
       "emoji": "💚",
       "phrase": "129 마음 crisis",
       "category": "help",
+      "label_ko": "129 정신건강",
+      "meaning_ko": "정신건강 위기상담",
+      "therapy_tag": "위기개입",
+      "scene": "help_129",
       "tel": "129"
     },
     {
       "id": "help_caregiver",
       "emoji": "👨‍👩‍👧",
       "phrase": "보호자·돌봄이",
-      "category": "help"
+      "category": "help",
+      "label_ko": "보호자 알림",
+      "meaning_ko": "돌보는 사람에게 도움 요청",
+      "therapy_tag": "위기개입",
+      "scene": "help_caregiver"
     }
   ],
   "mood_presets": [
@@ -363,7 +560,7 @@
     "help_129",
     "help_caregiver"
   ],
-  "bundle_version": 1,
+  "bundle_version": 2,
   "card_replies": {
     "card_sun": "오늘은 밝은 기운이 가까이 있어요. 천천히 숨 쉬어 보세요.",
     "card_moon": "조용한 밤처럼 쉬어도 괜찮아요. 꿈과 마음을 천천히 들여다봐요.",
