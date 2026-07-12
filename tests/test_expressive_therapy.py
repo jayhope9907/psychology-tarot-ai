@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services.expressive_therapy import MODES, SCHOLARS, expressive_catalog
+from app.services.expressive_therapy import MODES, expressive_catalog
 from app.services.persona_router import route_clinical_persona
 
 
@@ -10,11 +10,12 @@ client = TestClient(app)
 
 def test_expressive_catalog_has_modes_and_scholars():
     catalog = expressive_catalog()
-    assert len(catalog["modes"]) == 3
+    assert len(catalog["modes"]) >= 6
     assert {m["mode_id"] for m in catalog["modes"]} == set(MODES.keys())
-    assert len(SCHOLARS) >= 4
+    assert len(catalog["scholars"]) >= 4
     names = {s["id"] for s in catalog["scholars"]}
-    assert {"moreno", "perls", "emunah", "jones"} <= names
+    assert {"moreno", "perls", "naumburg", "kramer"} <= names
+    assert len(catalog.get("art_techniques") or []) >= 8
 
 
 def test_expressive_catalog_api():

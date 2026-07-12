@@ -3,15 +3,16 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.models.clinical import ClinicalSchool
+from app.services.theory_extensions import EXTRA_THEORIES, EXTRA_USER_LABELS
 
 THEORY_CATEGORIES: Dict[str, str] = {
-    "humanistic": "인본주의 · 존재",
-    "cognitive_behavioral": "인지 · 행동",
-    "psychodynamic": "정신역동 · 분석",
-    "systemic": "관계 · 체계",
+    "humanistic": "인본주의 · 존재 · 의미",
+    "cognitive_behavioral": "인지 · 행동 · 스키마",
+    "psychodynamic": "정신역동 · 분석 · 교류",
+    "systemic": "관계 · 가족 · 애착",
     "brief_emotion": "단기 · 감정 · 트라우마",
-    "expressive": "표현 · 역할 · 연극",
-    "integrative": "통합 · 마음챙김",
+    "expressive": "표현 · 예술 · 놀이",
+    "integrative": "통합 · 마음챙김 · 맥락",
 }
 
 USER_CATEGORY_LABELS: Dict[str, str] = {
@@ -20,8 +21,8 @@ USER_CATEGORY_LABELS: Dict[str, str] = {
     "psychodynamic": "마음 깊이",
     "systemic": "관계·가족",
     "brief_emotion": "감정·변화",
-    "expressive": "표현·역할",
-    "integrative": "맞춤 상담",
+    "expressive": "표현·예술",
+    "integrative": "맞춤·맥락",
 }
 
 USER_THEORY_LABELS: Dict[ClinicalSchool, Dict[str, str]] = {
@@ -47,6 +48,7 @@ USER_THEORY_LABELS: Dict[ClinicalSchool, Dict[str, str]] = {
     ClinicalSchool.DRAMA_THERAPY: {"user_label": "연극·표현 상담", "user_short_label": "연극치료"},
     ClinicalSchool.INTEGRATIVE: {"user_label": "맞춤 상담", "user_short_label": "맞춤"},
 }
+USER_THEORY_LABELS.update(EXTRA_USER_LABELS)
 
 THEORY_CATALOG: Dict[ClinicalSchool, Dict[str, Any]] = {
     ClinicalSchool.ROGERIAN: {
@@ -401,6 +403,7 @@ THEORY_CATALOG: Dict[ClinicalSchool, Dict[str, Any]] = {
         "weight_profile": {"empathy": 0.75, "interpretation": 0.55, "structure": 0.55, "confrontation": 0.25},
     },
 }
+THEORY_CATALOG.update(EXTRA_THEORIES)
 
 
 def get_theory_meta(school: ClinicalSchool) -> Dict[str, Any]:
@@ -469,6 +472,32 @@ def list_theories_for_api() -> List[Dict[str, Any]]:
             }
         )
     return items
+
+
+def list_all_techniques_for_api() -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for school, meta in THEORY_CATALOG.items():
+        for tech in meta.get("techniques") or []:
+            rows.append(
+                {
+                    "school": school.value,
+                    "school_label": meta["label"],
+                    "category": meta["category"],
+                    "technique": tech,
+                    "founder": meta.get("founder"),
+                }
+            )
+    return rows
+
+
+def corpus_summary() -> Dict[str, Any]:
+    techniques = list_all_techniques_for_api()
+    return {
+        "school_count": len(THEORY_CATALOG),
+        "category_count": len(THEORY_CATEGORIES),
+        "technique_count": len(techniques),
+        "categories": list_categories_for_api(),
+    }
 
 
 def list_categories_for_api() -> List[Dict[str, str]]:

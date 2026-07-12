@@ -863,6 +863,7 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "agent_lab": "/agent-lab",
         "case_notes": "/case-notes",
         "expressive": "/expressive",
+        "theories": "/theories",
         "picto": "/picto",
         "clinical": "/clinical",
         "picture_assessment": "/picture-assessment",
@@ -899,6 +900,7 @@ async def health_check(request: Request):
             "에이전트 랩": urls.get("agent_lab", "/agent-lab"),
             "케이스 노트": urls.get("case_notes", "/case-notes"),
             "표현·역할": urls.get("expressive", "/expressive"),
+            "이론·학자": urls.get("theories", "/theories"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
     }
@@ -966,6 +968,14 @@ async def expressive_ui():
     if path.exists():
         return FileResponse(str(path))
     raise HTTPException(status_code=404, detail="Expressive therapy UI not found")
+
+
+@app.get("/theories")
+async def theories_ui():
+    path = STATIC_DIR / "theories.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Theories hub not found")
 
 
 @app.get("/legal")
@@ -1660,6 +1670,36 @@ async def expressive_catalog_api():
     from app.services.expressive_therapy import expressive_catalog
 
     return expressive_catalog()
+
+
+@app.get("/api/v1/theories/corpus")
+async def theories_corpus_api():
+    from app.services.counseling_theories import corpus_summary, list_all_techniques_for_api, list_theories_for_api
+    from app.services.scholars_catalog import scholars_corpus
+
+    scholars = scholars_corpus()
+    return {
+        **corpus_summary(),
+        "theories": list_theories_for_api(),
+        "techniques": list_all_techniques_for_api(),
+        "scholars": scholars["scholars"],
+        "art_techniques": scholars["art_techniques"],
+        "scholar_count": scholars["scholar_count"],
+        "disclaimer": scholars["disclaimer"],
+    }
+
+
+@app.get("/api/v1/scholars")
+async def scholars_api(school: Optional[str] = None, q: Optional[str] = None):
+    from app.services.scholars_catalog import list_art_techniques, list_scholars, scholars_corpus
+
+    summary = scholars_corpus()
+    return {
+        "scholars": list_scholars(school=school, query=q),
+        "art_techniques": list_art_techniques(),
+        "scholar_count": summary["scholar_count"],
+        "disclaimer": summary["disclaimer"],
+    }
 
 
 @app.post("/api/v1/expressive/start")

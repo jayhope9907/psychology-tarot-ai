@@ -4,28 +4,62 @@ from enum import Enum
 
 
 class ClinicalSchool(str, Enum):
-    """Major counseling theories and evidence-based approaches."""
+    """Major counseling psychology theories and creative arts therapies."""
 
+    # Humanistic / existential
     ROGERIAN = "ROGERIAN"
-    BECK_CBT = "BECK_CBT"
-    FREUDIAN = "FREUDIAN"
-    ADLERIAN = "ADLERIAN"
     GESTALT = "GESTALT"
     EXISTENTIAL = "EXISTENTIAL"
+    LOGOTHERAPY = "LOGOTHERAPY"
+
+    # Cognitive · behavioral
+    BECK_CBT = "BECK_CBT"
+    REBT = "REBT"
     REALITY_THERAPY = "REALITY_THERAPY"
-    SOLUTION_FOCUSED = "SOLUTION_FOCUSED"
-    NARRATIVE = "NARRATIVE"
-    EFT = "EFT"
     DBT = "DBT"
     ACT = "ACT"
-    MOTIVATIONAL = "MOTIVATIONAL"
-    IPT = "IPT"
+    SCHEMA_THERAPY = "SCHEMA_THERAPY"
+    MBCT = "MBCT"
+    CFT = "CFT"
+
+    # Psychodynamic · analytic
+    FREUDIAN = "FREUDIAN"
+    ADLERIAN = "ADLERIAN"
     JUNGIAN = "JUNGIAN"
+    OBJECT_RELATIONS = "OBJECT_RELATIONS"
+    SELF_PSYCHOLOGY = "SELF_PSYCHOLOGY"
+    TRANSACTIONAL_ANALYSIS = "TRANSACTIONAL_ANALYSIS"
+
+    # Systemic · relational
+    NARRATIVE = "NARRATIVE"
+    IPT = "IPT"
     BOWEN_SYSTEMS = "BOWEN_SYSTEMS"
+    STRUCTURAL_FAMILY = "STRUCTURAL_FAMILY"
+    SATIR = "SATIR"
+    STRATEGIC_FAMILY = "STRATEGIC_FAMILY"
+    ATTACHMENT = "ATTACHMENT"
+    EFT = "EFT"
+
+    # Brief · emotion · trauma
+    SOLUTION_FOCUSED = "SOLUTION_FOCUSED"
+    MOTIVATIONAL = "MOTIVATIONAL"
     TRAUMA_INFORMED = "TRAUMA_INFORMED"
-    MINDFULNESS = "MINDFULNESS"
+    EMDR_INFORMED = "EMDR_INFORMED"
+
+    # Expressive · creative arts
     PSYCHODRAMA = "PSYCHODRAMA"
     DRAMA_THERAPY = "DRAMA_THERAPY"
+    ART_THERAPY = "ART_THERAPY"
+    MUSIC_THERAPY = "MUSIC_THERAPY"
+    DANCE_MOVEMENT = "DANCE_MOVEMENT"
+    PLAY_THERAPY = "PLAY_THERAPY"
+    SANDPLAY = "SANDPLAY"
+
+    # Integrative · contextual
+    MINDFULNESS = "MINDFULNESS"
+    POSITIVE_PSYCHOLOGY = "POSITIVE_PSYCHOLOGY"
+    FEMINIST = "FEMINIST"
+    MULTICULTURAL = "MULTICULTURAL"
     INTEGRATIVE = "INTEGRATIVE"
 
 

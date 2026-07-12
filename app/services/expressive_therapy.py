@@ -10,11 +10,42 @@ from app.models.clinical import ClinicalSchool
 STORE_KEY = "expressive_therapy"
 
 DISCLAIMER_KO = (
-    "표현·역할·연극 기법은 자기성찰·교육용 가이드입니다. "
-    "정식 사이코드라마·연극치료를 대체하지 않으며, 힘들면 언제든 멈출 수 있습니다."
+    "표현·역할·연극·미술 기법은 자기성찰·교육용 가이드입니다. "
+    "정식 사이코드라마·연극·미술치료를 대체하지 않으며, 힘들면 언제든 멈출 수 있습니다."
 )
 
-SCHOLARS = [
+
+def _expressive_scholars() -> List[Dict[str, Any]]:
+    try:
+        from app.services.scholars_catalog import list_scholars
+
+        schools = {
+            ClinicalSchool.PSYCHODRAMA.value,
+            ClinicalSchool.DRAMA_THERAPY.value,
+            ClinicalSchool.GESTALT.value,
+            ClinicalSchool.ART_THERAPY.value,
+            ClinicalSchool.MUSIC_THERAPY.value,
+            ClinicalSchool.DANCE_MOVEMENT.value,
+            ClinicalSchool.PLAY_THERAPY.value,
+            ClinicalSchool.SANDPLAY.value,
+        }
+        return [
+            {
+                "id": s["id"],
+                "name": s["name"],
+                "name_ko": s["name_ko"],
+                "school": s["school"],
+                "focus": s["focus"],
+                "techniques": s.get("techniques") or [],
+            }
+            for s in list_scholars()
+            if s["school"] in schools
+        ]
+    except Exception:
+        return []
+
+
+SCHOLARS = _expressive_scholars() or [
     {
         "id": "moreno",
         "name": "Jacob L. Moreno",
@@ -22,30 +53,6 @@ SCHOLARS = [
         "school": ClinicalSchool.PSYCHODRAMA.value,
         "focus": "사이코드라마 · 역할극 · 자발성",
         "techniques": ["역할극", "역할 바꾸기", "더블링", "미러링", "장면 구성"],
-    },
-    {
-        "id": "perls",
-        "name": "Fritz Perls",
-        "name_ko": "프리츠 펄스",
-        "school": ClinicalSchool.GESTALT.value,
-        "focus": "게슈탈트 · 빈 의자 · 지금-여기",
-        "techniques": ["빈 의자", "역할 바꾸기", "신체 알아차림"],
-    },
-    {
-        "id": "emunah",
-        "name": "Renee Emunah",
-        "name_ko": "르네 에무나",
-        "school": ClinicalSchool.DRAMA_THERAPY.value,
-        "focus": "연극치료 · 과정 중심 표현",
-        "techniques": ["연극적 거리두기", "즉흥", "감정 외현화"],
-    },
-    {
-        "id": "jones",
-        "name": "Phil Jones",
-        "name_ko": "필 존스",
-        "school": ClinicalSchool.DRAMA_THERAPY.value,
-        "focus": "드라마 테라피 · 상징·몸",
-        "techniques": ["상징 표현", "스토리 만들기", "안전한 종결"],
     },
 ]
 
@@ -218,6 +225,135 @@ MODES: Dict[str, Dict[str, Any]] = {
             },
         ],
     },
+    "art_scribble": {
+        "mode_id": "art_scribble",
+        "title": "미술 · 낙서 기법",
+        "scholar": "Florence Cane / Margaret Naumburg",
+        "school": ClinicalSchool.ART_THERAPY.value,
+        "user_blurb": "잘 그리지 않아도 됩니다. 낙서에서 형태·감정을 발견해요",
+        "duration_hint": "약 8분",
+        "steps": [
+            {
+                "step_id": "safety",
+                "title": "안전·선택",
+                "prompt": "종이나 메모장에 낙서를 해도 괜찮나요? 말로만 상상해도 됩니다.",
+                "input": "choice",
+                "choices": ["그릴게요", "상상으로 할게요", "오늘은 쉴래요"],
+            },
+            {
+                "step_id": "scribble",
+                "title": "낙서하기",
+                "prompt": "30초 정도 자유롭게 선을 그어 보세요(또는 상상). 어떤 느낌이 먼저 왔나요?",
+                "input": "picto",
+            },
+            {
+                "step_id": "find_form",
+                "title": "형태 발견",
+                "prompt": "낙서 속에서 보이는 것(사람·동물·풍경·감정)을 역할 카드나 한 줄로 남겨 보세요.",
+                "input": "role_or_text",
+            },
+            {
+                "step_id": "title",
+                "title": "제목 붙이기",
+                "prompt": "이 그림(상상)에 제목을 붙여 볼까요? 없어도 괜찮아요.",
+                "input": "text_or_picto",
+            },
+            {
+                "step_id": "dialogue",
+                "title": "작품 대화",
+                "prompt": "작품이 나에게 한 마디 한다면? (또는 감정 카드)",
+                "input": "text_or_picto",
+            },
+            {
+                "step_id": "close",
+                "title": "마무리",
+                "prompt": "잘 그렸는지보다, 표현한 자신을 인정해 주세요. 지금 기분은?",
+                "input": "picto",
+            },
+        ],
+    },
+    "art_mandala": {
+        "mode_id": "art_mandala",
+        "title": "미술 · 만다라",
+        "scholar": "Jung / Cathy Malchiodi (미술치료)",
+        "school": ClinicalSchool.ART_THERAPY.value,
+        "user_blurb": "원 안에서 색·무늬로 중심과 경계를 느껴보기",
+        "duration_hint": "약 7분",
+        "steps": [
+            {
+                "step_id": "center",
+                "title": "원 그리기",
+                "prompt": "종이 가운데 원을 그리거나 상상해 보세요. 원의 크기는 어떤가요?",
+                "input": "choice",
+                "choices": ["작게", "적당하게", "크게"],
+            },
+            {
+                "step_id": "color",
+                "title": "색 고르기",
+                "prompt": "지금 마음에 가까운 색·느낌을 카드로 골라 주세요.",
+                "input": "picto",
+            },
+            {
+                "step_id": "fill",
+                "title": "채우기",
+                "prompt": "원 안을 무늬·색으로 채운다고 상상하며, 가장 중요한 한 부분을 적어 보세요.",
+                "input": "text_or_picto",
+            },
+            {
+                "step_id": "edge",
+                "title": "경계 느끼기",
+                "prompt": "원 바깥과 안의 경계에서 느껴지는 감각은?",
+                "input": "picto",
+            },
+            {
+                "step_id": "name",
+                "title": "이름 붙이기",
+                "prompt": "오늘의 만다라에 짧은 이름을 남겨 주세요.",
+                "input": "text_or_picto",
+            },
+        ],
+    },
+    "art_collage": {
+        "mode_id": "art_collage",
+        "title": "미술 · 콜라주 · 색채",
+        "scholar": "Helen Landgarten / Edith Kramer",
+        "school": ClinicalSchool.ART_THERAPY.value,
+        "user_blurb": "이미지·색 조각으로 ‘지금의 나’ 장면을 모아보기",
+        "duration_hint": "약 8분",
+        "steps": [
+            {
+                "step_id": "theme",
+                "title": "주제",
+                "prompt": "오늘 콜라주의 주제를 골라 보세요.",
+                "input": "role",
+            },
+            {
+                "step_id": "pieces",
+                "title": "조각 모으기",
+                "prompt": "넣고 싶은 이미지·색·단어를 떠올려 한두 개 남겨 보세요.",
+                "input": "text_or_picto",
+            },
+            {
+                "step_id": "arrange",
+                "title": "배치",
+                "prompt": "가운데 / 가장자리 / 겹침 중 어디에 두고 싶나요?",
+                "input": "choice",
+                "choices": ["가운데", "가장자리", "겹쳐서", "흩어져"],
+            },
+            {
+                "step_id": "feel",
+                "title": "느낌",
+                "prompt": "완성된 장면을 볼 때 마음은?",
+                "input": "picto",
+            },
+            {
+                "step_id": "message",
+                "title": "나에게 남기기",
+                "prompt": "이 콜라주가 나에게 전하는 한 줄(또는 카드).",
+                "input": "text_or_picto",
+            },
+        ],
+    },
 }
 
 
@@ -226,11 +362,15 @@ def _utc_now() -> str:
 
 
 def expressive_catalog() -> Dict[str, Any]:
+    from app.services.scholars_catalog import list_art_techniques
+
+    scholars = _expressive_scholars() or SCHOLARS
     return {
-        "title": "표현·역할·연극 연습",
-        "subtitle": "말이나 글이 어려울 때, 역할·빈 의자·상징으로 마음을 표현해 보세요",
+        "title": "표현 · 역할 · 연극 · 미술",
+        "subtitle": "말이나 글이 어려울 때, 역할·빈 의자·상징·미술로 마음을 표현해 보세요",
         "disclaimer": DISCLAIMER_KO,
-        "scholars": SCHOLARS,
+        "scholars": scholars,
+        "art_techniques": list_art_techniques(),
         "role_cards": ROLE_CARDS,
         "picto_responses": PIC_RESPONSES,
         "modes": [
@@ -334,7 +474,7 @@ def advance_expressive_step(
     current = steps[idx]
     resp = response or {}
     # safety: picto stop
-    if resp.get("picto_id") == "stop" or resp.get("choice") == "오늘은 쉬고 싶어요":
+    if resp.get("picto_id") == "stop" or resp.get("choice") in ("오늘은 쉬고 싶어요", "오늘은 쉴래요"):
         return advance_expressive_step(session, expressive_session_id=expressive_session_id, stop=True)
 
     state["responses"].append(

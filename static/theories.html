@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="상담심리학 이론 · 학자 · 미술치료 기법 전체 카탈로그" />
+  <title>마음쉼터 · 이론·학자·미술치료</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #12161a;
+      --panel: #1a2229;
+      --ink: #eef2f6;
+      --muted: rgba(238,242,246,0.6);
+      --line: rgba(140,170,190,0.25);
+      --accent: #7eb0c8;
+      --warm: #d4a574;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans KR", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(126,176,200,0.14), transparent 55%),
+        radial-gradient(ellipse 50% 35% at 0% 20%, rgba(212,165,116,0.1), transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 18px 14px 80px; }
+    nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.82rem; margin-left: 12px; }
+    .logo { color: var(--ink); font-weight: 700; text-decoration: none; margin-left: 0 !important; }
+    h1 { font-family: "Fraunces", serif; font-size: clamp(1.4rem, 4vw, 1.9rem); margin: 0 0 8px; }
+    .lead { color: var(--muted); margin: 0 0 12px; font-size: 0.9rem; }
+    .notice {
+      padding: 10px 12px; border-radius: 12px; margin-bottom: 14px; font-size: 0.78rem; color: var(--muted);
+      background: rgba(126,176,200,0.1); border: 1px solid var(--line);
+    }
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .stat {
+      padding: 8px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--line);
+    }
+    .stat em { color: var(--warm); font-style: normal; }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .tab {
+      border: 1px solid var(--line); background: transparent; color: var(--muted);
+      border-radius: 999px; padding: 8px 12px; font: inherit; cursor: pointer;
+    }
+    .tab.active { background: rgba(126,176,200,0.2); color: var(--ink); border-color: var(--accent); }
+    input[type="search"] {
+      width: 100%; max-width: 420px; border-radius: 10px; border: 1px solid var(--line);
+      background: rgba(0,0,0,0.28); color: var(--ink); font: inherit; padding: 10px 12px; margin-bottom: 14px;
+    }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px 14px; margin-bottom: 10px;
+    }
+    .panel h2 { margin: 0 0 4px; font-size: 0.98rem; }
+    .panel .meta { font-size: 0.74rem; color: var(--warm); margin-bottom: 6px; }
+    .panel p { margin: 0; font-size: 0.84rem; color: var(--muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      font-size: 0.7rem; padding: 3px 8px; border-radius: 999px;
+      background: rgba(126,176,200,0.12); color: var(--accent);
+    }
+    .cat { margin: 18px 0 8px; font-size: 0.82rem; color: var(--accent); font-weight: 700; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="/">마음쉼터</a>
+      <div>
+        <a href="/expressive">표현·미술</a>
+        <a href="/clinical">마음 돌보기</a>
+        <a href="/chat">AI 대화</a>
+      </div>
+    </nav>
+    <h1>이론 · 학자 · 미술치료</h1>
+    <p class="lead">상담심리학 이론과 기법, 미술·표현예술 학자를 한곳에서 살펴보세요.</p>
+    <div class="notice" id="disclaimer">불러오는 중…</div>
+    <div class="stats" id="stats"></div>
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="theories">이론</button>
+      <button type="button" class="tab" data-tab="scholars">학자</button>
+      <button type="button" class="tab" data-tab="art">미술 기법</button>
+      <button type="button" class="tab" data-tab="techniques">전체 기법</button>
+    </div>
+    <input type="search" id="search" placeholder="이름·이론·기법 검색" />
+    <div id="viewTheories"></div>
+    <div id="viewScholars" class="hidden"></div>
+    <div id="viewArt" class="hidden"></div>
+    <div id="viewTechniques" class="hidden"></div>
+  </div>
+  <script>
+    let corpus = null;
+    let activeTab = "theories";
+
+    const views = {
+      theories: "viewTheories",
+      scholars: "viewScholars",
+      art: "viewArt",
+      techniques: "viewTechniques",
+    };
+
+    function showTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === tab));
+      Object.entries(views).forEach(([k, id]) => {
+        document.getElementById(id).classList.toggle("hidden", k !== tab);
+      });
+      render();
+    }
+
+    function q() {
+      return (document.getElementById("search").value || "").trim().toLowerCase();
+    }
+
+    function match(blob) {
+      const s = q();
+      return !s || blob.toLowerCase().includes(s);
+    }
+
+    function renderTheories() {
+      const box = document.getElementById("viewTheories");
+      const byCat = {};
+      (corpus.theories || []).forEach((t) => {
+        if (!match([t.label, t.user_label, t.founder, t.subtitle, ...(t.techniques || [])].join(" "))) return;
+        (byCat[t.category_label] ||= []).push(t);
+      });
+      box.innerHTML = Object.entries(byCat).map(([cat, items]) => `
+        <div class="cat">${cat}</div>
+        ${items.map((t) => `
+          <div class="panel">
+            <div class="meta">${t.founder || ""} · ${t.school}</div>
+            <h2>${t.user_label} <span style="font-weight:500;color:var(--muted);font-size:0.85em">/ ${t.label}</span></h2>
+            <p>${t.subtitle}</p>
+            <div class="chips">${(t.techniques || []).map((x) => `<span class="chip">${x}</span>`).join("")}</div>
+          </div>
+        `).join("")}
+      `).join("") || "<p class='lead'>검색 결과가 없어요.</p>";
+    }
+
+    function renderScholars() {
+      const box = document.getElementById("viewScholars");
+      const items = (corpus.scholars || []).filter((s) =>
+        match([s.name, s.name_ko, s.focus, s.school, ...(s.techniques || [])].join(" "))
+      );
+      box.innerHTML = items.map((s) => `
+        <div class="panel">
+          <div class="meta">${s.school} · ${s.era || ""}</div>
+          <h2>${s.name_ko} <span style="font-weight:500;color:var(--muted);font-size:0.85em">/ ${s.name}</span></h2>
+          <p>${s.focus}</p>
+          <div class="chips">${(s.techniques || []).map((x) => `<span class="chip">${x}</span>`).join("")}</div>
+        </div>
+      `).join("") || "<p class='lead'>검색 결과가 없어요.</p>";
+    }
+
+    function renderArt() {
+      const box = document.getElementById("viewArt");
+      const items = (corpus.art_techniques || []).filter((t) =>
+        match([t.name, t.name_en, t.blurb].join(" "))
+      );
+      box.innerHTML = items.map((t) => `
+        <div class="panel">
+          <div class="meta">${t.name_en}</div>
+          <h2>${t.name}</h2>
+          <p>${t.blurb}</p>
+          <div class="chips">${(t.scholar_details || []).map((s) => `<span class="chip">${s.name_ko}</span>`).join("")}</div>
+        </div>
+      `).join("") + `
+        <p style="margin-top:14px"><a href="/expressive" style="color:var(--warm)">표현·미술 연습 시작 →</a></p>
+      `;
+    }
+
+    function renderTechniques() {
+      const box = document.getElementById("viewTechniques");
+      const items = (corpus.techniques || []).filter((t) =>
+        match([t.technique, t.school_label, t.founder || ""].join(" "))
+      );
+      box.innerHTML = items.slice(0, 300).map((t) => `
+        <div class="panel">
+          <div class="meta">${t.school_label} · ${t.founder || ""}</div>
+          <h2>${t.technique}</h2>
+        </div>
+      `).join("") || "<p class='lead'>검색 결과가 없어요.</p>";
+    }
+
+    function render() {
+      if (!corpus) return;
+      if (activeTab === "theories") renderTheories();
+      if (activeTab === "scholars") renderScholars();
+      if (activeTab === "art") renderArt();
+      if (activeTab === "techniques") renderTechniques();
+    }
+
+    document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab)));
+    document.getElementById("search").addEventListener("input", render);
+
+    fetch("/api/v1/theories/corpus")
+      .then((r) => r.json())
+      .then((data) => {
+        corpus = data;
+        document.getElementById("disclaimer").textContent = data.disclaimer || "";
+        document.getElementById("stats").innerHTML = `
+          <span class="stat">이론 <em>${data.school_count}</em></span>
+          <span class="stat">학자 <em>${data.scholar_count}</em></span>
+          <span class="stat">기법 <em>${data.technique_count}</em></span>
+          <span class="stat">미술기법 <em>${(data.art_techniques || []).length}</em></span>
+        `;
+        render();
+      })
+      .catch(() => {
+        document.getElementById("disclaimer").textContent = "목록을 불러오지 못했어요. 새로고침 해 주세요.";
+      });
+  </script>
+</body>
+</html>

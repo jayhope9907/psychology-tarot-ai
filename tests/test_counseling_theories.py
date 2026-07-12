@@ -4,7 +4,7 @@ from app.services.persona_router import route_clinical_persona
 
 
 def test_theory_catalog_covers_major_approaches():
-    assert len(THEORY_CATALOG) >= 18
+    assert len(THEORY_CATALOG) >= 40
     schools = {item["school"] for item in list_theories_for_api()}
     for expected in (
         "ROGERIAN",
@@ -18,6 +18,11 @@ def test_theory_catalog_covers_major_approaches():
         "INTEGRATIVE",
         "PSYCHODRAMA",
         "DRAMA_THERAPY",
+        "ART_THERAPY",
+        "REBT",
+        "SCHEMA_THERAPY",
+        "ATTACHMENT",
+        "PLAY_THERAPY",
     ):
         assert expected in schools
 
