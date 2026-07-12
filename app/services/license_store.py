@@ -27,6 +27,16 @@ DEMO_LICENSES: Dict[str, Dict[str, Any]] = {
         "tier_id": LicenseTier.FEDERATION.value,
         "secondary_discipline": AssociationDiscipline.PSYCHOLOGY.value,
     },
+    "MSHT-CLINICAL-DEMO-2026": {
+        "org_name": "데모 · 임상심리 수련기관",
+        "discipline_id": AssociationDiscipline.CLINICAL_PSYCH_TRAINEE.value,
+        "tier_id": LicenseTier.SOCIETY.value,
+    },
+    "MSHT-MHSW-DEMO-2026": {
+        "org_name": "데모 · 정신보건사회복지 수련기관",
+        "discipline_id": AssociationDiscipline.MH_SOCIAL_WORK.value,
+        "tier_id": LicenseTier.SOCIETY.value,
+    },
 }
 
 

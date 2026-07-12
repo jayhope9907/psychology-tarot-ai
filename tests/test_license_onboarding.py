@@ -27,6 +27,22 @@ def test_build_association_agent_psychiatry():
     assert "trauma" in agent["case_bias"]
 
 
+def test_build_association_agent_trainee_tracks():
+    clinical = resolve_entitlements(
+        AssociationDiscipline.CLINICAL_PSYCH_TRAINEE.value, LicenseTier.SOCIETY.value
+    )
+    agent_c = build_association_agent(clinical, org_name="수련원 A")
+    assert "임상심리" in agent_c["agent_name"]
+    assert agent_c["preferred_school"] == "BECK_CBT"
+
+    mhsw = resolve_entitlements(
+        AssociationDiscipline.MH_SOCIAL_WORK.value, LicenseTier.SOCIETY.value
+    )
+    agent_m = build_association_agent(mhsw)
+    assert "사례관리" in agent_m["agent_name"]
+    assert agent_m["preferred_school"] == "MOTIVATIONAL"
+
+
 def test_provision_license_seeds_agent_and_cases():
     reset_db()
     result = provision_license(

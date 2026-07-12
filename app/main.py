@@ -204,6 +204,13 @@ class ChatStreamRequest(BaseModel):
     homework_response: Optional[Dict[str, Any]] = None
     preferred_school: Optional[ClinicalSchool] = None
     association_license: Optional[str] = None
+    image_data_url: Optional[str] = None
+    image_search: bool = False
+
+
+class ImageSearchRequest(BaseModel):
+    query: str
+    limit: int = 8
 
 
 class AssociationLicenseRequest(BaseModel):
@@ -1788,6 +1795,8 @@ async def chat_stream(request: ChatStreamRequest):
                 assessment_response=request.assessment_response,
                 homework_response=request.homework_response,
                 preferred_school=request.preferred_school,
+                image_data_url=request.image_data_url,
+                image_search=bool(request.image_search),
             ):
                 if event["event"] == "done":
                     profile_delta = event["data"].get("profile_delta") or {}
@@ -1815,6 +1824,15 @@ async def chat_stream(request: ChatStreamRequest):
 
     return EventSourceResponse(event_generator())
 
+
+@app.post("/api/v1/chat/image-search")
+async def chat_image_search(request: ImageSearchRequest):
+    from app.services.image_search import search_images
+
+    query = (request.query or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="query_required")
+    return await search_images(query, limit=request.limit)
 
 @app.post("/api/v1/therapy/read")
 async def therapy_read(request: ConsultationRequest):

@@ -20,6 +20,8 @@ DISCIPLINE_DEFAULT_CASES: Dict[str, Tuple[str, ...]] = {
     AssociationDiscipline.COUNSELING.value: ("relational", "depressive", "general_distress"),
     AssociationDiscipline.PSYCHOLOGY.value: ("depressive", "anxiety", "cognitive_behavioral"),
     AssociationDiscipline.PSYCHIATRY.value: ("trauma", "anxiety", "sleep"),
+    AssociationDiscipline.CLINICAL_PSYCH_TRAINEE.value: ("depressive", "anxiety", "cognitive_behavioral"),
+    AssociationDiscipline.MH_SOCIAL_WORK.value: ("stress_adjustment", "general_distress", "relational"),
     AssociationDiscipline.INTEGRATIVE.value: ("general_distress", "stress_adjustment", "relational"),
 }
 

@@ -1568,6 +1568,110 @@
       box-shadow: none;
     }
 
+    .composer-tools {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .composer-tool {
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.7);
+      color: var(--text-soft);
+      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 1.05rem;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .composer-tool:hover { border-color: var(--accent-light); color: var(--accent); }
+    .composer-tool.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .attach-preview {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .attach-preview.show { display: flex; }
+    .attach-preview img {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .attach-preview .meta { flex: 1; min-width: 0; font-size: 0.78rem; color: var(--text-soft); }
+    .attach-preview .meta strong { display: block; color: var(--text); margin-bottom: 2px; }
+    .attach-preview button {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .image-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+      max-width: 520px;
+    }
+
+    .image-gallery a {
+      display: block;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #f4f1ec;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .image-gallery img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+      background: #ebe6de;
+    }
+
+    .image-gallery .cap {
+      font-size: 0.62rem;
+      padding: 6px 7px;
+      color: var(--text-muted);
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bubble.user .user-photo {
+      display: block;
+      max-width: 220px;
+      max-height: 220px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      object-fit: cover;
+    }
+
     .composer-meta {
       display: flex;
       justify-content: space-between;
@@ -1926,18 +2030,30 @@
       </div>
 
       <footer class="composer-wrap">
+        <div class="attach-preview" id="attachPreview" hidden>
+          <img id="attachPreviewImg" alt="첨부 미리보기" />
+          <div class="meta">
+            <strong>사진 첨부됨</strong>
+            <span>AI가 사진을 함께 보고 이야기해요</span>
+          </div>
+          <button type="button" id="attachClear">제거</button>
+        </div>
         <form class="composer" id="chatForm">
+          <div class="composer-tools">
+            <button type="button" class="composer-tool" id="btnAttachPhoto" title="사진 첨부" aria-label="사진 첨부">🖼</button>
+            <button type="button" class="composer-tool" id="btnImageSearch" title="사진 검색" aria-label="사진 검색" aria-pressed="false">🔍</button>
+            <input type="file" id="photoInput" accept="image/*" hidden />
+          </div>
           <textarea
             id="messageInput"
             rows="1"
-            placeholder="지금 떠오르는 마음을 적어주세요…"
+            placeholder="마음 이야기, 또는 사진 검색어를 적어주세요…"
             aria-label="메시지 입력"
-            required
           ></textarea>
           <button class="send" id="sendButton" type="submit">보내기</button>
         </form>
         <div class="composer-meta">
-          <p class="composer-hint">Enter · 전송 &nbsp;·&nbsp; Shift+Enter · 줄바꿈</p>
+          <p class="composer-hint" id="composerHint">Enter · 전송 &nbsp;·&nbsp; 🖼 사진 첨부 &nbsp;·&nbsp; 🔍 사진 검색</p>
           <p class="safety">위기 시 1393 · 119 · 129 · 1577-0199 · <a href="/legal#disclaimer" style="color:inherit">비의료 웰니스</a></p>
         </div>
       </footer>
@@ -2453,7 +2569,7 @@
       refreshPsychProfile();
     }
 
-    function appendUserMessage(text, skipScroll = false) {
+    function appendUserMessage(text, skipScroll = false, imageDataUrl = null) {
       hideEmptyState();
       const row = document.createElement("div");
       row.className = "message-row user";
@@ -2463,9 +2579,59 @@
           <div class="bubble user"></div>
         </div>
       `;
-      row.querySelector(".bubble").textContent = text;
+      const bubble = row.querySelector(".bubble");
+      if (imageDataUrl) {
+        const img = document.createElement("img");
+        img.className = "user-photo";
+        img.src = imageDataUrl;
+        img.alt = "첨부한 사진";
+        bubble.appendChild(img);
+      }
+      if (text) {
+        const span = document.createElement("div");
+        span.textContent = text;
+        bubble.appendChild(span);
+      }
       messagesEl.appendChild(row);
       if (!skipScroll) scrollToBottom();
+    }
+
+    function renderImageGallery(payload) {
+      hideEmptyState();
+      const results = payload?.results || [];
+      const row = document.createElement("div");
+      row.className = "message-row assistant";
+      const stack = document.createElement("div");
+      stack.className = "message-stack";
+      stack.innerHTML = `<span class="sender">${COUNSELOR_NAME} · 사진 검색 · ${nowTime()}</span>`;
+      const wrap = document.createElement("div");
+      wrap.className = "bubble assistant";
+      if (!results.length) {
+        wrap.textContent = `'${payload?.query || ""}' 관련 사진을 찾지 못했어요. 검색어를 조금 바꿔 볼까요?`;
+      } else {
+        const title = document.createElement("div");
+        title.textContent = `'${payload.query}' 관련 사진 ${results.length}장`;
+        wrap.appendChild(title);
+        const grid = document.createElement("div");
+        grid.className = "image-gallery";
+        results.forEach((item) => {
+          const a = document.createElement("a");
+          a.href = item.page_url || item.url;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          a.innerHTML = `<img src="${item.thumb_url || item.url}" alt="${(item.title || "사진").replace(/"/g, "")}" loading="lazy" /><div class="cap">${item.title || "사진"}</div>`;
+          grid.appendChild(a);
+        });
+        wrap.appendChild(grid);
+        const note = document.createElement("div");
+        note.style.cssText = "margin-top:8px;font-size:0.68rem;opacity:0.7";
+        note.textContent = "출처: Wikimedia Commons · 클릭하면 원본으로 이동";
+        wrap.appendChild(note);
+      }
+      stack.appendChild(wrap);
+      row.appendChild(stack);
+      messagesEl.appendChild(row);
+      scrollToBottom();
     }
 
     function appendAssistantMessage(text, skipScroll = false) {
@@ -3327,6 +3493,7 @@
           }
           if (event === "homework") renderHomeworkCard(data);
           if (event === "crisis") showCrisisModal(data.resources);
+          if (event === "image_results") renderImageGallery(data);
           if (event === "token") {
             if (!gotToken) {
               hideTyping();
@@ -3393,8 +3560,12 @@
       return softMap[label] || (label ? `${label}` : "답해 주셔서 고마워요.");
     }
 
-    async function submitMessage(message, assessmentResponse = null, homeworkResponse = null) {
-      if (!assessmentResponse && !homeworkResponse) appendUserMessage(message);
+    async function submitMessage(message, assessmentResponse = null, homeworkResponse = null, options = {}) {
+      const imageDataUrl = options.image_data_url || null;
+      const imageSearch = !!options.image_search;
+      if (!assessmentResponse && !homeworkResponse) {
+        appendUserMessage(message, false, imageDataUrl);
+      }
       await streamChat({
         user_id: userId,
         session_id: sessionId,
@@ -3404,6 +3575,8 @@
         homework_response: homeworkResponse,
         preferred_school: preferredSchool || null,
         association_license: associationLicense || null,
+        image_data_url: imageDataUrl,
+        image_search: imageSearch,
       });
     }
 
@@ -3482,15 +3655,144 @@
       });
     }
 
+    let pendingImageDataUrl = null;
+    let imageSearchMode = false;
+    const photoInput = document.getElementById("photoInput");
+    const btnAttachPhoto = document.getElementById("btnAttachPhoto");
+    const btnImageSearch = document.getElementById("btnImageSearch");
+    const attachPreview = document.getElementById("attachPreview");
+    const attachPreviewImg = document.getElementById("attachPreviewImg");
+    const attachClear = document.getElementById("attachClear");
+    const composerHint = document.getElementById("composerHint");
+
+    function setImageSearchMode(on) {
+      imageSearchMode = !!on;
+      btnImageSearch?.classList.toggle("active", imageSearchMode);
+      btnImageSearch?.setAttribute("aria-pressed", imageSearchMode ? "true" : "false");
+      if (imageSearchMode) {
+        messageInput.placeholder = "찾고 싶은 사진을 검색해 보세요… (예: 비 오는 창가)";
+        if (composerHint) composerHint.textContent = "사진 검색 모드 · Enter로 검색";
+        clearPendingImage();
+      } else {
+        messageInput.placeholder = "마음 이야기, 또는 사진 검색어를 적어주세요…";
+        if (composerHint) composerHint.textContent = "Enter · 전송 · 🖼 사진 첨부 · 🔍 사진 검색";
+      }
+    }
+
+    function clearPendingImage() {
+      pendingImageDataUrl = null;
+      if (attachPreview) {
+        attachPreview.hidden = true;
+        attachPreview.classList.remove("show");
+      }
+      if (attachPreviewImg) attachPreviewImg.removeAttribute("src");
+      if (photoInput) photoInput.value = "";
+    }
+
+    function showPendingImage(dataUrl) {
+      pendingImageDataUrl = dataUrl;
+      setImageSearchMode(false);
+      if (attachPreviewImg) attachPreviewImg.src = dataUrl;
+      if (attachPreview) {
+        attachPreview.hidden = false;
+        attachPreview.classList.add("show");
+      }
+    }
+
+    function compressImageFile(file, maxSide = 1024, quality = 0.72) {
+      return new Promise((resolve, reject) => {
+        if (!file || !file.type.startsWith("image/")) {
+          reject(new Error("not_image"));
+          return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+          reject(new Error("too_large"));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("read_fail"));
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            const scale = Math.min(1, maxSide / Math.max(width, height));
+            width = Math.max(1, Math.round(width * scale));
+            height = Math.max(1, Math.round(height * scale));
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            let dataUrl = canvas.toDataURL("image/jpeg", quality);
+            if (dataUrl.length > 280000) {
+              dataUrl = canvas.toDataURL("image/jpeg", 0.55);
+            }
+            if (dataUrl.length > 340000) {
+              reject(new Error("too_large"));
+              return;
+            }
+            resolve(dataUrl);
+          };
+          img.onerror = () => reject(new Error("decode_fail"));
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    btnAttachPhoto?.addEventListener("click", () => photoInput?.click());
+    btnImageSearch?.addEventListener("click", () => setImageSearchMode(!imageSearchMode));
+    attachClear?.addEventListener("click", clearPendingImage);
+    photoInput?.addEventListener("change", async () => {
+      const file = photoInput.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await compressImageFile(file);
+        showPendingImage(dataUrl);
+      } catch (_) {
+        appendAssistantMessage("사진은 8MB 이하 이미지로 첨부해 주세요. 조금 줄여서 다시 시도해 볼까요?");
+      }
+    });
+
+    messageInput.addEventListener("paste", async (event) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          event.preventDefault();
+          const file = item.getAsFile();
+          try {
+            const dataUrl = await compressImageFile(file);
+            showPendingImage(dataUrl);
+          } catch (_) {
+            appendAssistantMessage("붙여넣은 사진을 불러오지 못했어요. 파일로 첨부해 주세요.");
+          }
+          break;
+        }
+      }
+    });
+
     chatForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (streaming) return;
       const message = messageInput.value.trim();
-      if (!message) return;
+      const hasImage = !!pendingImageDataUrl;
+      const doSearch = imageSearchMode && !hasImage;
+      if (!message && !hasImage) return;
+      if (doSearch && !message) return;
+
+      const imageDataUrl = pendingImageDataUrl;
+      const payloadMessage = message || (hasImage ? "이 사진을 함께 봐 주세요." : "");
       messageInput.value = "";
       autoResize();
+      clearPendingImage();
+      if (doSearch) setImageSearchMode(false);
+
       try {
-        await submitMessage(message);
+        await submitMessage(payloadMessage, null, null, {
+          image_data_url: imageDataUrl,
+          image_search: doSearch || /사진\s*검색|이미지\s*검색|사진\s*찾아|이미지\s*찾아/.test(payloadMessage),
+        });
       } catch (error) {
         const bubble = createAssistantRow();
         bubble.textContent = error.message || "전송 중 문제가 생겼어요.";

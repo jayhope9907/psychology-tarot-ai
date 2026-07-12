@@ -80,6 +80,8 @@
     .disc-card.counseling::before { background: var(--green); }
     .disc-card.psychology::before { background: var(--blue); }
     .disc-card.psychiatry::before { background: var(--purple); }
+    .disc-card.clinical::before { background: #2563eb; }
+    .disc-card.mhsw::before { background: #0d9488; }
     .disc-icon { font-size: 2rem; margin-bottom: 12px; }
     .disc-card h3 { margin: 0 0 6px; font-size: 1.15rem; }
     .disc-tagline { color: var(--gold); font-size: 0.78rem; font-weight: 600; margin-bottom: 12px; }
@@ -159,9 +161,9 @@
       <span class="badge">Association License · B2B</span>
       <h1>학회가 보는 것에 맞춘<br/>AI 웰니스·교육 플랫폼</h1>
       <p>
-        상담학회는 <strong>사례</strong>를, 심리학회는 <strong>측정·데이터</strong>를,
-        정신의학회는 <strong>DSM 스크리닝·위험 신호</strong>를 중심으로 —
-        각 학문 렌즈에 맞게 기능·검사·법적 프레이밍을 분리합니다.
+        상담·심리·정신의학 학회와 함께,
+        <strong>임상심리 수련</strong>·<strong>정신보건사회복지사 수련</strong>용
+        교육 라이선스도 제공합니다.
       </p>
       <div class="hero-actions">
         <button type="button" class="btn btn-primary" id="btnScrollValidate">라이선스 확인</button>
@@ -215,6 +217,8 @@
           <code data-key="MSHT-COUNSEL-DEMO-2026">상담학회</code>
           <code data-key="MSHT-PSYCH-DEMO-2026">심리학회</code>
           <code data-key="MSHT-PSYCHIATRY-DEMO-2026">정신의학회</code>
+          <code data-key="MSHT-CLINICAL-DEMO-2026">임상심리 수련</code>
+          <code data-key="MSHT-MHSW-DEMO-2026">정신보건사회복지 수련</code>
         </div>
         <div class="validate-result" id="validateResult"></div>
       </div>
@@ -231,6 +235,8 @@
       counseling_society: "counseling",
       psychology_society: "psychology",
       psychiatry_society: "psychiatry",
+      clinical_psych_trainee: "clinical",
+      mh_social_work_trainee: "mhsw",
       integrative_society: "counseling",
     };
 

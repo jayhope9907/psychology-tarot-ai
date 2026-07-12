@@ -131,7 +131,7 @@ def test_chat_stream_endpoint_returns_sse_payload(monkeypatch):
     async def fake_stream(messages, max_tokens, client, assessment_response=None):
         yield "스트리밍 응답"
 
-    async def fake_run_chat_turn(state, user_message, client, max_tokens=320, assessment_response=None, homework_response=None, stream_fn=None, preferred_school=None):
+    async def fake_run_chat_turn(state, user_message, client, max_tokens=320, assessment_response=None, homework_response=None, stream_fn=None, preferred_school=None, **kwargs):
         yield {"event": "orchestrator", "data": {"action": "chat_only", "reason": "test", "fatigue": {"fatigue_score": 0.1}}}
         yield {"event": "token", "data": {"content": "스트리밍 응답"}}
         yield {

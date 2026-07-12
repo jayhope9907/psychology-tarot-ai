@@ -348,7 +348,9 @@ def build_chat_messages(
     homework_response: Optional[Dict[str, Any]] = None,
     counselor_name: Optional[str] = None,
     style_block: str = "",
-) -> List[Dict[str, str]]:
+    image_data_url: Optional[str] = None,
+    image_search_payload: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
     name = counselor_name or COUNSELOR_NAME
     try:
         school = ClinicalSchool(state.preferred_school) if state.preferred_school else ClinicalSchool.INTEGRATIVE
@@ -456,9 +458,34 @@ def build_chat_messages(
                 "채점·평가하지 마세요."
             )
 
-    messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
+    if image_data_url:
+        system_prompt += (
+            "\n\n내담자가 사진을 첨부했습니다. 사진에 보이는 장면·분위기·감정을 부드럽게 반영하세요. "
+            "진단·병명·의학적 판독은 하지 마세요. 사진이 불러일으키는 마음·기억·감각을 함께 탐색하세요. "
+            "사생활·얼굴이 보이면 존중하는 톤을 유지하세요."
+        )
+
+    if image_search_payload:
+        from app.services.image_search import build_image_search_prompt_block
+
+        system_prompt += build_image_search_prompt_block(image_search_payload)
+
+    messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
     messages.extend(state.messages[-14:])
-    messages.append({"role": "user", "content": user_message})
+
+    if image_data_url:
+        caption = (user_message or "").strip() or "이 사진을 함께 봐 주세요."
+        messages.append(
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": caption},
+                    {"type": "image_url", "image_url": {"url": image_data_url}},
+                ],
+            }
+        )
+    else:
+        messages.append({"role": "user", "content": user_message})
 
     last_assistant = _last_assistant_message(state)
     if last_assistant:
@@ -472,14 +499,21 @@ def build_chat_messages(
 
 
 async def stream_chat_completion(
-    messages: List[Dict[str, str]],
+    messages: List[Dict[str, Any]],
     max_tokens: int,
     client: Any,
     state: ChatSessionState,
     decision: Optional[OrchestratorDecision] = None,
     assessment_response: Optional[Dict[str, Any]] = None,
 ) -> AsyncIterator[str]:
-    user_message = messages[-1]["content"] if messages else ""
+    last = messages[-1] if messages else {}
+    content = last.get("content") if isinstance(last, dict) else ""
+    if isinstance(content, list):
+        user_message = " ".join(
+            part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") == "text"
+        ).strip()
+    else:
+        user_message = content if isinstance(content, str) else ""
     if not client or not getattr(client, "api_key", None):
         async for chunk in _yield_text_with_pacing(
             fallback_reply(user_message, state, decision, assessment_response)
@@ -515,7 +549,28 @@ async def run_chat_turn(
     homework_response: Optional[Dict[str, Any]] = None,
     stream_fn: Optional[Callable[..., AsyncIterator[str]]] = None,
     preferred_school: Optional[ClinicalSchool] = None,
+    image_data_url: Optional[str] = None,
+    image_search: bool = False,
 ) -> AsyncIterator[Dict[str, Any]]:
+    from app.services.image_search import (
+        extract_search_query,
+        search_images,
+        validate_image_data_url,
+        wants_image_search,
+    )
+
+    safe_image = validate_image_data_url(image_data_url)
+    image_search_payload: Optional[Dict[str, Any]] = None
+    if wants_image_search(user_message, explicit=image_search) and not safe_image:
+        query = extract_search_query(user_message)
+        image_search_payload = await search_images(query)
+        yield {"event": "image_results", "data": image_search_payload}
+
+    transcript_user = user_message
+    if safe_image:
+        caption = (user_message or "").strip() or "사진을 첨부했어요."
+        transcript_user = f"[사진 첨부] {caption}"
+
     state.turn_count += 1
     homework_package: Optional[Dict[str, Any]] = None
 
@@ -603,7 +658,7 @@ async def run_chat_turn(
 
     if detect_crisis(user_message):
         crisis_text = build_crisis_reply()
-        state.messages.append({"role": "user", "content": user_message})
+        state.messages.append({"role": "user", "content": transcript_user})
         state.messages.append({"role": "assistant", "content": crisis_text})
         async for token in _yield_text_with_pacing(crisis_text):
             yield {"event": "token", "data": {"content": token}}
@@ -662,6 +717,8 @@ async def run_chat_turn(
         homework_response,
         counselor_name=counselor_name,
         style_block=style_block,
+        image_data_url=safe_image,
+        image_search_payload=image_search_payload,
     )
     streamer = stream_fn or stream_chat_completion
     assistant_chunks: List[str] = []
@@ -696,29 +753,31 @@ async def run_chat_turn(
         decision,
         assessment_response,
     )
-    state.messages.append({"role": "user", "content": user_message})
+    state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
 
     profile_delta = build_profile_delta(state)
     profile_delta["persona_routing"] = state.persona_routing
     profile_delta["quant_features"] = state.quant_features
-    yield {
-        "event": "done",
-        "data": {
-            "session_id": state.session_id,
-            "assistant_message": assistant_text,
-            "counselor_name": counselor_name,
-            "persona": state.persona_routing,
-            "profile_delta": profile_delta,
-            "counseling_phase": phase_snapshot(state),
-            "counseling_style": style,
-            "voice_preset": style.get("voice"),
-            "suggest_tarot": should_suggest_tarot(state),
-            "tarot_blended": state.tarot_blended,
-            "homework": homework_package or None,
-            "today_mood": ctx.to_dict(),
-        },
+    done_data: Dict[str, Any] = {
+        "session_id": state.session_id,
+        "assistant_message": assistant_text,
+        "counselor_name": counselor_name,
+        "persona": state.persona_routing,
+        "profile_delta": profile_delta,
+        "counseling_phase": phase_snapshot(state),
+        "counseling_style": style,
+        "voice_preset": style.get("voice"),
+        "suggest_tarot": should_suggest_tarot(state),
+        "tarot_blended": state.tarot_blended,
+        "homework": homework_package or None,
+        "today_mood": ctx.to_dict(),
     }
+    if image_search_payload:
+        done_data["image_results"] = image_search_payload
+    if safe_image:
+        done_data["had_image"] = True
+    yield {"event": "done", "data": done_data}
 
 
 def format_sse(event: Dict[str, Any]) -> Dict[str, str]:

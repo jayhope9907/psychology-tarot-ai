@@ -1,18 +1,20 @@
 /**
- * Three.js tarot — circular spread, human-like shuffle & draw.
+ * Three.js tarot — round table, circular flat spread, human-like shuffle & draw.
  */
 (function (global) {
   const CARD_W = 0.54;
   const CARD_H = 0.87;
   const CARD_DEPTH = 0.028;
-  const CIRCLE_RADIUS_OUTER = 4.55;
-  const CIRCLE_RADIUS_INNER = 2.85;
-  const INNER_RING_SCALE = 0.76;
-  const CIRCLE_Y = 0.1;
-  const CIRCLE_CENTER_Z = 0.55;
-  const CAMERA_FOV = 48;
-  const CAMERA_BASE = { x: 0, y: 4.4, z: 6.4 };
-  const CAMERA_LOOK = { x: 0, y: 0.12, z: CIRCLE_CENTER_Z };
+  const TABLE_RADIUS = 5.6;
+  const TABLE_TOP_Y = 0.68;
+  const TABLE_CENTER_Z = 0.35;
+  const CIRCLE_RADIUS_OUTER = 4.35;
+  const CIRCLE_RADIUS_INNER = 2.75;
+  const INNER_RING_SCALE = 0.82;
+  const CIRCLE_CENTER_Z = TABLE_CENTER_Z;
+  const CAMERA_FOV = 46;
+  const CAMERA_BASE = { x: 0, y: 5.2, z: 7.2 };
+  const CAMERA_LOOK = { x: 0, y: TABLE_TOP_Y, z: TABLE_CENTER_Z };
   const textureCache = new Map();
 
   function drawFallbackFace(ctx, card) {
@@ -164,15 +166,20 @@
       this.renderer.shadowMap.enabled = true;
       container.appendChild(this.renderer.domElement);
 
-      this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.62));
-      const key = new THREE.DirectionalLight(0xffffff, 0.9);
-      key.position.set(2, 12, 8);
+      this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.58));
+      const key = new THREE.DirectionalLight(0xffffff, 0.95);
+      key.position.set(2, 14, 10);
       key.castShadow = true;
+      key.shadow.mapSize.set(1024, 1024);
       this.scene.add(key);
-      const rim = new THREE.PointLight(0xc4a574, 0.45, 28);
-      rim.position.set(-2, 4, 6);
+      const rim = new THREE.PointLight(0xc4a574, 0.5, 32);
+      rim.position.set(-3, 5, 8);
       this.scene.add(rim);
+      const fill = new THREE.PointLight(0x5a8f78, 0.25, 24);
+      fill.position.set(4, 3, 2);
+      this.scene.add(fill);
 
+      this._addTable();
       this._addTableRing();
       this._addParticles();
       this._resize();
@@ -184,6 +191,70 @@
       this.renderer.domElement.addEventListener("pointermove", this._onPointerMove);
       this._animate = this._animate.bind(this);
       requestAnimationFrame(this._animate);
+    }
+
+    _addTable() {
+      const wood = new THREE.MeshStandardMaterial({
+        color: 0x4a3424,
+        roughness: 0.82,
+        metalness: 0.06,
+      });
+      const cloth = new THREE.MeshStandardMaterial({
+        color: 0x162019,
+        roughness: 0.94,
+        metalness: 0.02,
+      });
+      const goldTrim = new THREE.MeshStandardMaterial({
+        color: 0xc4a574,
+        roughness: 0.45,
+        metalness: 0.35,
+        emissive: 0x1a1208,
+        emissiveIntensity: 0.08,
+      });
+
+      const top = new THREE.Mesh(
+        new THREE.CylinderGeometry(TABLE_RADIUS, TABLE_RADIUS + 0.08, 0.14, 72),
+        wood
+      );
+      top.position.set(0, TABLE_TOP_Y - 0.07, TABLE_CENTER_Z);
+      top.receiveShadow = true;
+      top.castShadow = true;
+      this.scene.add(top);
+
+      const felt = new THREE.Mesh(
+        new THREE.CircleGeometry(TABLE_RADIUS - 0.18, 72),
+        cloth
+      );
+      felt.rotation.x = -Math.PI / 2;
+      felt.position.set(0, TABLE_TOP_Y + 0.002, TABLE_CENTER_Z);
+      felt.receiveShadow = true;
+      this.scene.add(felt);
+
+      const trim = new THREE.Mesh(
+        new THREE.TorusGeometry(TABLE_RADIUS - 0.2, 0.035, 12, 72),
+        goldTrim
+      );
+      trim.rotation.x = Math.PI / 2;
+      trim.position.set(0, TABLE_TOP_Y + 0.008, TABLE_CENTER_Z);
+      this.scene.add(trim);
+
+      const pedestal = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.42, 0.62, TABLE_TOP_Y - 0.1, 32),
+        wood
+      );
+      pedestal.position.set(0, (TABLE_TOP_Y - 0.1) / 2, TABLE_CENTER_Z);
+      pedestal.castShadow = true;
+      pedestal.receiveShadow = true;
+      this.scene.add(pedestal);
+
+      const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(9.5, 48),
+        new THREE.MeshStandardMaterial({ color: 0x0a100e, roughness: 1 })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(0, -0.02, TABLE_CENTER_Z);
+      floor.receiveShadow = true;
+      this.scene.add(floor);
     }
 
     _addTableRing() {
@@ -198,7 +269,7 @@
           })
         );
         ring.rotation.x = -Math.PI / 2;
-        ring.position.set(0, 0.02, CIRCLE_CENTER_Z);
+        ring.position.set(0, TABLE_TOP_Y + 0.012, CIRCLE_CENTER_Z);
         this.scene.add(ring);
       }
 
@@ -212,7 +283,7 @@
         })
       );
       inner.rotation.x = -Math.PI / 2;
-      inner.position.set(0, 0.015, CIRCLE_CENTER_Z);
+      inner.position.set(0, TABLE_TOP_Y + 0.011, CIRCLE_CENTER_Z);
       this.scene.add(inner);
     }
 
@@ -244,7 +315,7 @@
         const a = (i / count) * Math.PI * 2;
         const r = CIRCLE_RADIUS_OUTER + 0.25 + Math.random() * 0.35;
         positions[i * 3] = Math.sin(a) * r;
-        positions[i * 3 + 1] = 0.05 + Math.random() * 0.12;
+        positions[i * 3 + 1] = TABLE_TOP_Y + 0.04 + Math.random() * 0.08;
         positions[i * 3 + 2] = Math.cos(a) * r + CIRCLE_CENTER_Z;
       }
       geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -292,10 +363,11 @@
       const r = radius;
       return {
         x: Math.sin(angle) * r,
-        y: CIRCLE_Y + lift,
+        y: TABLE_TOP_Y + CARD_DEPTH / 2 + lift,
         z: Math.cos(angle) * r + CIRCLE_CENTER_Z,
-        ry: -angle + Math.PI,
-        rx: -0.05,
+        rx: -Math.PI / 2,
+        ry: 0,
+        rz: -angle + Math.PI / 2,
       };
     }
 
@@ -303,8 +375,7 @@
       if (mesh.userData.selected && mesh.userData.drawPose) {
         const p = mesh.userData.drawPose;
         mesh.position.set(p.x, p.y, p.z);
-        mesh.rotation.y = p.ry;
-        mesh.rotation.x = p.rx ?? -0.08;
+        mesh.rotation.set(p.rx ?? -0.35, p.ry ?? 0, p.rz ?? 0);
         return;
       }
       const baseRadius = mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER;
@@ -315,8 +386,7 @@
         lift + hoverLift
       );
       mesh.position.set(pose.x, pose.y, pose.z);
-      mesh.rotation.y = pose.ry;
-      mesh.rotation.x = pose.rx;
+      mesh.rotation.set(pose.rx, pose.ry, pose.rz);
     }
 
     _layoutCircle() {
@@ -378,25 +448,27 @@
     }
 
     _spreadSlots(count) {
-      if (count <= 1) return [{ x: 0, y: 0.48, z: 1.55, ry: 0 }];
+      const baseY = TABLE_TOP_Y + 0.55;
+      const baseZ = 1.85;
+      if (count <= 1) return [{ x: 0, y: baseY + 0.08, z: baseZ, ry: 0, rx: -0.55, rz: 0 }];
       if (count === 2) {
         return [
-          { x: -1.05, y: 0.44, z: 1.35, ry: 0.12 },
-          { x: 1.05, y: 0.44, z: 1.35, ry: -0.12 },
+          { x: -0.95, y: baseY, z: baseZ - 0.1, ry: 0.14, rx: -0.52, rz: 0.04 },
+          { x: 0.95, y: baseY, z: baseZ - 0.1, ry: -0.14, rx: -0.52, rz: -0.04 },
         ];
       }
       return [
-        { x: -1.65, y: 0.38, z: 1.15, ry: 0.18 },
-        { x: 0, y: 0.52, z: 1.65, ry: 0 },
-        { x: 1.65, y: 0.38, z: 1.15, ry: -0.18 },
+        { x: -1.45, y: baseY - 0.05, z: baseZ - 0.25, ry: 0.22, rx: -0.5, rz: 0.06 },
+        { x: 0, y: baseY + 0.12, z: baseZ + 0.15, ry: 0, rx: -0.58, rz: 0 },
+        { x: 1.45, y: baseY - 0.05, z: baseZ - 0.25, ry: -0.22, rx: -0.5, rz: -0.06 },
       ];
     }
 
     _drawHoldPose(pickIndex) {
       const slots = [
-        { x: 0, y: 0.62, z: 1.45, ry: 0, rx: -0.1 },
-        { x: -0.92, y: 0.56, z: 1.52, ry: 0.14, rx: -0.1 },
-        { x: 0.92, y: 0.56, z: 1.52, ry: -0.14, rx: -0.1 },
+        { x: 0, y: TABLE_TOP_Y + 1.05, z: 2.15, ry: 0, rx: -0.42, rz: 0 },
+        { x: -1.05, y: TABLE_TOP_Y + 0.92, z: 2.05, ry: 0.18, rx: -0.38, rz: 0.05 },
+        { x: 1.05, y: TABLE_TOP_Y + 0.92, z: 2.05, ry: -0.18, rx: -0.38, rz: -0.05 },
       ];
       return slots[pickIndex] || slots[0];
     }
@@ -520,8 +592,9 @@
         x: mesh.position.x,
         y: mesh.position.y,
         z: mesh.position.z,
-        ry: mesh.rotation.y,
         rx: mesh.rotation.x,
+        ry: mesh.rotation.y,
+        rz: mesh.rotation.z,
       };
       return new Promise((resolve) => {
         const tick = (now) => {
@@ -534,8 +607,9 @@
           mesh.position.x = THREE.MathUtils.lerp(from.x, target.x, ease);
           mesh.position.y = THREE.MathUtils.lerp(from.y, target.y, ease);
           mesh.position.z = THREE.MathUtils.lerp(from.z, target.z, ease);
-          mesh.rotation.y = THREE.MathUtils.lerp(from.ry, target.ry, ease);
-          mesh.rotation.x = THREE.MathUtils.lerp(from.rx, target.rx ?? -0.08, ease);
+          mesh.rotation.x = THREE.MathUtils.lerp(from.rx, target.rx ?? -Math.PI / 2, ease);
+          mesh.rotation.y = THREE.MathUtils.lerp(from.ry, target.ry ?? 0, ease);
+          mesh.rotation.z = THREE.MathUtils.lerp(from.rz, target.rz ?? 0, ease);
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
         };
@@ -545,13 +619,14 @@
 
     async _drawCardFromCircle(mesh, pickIndex) {
       const startAngle = this._circleAngleFor(mesh);
-      const midR = (mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER) * 0.55;
+      const midR = (mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER) * 0.52;
       const mid = {
         x: Math.sin(startAngle) * midR,
-        y: CIRCLE_Y + 0.35,
+        y: TABLE_TOP_Y + 0.55,
         z: Math.cos(startAngle) * midR + CIRCLE_CENTER_Z,
+        rx: -0.65,
         ry: -startAngle + Math.PI,
-        rx: -0.12,
+        rz: 0,
       };
       const hold = this._drawHoldPose(pickIndex);
       mesh.userData.drawPose = null;
@@ -631,7 +706,7 @@
               mat.transparent = true;
               mat.opacity = 1 - t * 0.88;
             });
-            mesh.position.y = CIRCLE_Y - t * 0.35;
+            mesh.position.y = TABLE_TOP_Y - t * 0.28;
           });
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
@@ -657,7 +732,8 @@
           y: slot.y,
           z: slot.z,
           ry: slot.ry,
-          rx: -0.1,
+          rx: slot.rx ?? -0.55,
+          rz: slot.rz ?? 0,
         }, 900);
       });
 
@@ -695,12 +771,14 @@
     _animateFlip(mesh) {
       const duration = 680;
       const start = performance.now();
-      const startY = mesh.rotation.y;
+      const startZ = mesh.rotation.z;
+      const startX = mesh.rotation.x;
       return new Promise((resolve) => {
         const tick = (now) => {
           const t = Math.min((now - start) / duration, 1);
           const ease = easeInOutCubic(t);
-          mesh.rotation.y = THREE.MathUtils.lerp(startY, Math.PI, ease);
+          mesh.rotation.z = THREE.MathUtils.lerp(startZ, startZ + Math.PI, ease);
+          mesh.rotation.x = THREE.MathUtils.lerp(startX, -0.72, ease);
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
         };

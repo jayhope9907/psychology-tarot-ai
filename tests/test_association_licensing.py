@@ -20,8 +20,39 @@ def test_catalog_has_three_disciplines_and_tiers():
     assert AssociationDiscipline.COUNSELING.value in ids
     assert AssociationDiscipline.PSYCHOLOGY.value in ids
     assert AssociationDiscipline.PSYCHIATRY.value in ids
+    assert AssociationDiscipline.CLINICAL_PSYCH_TRAINEE.value in ids
+    assert AssociationDiscipline.MH_SOCIAL_WORK.value in ids
     assert len(catalog["license_tiers"]) >= 4
     assert catalog["comparison_matrix"]
+
+
+def test_trainee_licenses_entitlements():
+    clinical = resolve_entitlements(
+        AssociationDiscipline.CLINICAL_PSYCH_TRAINEE.value, LicenseTier.SOCIETY.value
+    )
+    mhsw = resolve_entitlements(
+        AssociationDiscipline.MH_SOCIAL_WORK.value, LicenseTier.SOCIETY.value
+    )
+    assert "rorschach" in clinical["allowed_projective"]
+    assert "tat" in clinical["allowed_projective"]
+    assert clinical["feature_flags"]["dsm5_catalog"] is True
+    assert clinical["feature_flags"]["tarot_bridge"] is False
+    assert "pcl5" in mhsw["allowed_instruments"]
+    assert "rorschach" not in mhsw["allowed_projective"]
+    assert mhsw["feature_flags"]["tarot_bridge"] is False
+
+
+def test_demo_trainee_licenses_validate():
+    reset_db()
+    clinical = validate_license("MSHT-CLINICAL-DEMO-2026")
+    assert clinical["valid"] is True
+    assert clinical["entitlements"]["discipline_id"] == AssociationDiscipline.CLINICAL_PSYCH_TRAINEE.value
+    assert "임상심리" in clinical["entitlements"]["discipline_label"]
+
+    mhsw = validate_license("MSHT-MHSW-DEMO-2026")
+    assert mhsw["valid"] is True
+    assert mhsw["entitlements"]["discipline_id"] == AssociationDiscipline.MH_SOCIAL_WORK.value
+    assert "정신보건" in mhsw["entitlements"]["discipline_label"]
 
 
 def test_counseling_vs_psychiatry_instruments_differ():
