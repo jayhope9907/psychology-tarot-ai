@@ -6,20 +6,25 @@ import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from app.services.tarot_rules import (
+    DEFAULT_SPREAD,
+    REVERSE_CHANCE,
+    THREE_CARD_COUNT,
+    THREE_CARD_POSITIONS,
+    enrich_card_rules,
+    narrative_rules_block,
+    position_summary_lines,
+    rules_manifest,
+)
+
 _DECK_PATH = Path(__file__).resolve().parent.parent / "data" / "tarot_deck.json"
 _MINOR_PATH = Path(__file__).resolve().parent.parent / "data" / "minor_arcana.json"
 _DECK_CACHE: Optional[Dict[str, Any]] = None
 _MINOR_CACHE: Optional[List[Dict[str, Any]]] = None
 _FULL_DECK_CACHE: Optional[List[Dict[str, Any]]] = None
 
-# Classic Rider–Waite 3-card: past / present / future. Reversal is fair coin flip.
-DEFAULT_SPREAD = "three_card"
-THREE_CARD_COUNT = 3
-REVERSE_CHANCE = 0.5
-THREE_CARD_POSITION_GUIDE = (
-    ("과거·뿌리", "과거의 뿌리·배경·무엇이 지금의 마음을 만들었는지"),
-    ("현재·핵심", "지금 상황의 핵심·현재 감정·직면하고 있는 것"),
-    ("미래·방향", "앞으로의 방향·가능성·가볍게 열어둘 다음 한 걸음"),
+THREE_CARD_POSITION_GUIDE = tuple(
+    (pos["label_ko"], pos["guide_ko"]) for pos in THREE_CARD_POSITIONS
 )
 
 # Rider–Waite Major Arcana (public domain, Wikimedia Commons)
@@ -158,6 +163,19 @@ def _is_reversed(rng: random.Random | None = None) -> bool:
     return rng.random() < REVERSE_CHANCE
 
 
+def _finalize_draw(spread: str, spread_meta: Dict[str, Any], drawn: List[Dict[str, Any]]) -> Dict[str, Any]:
+    cards = [enrich_card_rules(card) for card in drawn]
+    manifest = rules_manifest()
+    return {
+        "spread": spread,
+        "spread_label_ko": spread_meta["label_ko"],
+        "positions": [c.get("position") for c in cards],
+        "cards": cards,
+        "rules": manifest,
+        "rules_summary_ko": position_summary_lines(cards),
+    }
+
+
 def build_draw_from_picks(
     card_ids: List[str],
     spread: str = DEFAULT_SPREAD,
@@ -208,20 +226,7 @@ def build_draw_from_picks(
             }
         )
 
-    return {
-        "spread": spread,
-        "spread_label_ko": spread_meta["label_ko"],
-        "positions": positions[: len(drawn)],
-        "cards": drawn,
-        "rules": {
-            "spread": DEFAULT_SPREAD,
-            "count": THREE_CARD_COUNT,
-            "reverse_chance": REVERSE_CHANCE,
-            "positions": [
-                {"label": label, "guide_ko": guide} for label, guide in THREE_CARD_POSITION_GUIDE
-            ],
-        },
-    }
+    return _finalize_draw(spread, spread_meta, drawn)
 
 
 def draw_cards(
@@ -263,56 +268,42 @@ def draw_cards(
             }
         )
 
-    return {
-        "spread": spread,
-        "spread_label_ko": spread_meta["label_ko"],
-        "positions": positions[:draw_count],
-        "cards": drawn,
-        "rules": {
-            "spread": DEFAULT_SPREAD,
-            "count": THREE_CARD_COUNT,
-            "reverse_chance": REVERSE_CHANCE,
-            "positions": [
-                {"label": label, "guide_ko": guide} for label, guide in THREE_CARD_POSITION_GUIDE
-            ],
-        },
-    }
+    return _finalize_draw(spread, spread_meta, drawn)
 
 
 def build_local_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[str, Any]:
-    cards = draw_result.get("cards") or []
+    cards = [enrich_card_rules(card) for card in (draw_result.get("cards") or [])]
     card_lines: List[Dict[str, str]] = []
     themes: List[str] = []
-    guide_by_label = {label: guide for label, guide in THREE_CARD_POSITION_GUIDE}
 
     for card in cards:
         orientation = "역방향" if card.get("reversed") else "정방향"
-        position = card.get("position", "")
+        suit_rule = card.get("suit_rule") or {}
+        rank_rule = card.get("rank_rule") or {}
         card_lines.append(
             {
-                "position": position,
-                "position_guide": guide_by_label.get(position, ""),
+                "position": card.get("position", ""),
+                "position_guide": card.get("position_guide", ""),
                 "title": f"{card['name_ko']} ({card['name_en']}) · {orientation}",
                 "meaning": card.get("meaning_ko", ""),
                 "psychology_theme": card.get("psychology_theme", ""),
                 "archetype": card.get("archetype", ""),
+                "arcana": card.get("arcana", ""),
+                "suit_label": suit_rule.get("label_ko", ""),
+                "element": suit_rule.get("element_ko", ""),
+                "rank_guide": rank_rule.get("guide_ko", ""),
+                "orientation_guide": (card.get("orientation_rule") or {}).get("guide_ko", ""),
             }
         )
         if card.get("psychology_theme"):
             themes.append(card["psychology_theme"])
 
     summary_parts = [
-        "클래식 3카드(과거·현재·미래) 규칙으로 읽어요. 카드는 지금 마음을 살짝 비추는 거울이에요.",
+        "클래식 3카드(과거·현재·미래) · 78장 · 정/역 공정 · 위치·수트·아르카나 규칙으로 읽어요.",
     ]
     if user_story.strip():
         summary_parts.append("적어 주신 상황을 바탕으로, 부담 없이 읽을 수 있게 정리했어요.")
-    for card in cards:
-        pos = card.get("position", "")
-        guide = guide_by_label.get(pos, pos)
-        orientation = "역방향" if card.get("reversed") else "정방향"
-        summary_parts.append(
-            f"{pos}({guide})에는 '{card.get('name_ko', '')}'({orientation})가 놓였어요."
-        )
+    summary_parts.extend(position_summary_lines(cards))
 
     cbt_actions = [
         "과거·뿌리 카드가 건드린 배경을 한 줄로 적어 보세요.",
@@ -331,27 +322,33 @@ def build_local_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[st
         "cbt_actions": cbt_actions,
         "primary_card": primary.get("name_en", "The Fool"),
         "reading_tone": "three_card_classic",
-        "spread_rules_ko": [f"{label}: {guide}" for label, guide in THREE_CARD_POSITION_GUIDE],
+        "spread_rules_ko": [f"{p['label_ko']}: {p['guide_ko']}" for p in THREE_CARD_POSITIONS],
+        "practice_rules_ko": rules_manifest()["practice_ko"],
     }
 
 
 def format_draw_for_prompt(draw_result: Dict[str, Any]) -> str:
-    guide_by_label = {label: guide for label, guide in THREE_CARD_POSITION_GUIDE}
     lines: List[str] = [
+        narrative_rules_block(),
+        "",
         "스프레드: 3카드 (과거·뿌리 → 현재·핵심 → 미래·방향)",
-        "규칙: 정방향/역방향 각 카드 독립, 중복 없이 3장, 위치별 의미로만 가볍게 연결",
     ]
     for card in draw_result.get("cards") or []:
-        orientation = "역방향" if card.get("reversed") else "정방향"
-        position = card.get("position", "카드")
-        guide = guide_by_label.get(position, "")
-        arcana = "메이저" if card.get("arcana") == "major" else f"마이너({card.get('suit') or '-'})"
-        lines.append(
-            f"- [{position}] ({guide}) · {card.get('name_ko')} / {orientation} / {arcana} — "
-            f"{card.get('meaning_ko', '')} · 테마: {card.get('psychology_theme', '')} · "
-            f"원형: {card.get('archetype', '')}"
+        enriched = enrich_card_rules(card)
+        orientation = "역방향" if enriched.get("reversed") else "정방향"
+        suit_rule = enriched.get("suit_rule") or {}
+        rank_rule = enriched.get("rank_rule") or {}
+        arcana = "메이저" if enriched.get("arcana") == "major" else (
+            f"마이너 · {suit_rule.get('label_ko', '')}/{suit_rule.get('element_ko', '')}"
+            f" · {rank_rule.get('label_ko', '')}"
         )
-    return "\n".join(lines) if len(lines) > 2 else "- (카드 없음)"
+        lines.append(
+            f"- [{enriched.get('position')}] ({enriched.get('position_guide', '')}) · "
+            f"{enriched.get('name_ko')} / {orientation} / {arcana} — "
+            f"{enriched.get('meaning_ko', '')} · 테마: {enriched.get('psychology_theme', '')} · "
+            f"원형: {enriched.get('archetype', '')}"
+        )
+    return "\n".join(lines)
 
 
 def merge_reading_with_output(local: Dict[str, Any], therapy_output: Dict[str, Any]) -> Dict[str, Any]:

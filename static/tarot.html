@@ -349,11 +349,17 @@
             </details>
           </div>
           <div class="tarot-img-setting">
-            <label for="imageModePeek">카드 그림 표시</label>
+            <label for="imageModePeek">카드 그림 표시 (뽑기 전에는 숨김이 규칙)</label>
             <div class="image-mode-btns" id="imageModeBtns">
-              <button type="button" data-mode="peek" class="active">살짝 보기</button>
-              <button type="button" data-mode="hidden">그림 숨기기</button>
+              <button type="button" data-mode="hidden" class="active">그림 숨기기</button>
+              <button type="button" data-mode="peek">살짝 보기</button>
             </div>
+          </div>
+          <div class="camera-panel">
+            <details>
+              <summary>타로 규칙 전체 보기</summary>
+              <ul id="rulesList" style="margin:10px 0 0;padding-left:18px;font-size:0.78rem;color:var(--text-soft);line-height:1.6"></ul>
+            </details>
           </div>
           <div class="actions">
             <button type="button" class="btn btn-primary" id="btnShuffle" disabled>카드 섞기</button>
@@ -692,6 +698,17 @@
         deckData = await TarotOffline.loadDeckCatalog();
         if (!deckData?.cards?.length) throw new Error("deck fetch failed");
         deckCatalog = deckData.cards || [];
+        try {
+          const rulesRes = await fetch("/api/v1/tarot/rules");
+          if (rulesRes.ok) {
+            const rules = await rulesRes.json();
+            const box = document.getElementById("rulesList");
+            if (box && rules.practice_ko) {
+              box.innerHTML = rules.practice_ko.map((r) => `<li>${r}</li>`).join("");
+              box.dataset.filled = "1";
+            }
+          }
+        } catch (_) {}
         if (typeof THREE !== "undefined" && typeof TarotScene !== "undefined") {
           scene = new TarotScene(els.canvas);
           scene.onPhaseChange = (phase) => {
@@ -757,10 +774,21 @@
       els.cardReadings.innerHTML = (reading.cards || []).map((c) => `
         <div class="card-reading">
           <h3>${c.position} · ${c.title}</h3>
+          ${c.position_guide ? `<p style="margin:0 0 6px;font-size:0.78rem;color:var(--gold)">${c.position_guide}</p>` : ""}
           <p>${c.meaning}</p>
-          <div class="theme">마음 테마: ${c.psychology_theme}</div>
+          <div class="theme">마음 테마: ${c.psychology_theme || ""}</div>
+          ${c.orientation_guide ? `<div class="theme">정·역: ${c.orientation_guide}</div>` : ""}
+          ${c.element ? `<div class="theme">수트·원소: ${c.suit_label || ""} / ${c.element}</div>` : ""}
+          ${c.rank_guide ? `<div class="theme">랭크: ${c.rank_guide}</div>` : ""}
         </div>
       `).join("");
+      if (reading.practice_rules_ko?.length) {
+        const box = document.getElementById("rulesList");
+        if (box && !box.dataset.filled) {
+          box.innerHTML = reading.practice_rules_ko.map((r) => `<li>${r}</li>`).join("");
+          box.dataset.filled = "1";
+        }
+      }
       els.aiAnalysis.textContent = reading.ai_analysis || "";
       els.actionList.innerHTML = (reading.recommended_actions || reading.cbt_actions || [])
         .map((a) => `<li>${typeof a === "string" ? a : a.text || a}</li>`).join("");

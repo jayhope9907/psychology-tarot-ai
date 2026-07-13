@@ -105,45 +105,71 @@
     const cards = drawResult?.cards || [];
     const cardLines = [];
     const themes = [];
+    const guides = {
+      "과거·뿌리": "과거의 뿌리·배경·무엇이 지금의 마음을 만들었는지",
+      "현재·핵심": "지금 상황의 핵심·현재 감정·직면하고 있는 것",
+      "미래·방향": "앞으로의 방향·가능성·가볍게 열어둘 다음 한 걸음",
+    };
 
     cards.forEach((card) => {
       const orientation = card.reversed ? "역방향" : "정방향";
       cardLines.push({
         position: card.position || "",
+        position_guide: guides[card.position] || card.position_guide || "",
         title: `${card.name_ko} (${card.name_en}) · ${orientation}`,
         meaning: card.meaning_ko || "",
         psychology_theme: card.psychology_theme || "",
+        archetype: card.archetype || "",
+        orientation_guide: card.reversed
+          ? "막힘·내면화·과잉·시기가 아직 아님 — 운명 단정 금지"
+          : "에너지가 비교적 열리고 표현되기 쉬운 상태",
+        suit_label: card.suit_rule?.label_ko || "",
+        element: card.suit_rule?.element_ko || "",
+        rank_guide: card.rank_rule?.guide_ko || "",
       });
       if (card.psychology_theme) themes.push(card.psychology_theme);
     });
 
-    const primary = cards[0] || {};
     const summaryParts = [
-      "카드는 지금 마음을 **살짝** 비춰 주는 거울이에요. 깊게 파고들 필요는 없어요.",
+      "클래식 3카드(과거·현재·미래) · 78장 · 정/역 공정 · 위치·수트·아르카나 규칙으로 읽어요.",
     ];
     const story = (userStory || "").trim();
     if (story) summaryParts.push("적어 주신 상황을 바탕으로, 부담 없이 읽을 수 있게 정리했어요.");
-    if (primary.name_ko) {
+    cards.forEach((card) => {
+      const orientation = card.reversed ? "역방향" : "정방향";
       summaryParts.push(
-        `'${primary.name_ko}' 카드가 ${primary.psychology_theme || "지금 마음"}과 가볍게 연결될 수 있어요.`
+        `${card.position}(${guides[card.position] || ""}): ${card.name_ko} (${orientation})`
       );
-    }
+    });
 
     const cbtActions = [
-      "카드가 건드린 느낌 중 하나만 골라 한 줄 적어 보세요.",
-      "부담 없는 작은 행동 하나만 떠올려 보세요.",
+      "과거·뿌리 카드가 건드린 배경을 한 줄로 적어 보세요.",
+      "현재·핵심에서 오늘 할 수 있는 작은 행동 하나만 정해 보세요.",
+      "미래·방향은 확정이 아니라 가능성 — 부담 없는 다음 한 걸음만 열어 두세요.",
     ];
     if (story.includes("직장") || story.includes("회사")) {
       cbtActions[1] = "직장에서 통제 가능한 작은 한 가지를 정해 실천해 보세요.";
     }
 
+    const primary = cards[1] || cards[0] || {};
     return {
       summary: summaryParts.join(" "),
       cards: cardLines,
       psychology_themes: themes,
       cbt_actions: cbtActions,
       primary_card: primary.name_en || "The Fool",
-      reading_tone: "light_projection",
+      reading_tone: "three_card_classic",
+      practice_rules_ko: [
+        "질문 하나에 3장만 뽑습니다. (과거·현재·미래)",
+        "덱은 78장(메이저 22 + 마이너 56)이며, 중복 없이 뽑습니다.",
+        "섞은 뒤 뒷면만 보고 직감으로 고릅니다. 앞면을 보고 고르지 않습니다.",
+        "정방향/역방향은 카드마다 독립적으로 공정하게 결정됩니다.",
+        "각 카드는 자기 위치(과거/현재/미래)로만 읽습니다.",
+        "미래는 예언이 아니라 가능성·방향입니다.",
+        "메이저는 큰 테마, 마이너(수트·원소)는 일상의 결로 읽습니다.",
+        "궁정 카드는 사람·태도·접근 방식으로 가볍게 봅니다.",
+        "진단·운명·확정 예언으로 쓰지 않습니다. 자기성찰 거울입니다.",
+      ],
       offline: true,
     };
   }

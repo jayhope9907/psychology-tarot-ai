@@ -1,5 +1,5 @@
 /**
- * Tarot card image visibility: peek (default) | hidden
+ * Tarot card image visibility: hidden (default, fair pick) | peek
  */
 (function (global) {
   const KEY = "psychology_ai_tarot_card_images";
@@ -7,11 +7,12 @@
 
   function getMode() {
     const v = localStorage.getItem(KEY);
-    return v === MODES.HIDDEN ? MODES.HIDDEN : MODES.PEEK;
+    if (v === MODES.PEEK) return MODES.PEEK;
+    return MODES.HIDDEN;
   }
 
   function setMode(mode) {
-    localStorage.setItem(KEY, mode === MODES.HIDDEN ? MODES.HIDDEN : MODES.PEEK);
+    localStorage.setItem(KEY, mode === MODES.PEEK ? MODES.PEEK : MODES.HIDDEN);
     global.dispatchEvent(new CustomEvent("tarot-image-mode-change", { detail: { mode: getMode() } }));
   }
 

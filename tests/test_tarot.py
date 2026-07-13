@@ -11,6 +11,32 @@ from app.services.tarot import build_draw_from_picks, build_local_reading, draw_
 client = TestClient(app)
 
 
+def test_tarot_rules_api_and_enrichment():
+    response = client.get("/api/v1/tarot/rules")
+    assert response.status_code == 200
+    rules = response.json()
+    assert rules["count"] == 3
+    assert rules["reverse_chance"] == 0.5
+    assert len(rules["practice_ko"]) >= 8
+    assert "wands" in rules["suits"]
+
+    draw = draw_cards(count=3, spread="three_card", seed=11)
+    assert draw["rules"]["deck"]["total"] == 78
+    for card in draw["cards"]:
+        assert "orientation_rule" in card
+        assert "arcana_rule" in card
+        assert card.get("position_guide")
+
+
+def test_tarot_reading_prompt_includes_suit_rules():
+    from app.prompt_config import build_tarot_reading_system_prompt
+
+    prompt = build_tarot_reading_system_prompt()
+    assert "지팡이" in prompt or "수트" in prompt
+    assert "3장" in prompt or "3카드" in prompt
+    assert "역방향" in prompt
+
+
 def test_tarot_deck_has_22_major_arcana():
     cards = get_major_arcana()
     assert len(cards) == 22
@@ -184,8 +210,10 @@ def test_tarot_reading_prompt_is_light_projection():
     prompt = build_tarot_reading_system_prompt()
     assert "깊게" in prompt
     assert "그림자" in prompt
-    assert "3카드" in prompt
+    assert "3장" in prompt or "3카드" in prompt
     assert "과거" in prompt
+    assert "메이저" in prompt
+    assert "역방향" in prompt
 
 
 def test_archetype_map_covers_all_major_arcana():

@@ -1135,6 +1135,13 @@ async def tarot_deck_catalog():
     return list_deck_catalog()
 
 
+@app.get("/api/v1/tarot/rules")
+async def tarot_rules_api():
+    from app.services.tarot_rules import rules_manifest
+
+    return rules_manifest()
+
+
 @app.post("/api/v1/tarot/draw")
 async def tarot_draw(request: TarotDrawRequest):
     from app.services.tarot import normalize_three_card_spread
