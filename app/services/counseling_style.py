@@ -499,6 +499,15 @@ def normalize_style(raw: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     source = deepcopy(DEFAULT_STYLE)
     if not raw:
         return source
+    # Legacy warm + informal defaults → professional counselor baseline
+    legacy_tone = raw.get("tone") or {}
+    if (
+        raw.get("texture") == "warm"
+        and int(legacy_tone.get("formality", 2) or 2) <= 2
+        and int(legacy_tone.get("warmth", 4) or 4) >= 4
+        and raw.get("counselor_id", "seoyeon") == "seoyeon"
+    ):
+        raw = {**raw, "texture": "professional", "tone": dict(DEFAULT_TONE)}
     if raw.get("counselor_id") in COUNSELORS:
         source["counselor_id"] = raw["counselor_id"]
     if raw.get("texture") in TEXTURE_PRESETS:
