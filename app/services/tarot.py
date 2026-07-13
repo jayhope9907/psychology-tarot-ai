@@ -54,14 +54,58 @@ _TAROT_IMAGE_PATHS: Dict[str, str] = {
 }
 
 
-def card_image_url(card_id: str, image_file: Optional[str] = None) -> str:
+_IMAGE_CACHE_DIR = Path(__file__).resolve().parents[2] / ".cache" / "tarot_images"
+_WIKIMEDIA_UA = "MaumShelterAI/1.0 (educational-wellness; contact=license@maum-shelter.example)"
+
+
+def remote_card_image_url(card_id: str, image_file: Optional[str] = None) -> str:
+    """Public-domain Rider–Waite (and minor) art on Wikimedia Commons."""
     path = _TAROT_IMAGE_PATHS.get(card_id)
     if path:
-        return f"https://upload.wikimedia.org/wikipedia/commons/{path}"
+        filename = path.rsplit("/", 1)[-1]
+        # ~500px thumbs keep card textures light while staying original RWS art.
+        return f"https://upload.wikimedia.org/wikipedia/commons/thumb/{path}/500px-{filename}"
     if image_file:
         digest = hashlib.md5(image_file.encode()).hexdigest()
         return f"https://upload.wikimedia.org/wikipedia/commons/{digest[0]}/{digest[:2]}/{image_file}"
     return ""
+
+
+def card_image_url(card_id: str, image_file: Optional[str] = None) -> str:
+    """Same-origin URL so Three.js / canvas can use the art without CORS taint."""
+    if not remote_card_image_url(card_id, image_file):
+        return ""
+    return f"/api/v1/tarot/card-image/{card_id}"
+
+
+def _image_cache_meta(card_id: str, image_file: Optional[str] = None) -> tuple[Path, str]:
+    remote = remote_card_image_url(card_id, image_file)
+    suffix = ".svg" if remote.lower().endswith(".svg") else ".jpg"
+    # Versioned filename so we can bump remote art size without stale full-res caches.
+    return _IMAGE_CACHE_DIR / f"{card_id}_v2{suffix}", remote
+
+
+def resolve_card_image_file(card_id: str) -> Optional[Path]:
+    """Return a local cached original image path, downloading once if needed."""
+    card = get_card_by_id(card_id)
+    if not card:
+        return None
+    cache_path, remote = _image_cache_meta(card_id, card.get("image_file"))
+    if not remote:
+        return None
+    if cache_path.is_file() and cache_path.stat().st_size > 0:
+        return cache_path
+    try:
+        import httpx
+
+        _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        with httpx.Client(timeout=20.0, headers={"User-Agent": _WIKIMEDIA_UA}, follow_redirects=True) as client:
+            response = client.get(remote)
+            response.raise_for_status()
+            cache_path.write_bytes(response.content)
+        return cache_path if cache_path.is_file() and cache_path.stat().st_size > 0 else None
+    except Exception:
+        return None
 
 
 def _load_deck() -> Dict[str, Any]:

@@ -1,4 +1,4 @@
-const CACHE = "maum-cache-v17";
+const CACHE = "maum-cache-v18";
 const ASSETS = [
   "/static/manifest.json",
   "/static/icons/icon.svg",

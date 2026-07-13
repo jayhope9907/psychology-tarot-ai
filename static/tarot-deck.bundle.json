@@ -18,7 +18,7 @@
         "#1e3a5f",
         "#5b9bd5"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/90/RWS_Tarot_00_Fool.jpg",
+      "image_url": "/api/v1/tarot/card-image/fool",
       "upright_ko": "새로운 시작과 순수한 가능성을 상징합니다. 두려움보다 호기심이 앞서는 시기예요.",
       "reversed_ko": "무모함이나 회피가 보일 수 있어요. 발을 디딜 땅을 한 번 더 확인해 보세요.",
       "psychology_theme": "불확실성 속에서도 자기 신뢰를 회복하는 과정"
@@ -41,7 +41,7 @@
         "#2d1b4e",
         "#9b59b6"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/de/RWS_Tarot_01_Magician.jpg",
+      "image_url": "/api/v1/tarot/card-image/magician",
       "upright_ko": "이미 가진 자원과 의지로 변화를 만들 수 있는 시기입니다.",
       "reversed_ko": "자신감 부족이나 산만함이 방해가 될 수 있어요. 작은 한 걸음부터요.",
       "psychology_theme": "자기효능감과 행동 실험"
@@ -64,7 +64,7 @@
         "#0d1b2a",
         "#415a77"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/88/RWS_Tarot_02_High_Priestess.jpg",
+      "image_url": "/api/v1/tarot/card-image/high_priestess",
       "upright_ko": "겉소리보다 내면의 신호에 귀 기울일 때입니다.",
       "reversed_ko": "감정을 억누르거나 혼란스러울 수 있어요. 천천히 정리해 보세요.",
       "psychology_theme": "감정 인식과 마음챙김"
@@ -87,7 +87,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d2/RWS_Tarot_03_Empress.jpg",
+      "image_url": "/api/v1/tarot/card-image/empress",
       "upright_ko": "자신과 타인을 돌보는 따뜻한 에너지가 흐릅니다.",
       "reversed_ko": "과한 희생이나 공허함이 느껴질 수 있어요. 나를 먼저 채워 보세요.",
       "psychology_theme": "자기연민과 경계 설정"
@@ -110,7 +110,7 @@
         "#3d0000",
         "#9e2a2b"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/RWS_Tarot_04_Emperor.jpg",
+      "image_url": "/api/v1/tarot/card-image/emperor",
       "upright_ko": "경계와 루틴이 마음을 지탱해 줄 수 있는 때입니다.",
       "reversed_ko": "통제 욕구나 경직이 스트레스가 될 수 있어요. 유연함도 필요해요.",
       "psychology_theme": "자기조절과 현실적 계획"
@@ -133,7 +133,7 @@
         "#4a3728",
         "#a98467"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/8d/RWS_Tarot_05_Hierophant.jpg",
+      "image_url": "/api/v1/tarot/card-image/hierophant",
       "upright_ko": "믿음과 관계 속 지지가 도움이 되는 시기입니다.",
       "reversed_ko": "타인의 기대에 얽매일 수 있어요. 나만의 기준을 찾아보세요.",
       "psychology_theme": "내적 가치관 정리"
@@ -156,7 +156,7 @@
         "#5c1a33",
         "#e07a9f"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3a/RWS_Tarot_06_Lovers.jpg",
+      "image_url": "/api/v1/tarot/card-image/lovers",
       "upright_ko": "마음이 이끄는 선택과 관계의 균형을 살펴볼 때입니다.",
       "reversed_ko": "갈등이나 우유부단함이 느껴질 수 있어요. 솔직한 대화가 도움이 됩니다.",
       "psychology_theme": "애착과 관계 패턴"
@@ -179,7 +179,7 @@
         "#14213d",
         "#fca311"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9b/RWS_Tarot_07_Chariot.jpg",
+      "image_url": "/api/v1/tarot/card-image/chariot",
       "upright_ko": "방향을 정하고 나아갈 힘이 모이는 시기입니다.",
       "reversed_ko": "번아웃이나 방향 상실이 올 수 있어요. 속도를 조절해 보세요.",
       "psychology_theme": "동기 회복과 목표 재설정"
@@ -202,7 +202,7 @@
         "#3d2c1e",
         "#d4a574"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/f/f5/RWS_Tarot_08_Strength.jpg",
+      "image_url": "/api/v1/tarot/card-image/strength",
       "upright_ko": "억누르기보다 부드러운 힘으로 마음을 다스릴 때입니다.",
       "reversed_ko": "자기비난이나 불안이 커질 수 있어요. 스스로를 다독여 보세요.",
       "psychology_theme": "정서 조절과 자기수용"
@@ -225,7 +225,7 @@
         "#1a1a2e",
         "#6c757d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/RWS_Tarot_09_Hermit.jpg",
+      "image_url": "/api/v1/tarot/card-image/hermit",
       "upright_ko": "혼자만의 시간으로 내면의 답을 찾을 수 있는 시기입니다.",
       "reversed_ko": "고립감이나 회피가 깊어질 수 있어요. 작은 연결을 시도해 보세요.",
       "psychology_theme": "내적 대화와 의미 탐색"
@@ -271,7 +271,7 @@
         "#1b263b",
         "#778da9"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e0/RWS_Tarot_11_Justice.jpg",
+      "image_url": "/api/v1/tarot/card-image/justice",
       "upright_ko": "공정함과 사실을 바라보며 결정할 때입니다.",
       "reversed_ko": "억울함이나 자기비난이 커질 수 있어요. 객관적 시각이 필요해요.",
       "psychology_theme": "인지 재구성과 현실 검증"
@@ -294,7 +294,7 @@
         "#2d3142",
         "#4f5d75"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/2/2b/RWS_Tarot_12_Hanged_Man.jpg",
+      "image_url": "/api/v1/tarot/card-image/hanged_man",
       "upright_ko": "멈춤 속에서 새로운 시각을 얻을 수 있는 시기입니다.",
       "reversed_ko": "답답함이나 무기력이 이어질 수 있어요. 작은 변화를 시도해 보세요.",
       "psychology_theme": "수용과 관점 전환"
@@ -317,7 +317,7 @@
         "#0b090a",
         "#495057"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/RWS_Tarot_13_Death.jpg",
+      "image_url": "/api/v1/tarot/card-image/death",
       "upright_ko": "오래된 패턴의 끝과 새로운 시작을 의미합니다.",
       "reversed_ko": "변화를 두려워 붙잡고 있을 수 있어요. 천천히 내려놓아 보세요.",
       "psychology_theme": "상실 수용과 전환"
@@ -340,7 +340,7 @@
         "#1d3557",
         "#a8dadc"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/f/f8/RWS_Tarot_14_Temperance.jpg",
+      "image_url": "/api/v1/tarot/card-image/temperance",
       "upright_ko": "극단을 줄이고 마음의 균형을 찾을 때입니다.",
       "reversed_ko": "감정 기복이나 과잉 반응이 있을 수 있어요. 호흡과 휴식이 도움이 됩니다.",
       "psychology_theme": "정서 안정화"
@@ -363,7 +363,7 @@
         "#1a0000",
         "#6a040d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/5/55/RWS_Tarot_15_Devil.jpg",
+      "image_url": "/api/v1/tarot/card-image/devil",
       "upright_ko": "반복되는 습관이나 두려움에 묶여 있을 수 있음을 비춥니다.",
       "reversed_ko": "속박에서 벗어나려는 의지가 자라고 있어요. 작은 선택이 힘이 됩니다.",
       "psychology_theme": "중독·회피 패턴 인식"
@@ -386,7 +386,7 @@
         "#370617",
         "#e5383b"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/5/53/RWS_Tarot_16_Tower.jpg",
+      "image_url": "/api/v1/tarot/card-image/tower",
       "upright_ko": "예상치 못한 변화가 오래된 구조를 흔들 수 있습니다.",
       "reversed_ko": "변화를 미루다 더 큰 불안이 올 수 있어요. 현실을 직면해 보세요.",
       "psychology_theme": "위기 속 재구성"
@@ -409,7 +409,7 @@
         "#03045e",
         "#90e0ef"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/db/RWS_Tarot_17_Star.jpg",
+      "image_url": "/api/v1/tarot/card-image/star",
       "upright_ko": "어둠 뒤에 희망과 회복의 빛이 보입니다.",
       "reversed_ko": "낙관이 부족하거나 지칠 수 있어요. 작은 기쁨을 찾아보세요.",
       "psychology_theme": "회복탄력성과 희망"
@@ -432,7 +432,7 @@
         "#10002b",
         "#7b2cbf"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/7f/RWS_Tarot_18_Moon.jpg",
+      "image_url": "/api/v1/tarot/card-image/moon",
       "upright_ko": "불확실한 감정과 직관이 교차하는 시기입니다.",
       "reversed_ko": "혼란이 가라앉고 진실이 드러날 수 있어요. 천천히 정리해 보세요.",
       "psychology_theme": "불안과 야간 사고"
@@ -455,7 +455,7 @@
         "#ff6b35",
         "#ffd166"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/17/RWS_Tarot_19_Sun.jpg",
+      "image_url": "/api/v1/tarot/card-image/sun",
       "upright_ko": "밝은 에너지와 자기 확신이 살아나는 시기입니다.",
       "reversed_ko": "기쁨을 누르거나 과신이 있을 수 있어요. 진솔함을 유지하세요.",
       "psychology_theme": "긍정 정서와 자기표현"
@@ -478,7 +478,7 @@
         "#2b2d42",
         "#ef233c"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/dd/RWS_Tarot_20_Judgement.jpg",
+      "image_url": "/api/v1/tarot/card-image/judgement",
       "upright_ko": "과거를 돌아보고 새 출발을 결정할 때입니다.",
       "reversed_ko": "자기비난이 깊을 수 있어요. 용서와 수용이 필요합니다.",
       "psychology_theme": "자기용서와 통합"
@@ -501,7 +501,7 @@
         "#004e64",
         "#25a18e"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/f/ff/RWS_Tarot_21_World.jpg",
+      "image_url": "/api/v1/tarot/card-image/world",
       "upright_ko": "한 사이클이 완성되고 새로운 단계로 나아갑니다.",
       "reversed_ko": "마무리가 미뤄지거나 공허함이 남을 수 있어요. 작은 완료부터요.",
       "psychology_theme": "통합과 성장 마무리"
@@ -525,7 +525,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Wands01.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_ace",
       "upright_ko": "새로운 의욕·실행·에너지의 씨앗이 보입니다.",
       "reversed_ko": "시작이 막히거나 의욕이 약해질 수 있어요.",
       "psychology_theme": "지팡이 · 시작 (의욕·실행·에너지)"
@@ -549,7 +549,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/6b/Wands02.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_two",
       "upright_ko": "두 갈래 사이에서 균형을 찾는 때예요.",
       "reversed_ko": "우유부단함이나 회피가 느껴질 수 있어요.",
       "psychology_theme": "지팡이 · 선택 (의욕·실행·에너지)"
@@ -573,7 +573,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/85/Wands03.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_three",
       "upright_ko": "협력과 확장의 에너지가 흐릅니다.",
       "reversed_ko": "소통 부족이나 산만함이 보일 수 있어요.",
       "psychology_theme": "지팡이 · 확장 (의욕·실행·에너지)"
@@ -597,7 +597,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9b/Wands04.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_four",
       "upright_ko": "기반을 다지고 쉬어 가도 좋아요.",
       "reversed_ko": "답답함·정체감이 올 수 있어요.",
       "psychology_theme": "지팡이 · 안정 (의욕·실행·에너지)"
@@ -621,7 +621,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Wands05.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_five",
       "upright_ko": "마찰 속에서 배우는 지점이 있어요.",
       "reversed_ko": "긴장이 길어지면 거리를 두세요.",
       "psychology_theme": "지팡이 · 갈등 (의욕·실행·에너지)"
@@ -645,7 +645,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/69/Wands06.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_six",
       "upright_ko": "지나간 흐름에서 도움을 받을 수 있어요.",
       "reversed_ko": "과거에 머물거나 비교가 많을 수 있어요.",
       "psychology_theme": "지팡이 · 회복 (의욕·실행·에너지)"
@@ -669,7 +669,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Wands07.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_seven",
       "upright_ko": "선택과 인내가 요구되는 구간이에요.",
       "reversed_ko": "불안·의심으로 흔들릴 수 있어요.",
       "psychology_theme": "지팡이 · 시험 (의욕·실행·에너지)"
@@ -693,7 +693,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Wands08.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_eight",
       "upright_ko": "한 방향으로 힘을 모을 때입니다.",
       "reversed_ko": "조급함·과로로 지칠 수 있어요.",
       "psychology_theme": "지팡이 · 집중 (의욕·실행·에너지)"
@@ -717,7 +717,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/8f/Wands09.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_nine",
       "upright_ko": "거의 다 왔지만 마음의 여유가 필요해요.",
       "reversed_ko": "걱정·피로가 크게 느껴질 수 있어요.",
       "psychology_theme": "지팡이 · 마무리 (의욕·실행·에너지)"
@@ -741,7 +741,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Wands10.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_ten",
       "upright_ko": "한 사이클의 무게와 결과가 보입니다.",
       "reversed_ko": "부담·과잉으로 무거울 수 있어요.",
       "psychology_theme": "지팡이 · 완성 (의욕·실행·에너지)"
@@ -765,7 +765,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/0/03/Wands11.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_page",
       "upright_ko": "호기심과 새로운 소식을 받아들이는 시기예요.",
       "reversed_ko": "미숙함·산만함이 보일 수 있어요.",
       "psychology_theme": "지팡이 · 탐색 (의욕·실행·에너지)"
@@ -789,7 +789,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Wands12.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_knight",
       "upright_ko": "행동으로 옮기려는 에너지가 강해요.",
       "reversed_ko": "성급함·고집이 부담이 될 수 있어요.",
       "psychology_theme": "지팡이 · 추진 (의욕·실행·에너지)"
@@ -813,7 +813,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/69/Wands13.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_queen",
       "upright_ko": "감정·경험을 부드럽게 다루는 힘이 있어요.",
       "reversed_ko": "과보호·감정 소모가 있을 수 있어요.",
       "psychology_theme": "지팡이 · 성숙 (의욕·실행·에너지)"
@@ -837,7 +837,7 @@
         "#8b2500",
         "#ff6b35"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Wands14.svg",
+      "image_url": "/api/v1/tarot/card-image/wands_king",
       "upright_ko": "책임 있게 방향을 잡을 수 있는 때예요.",
       "reversed_ko": "통제·경직으로 답답할 수 있어요.",
       "psychology_theme": "지팡이 · 통솔 (의욕·실행·에너지)"
@@ -861,7 +861,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Cups01.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_ace",
       "upright_ko": "새로운 마음·교감·수용의 씨앗이 보입니다.",
       "reversed_ko": "시작이 막히거나 의욕이 약해질 수 있어요.",
       "psychology_theme": "컵 · 시작 (마음·교감·수용)"
@@ -885,7 +885,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Cups02.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_two",
       "upright_ko": "두 갈래 사이에서 균형을 찾는 때예요.",
       "reversed_ko": "우유부단함이나 회피가 느껴질 수 있어요.",
       "psychology_theme": "컵 · 선택 (마음·교감·수용)"
@@ -909,7 +909,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Cups03.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_three",
       "upright_ko": "협력과 확장의 에너지가 흐릅니다.",
       "reversed_ko": "소통 부족이나 산만함이 보일 수 있어요.",
       "psychology_theme": "컵 · 확장 (마음·교감·수용)"
@@ -933,7 +933,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/95/Cups04.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_four",
       "upright_ko": "기반을 다지고 쉬어 가도 좋아요.",
       "reversed_ko": "답답함·정체감이 올 수 있어요.",
       "psychology_theme": "컵 · 안정 (마음·교감·수용)"
@@ -957,7 +957,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Cups05.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_five",
       "upright_ko": "마찰 속에서 배우는 지점이 있어요.",
       "reversed_ko": "긴장이 길어지면 거리를 두세요.",
       "psychology_theme": "컵 · 갈등 (마음·교감·수용)"
@@ -981,7 +981,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Cups06.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_six",
       "upright_ko": "지나간 흐름에서 도움을 받을 수 있어요.",
       "reversed_ko": "과거에 머물거나 비교가 많을 수 있어요.",
       "psychology_theme": "컵 · 회복 (마음·교감·수용)"
@@ -1005,7 +1005,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Cups07.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_seven",
       "upright_ko": "선택과 인내가 요구되는 구간이에요.",
       "reversed_ko": "불안·의심으로 흔들릴 수 있어요.",
       "psychology_theme": "컵 · 시험 (마음·교감·수용)"
@@ -1029,7 +1029,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Cups08.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_eight",
       "upright_ko": "한 방향으로 힘을 모을 때입니다.",
       "reversed_ko": "조급함·과로로 지칠 수 있어요.",
       "psychology_theme": "컵 · 집중 (마음·교감·수용)"
@@ -1053,7 +1053,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/36/Cups09.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_nine",
       "upright_ko": "거의 다 왔지만 마음의 여유가 필요해요.",
       "reversed_ko": "걱정·피로가 크게 느껴질 수 있어요.",
       "psychology_theme": "컵 · 마무리 (마음·교감·수용)"
@@ -1077,7 +1077,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/67/Cups10.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_ten",
       "upright_ko": "한 사이클의 무게와 결과가 보입니다.",
       "reversed_ko": "부담·과잉으로 무거울 수 있어요.",
       "psychology_theme": "컵 · 완성 (마음·교감·수용)"
@@ -1101,7 +1101,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/85/Cups11.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_page",
       "upright_ko": "호기심과 새로운 소식을 받아들이는 시기예요.",
       "reversed_ko": "미숙함·산만함이 보일 수 있어요.",
       "psychology_theme": "컵 · 탐색 (마음·교감·수용)"
@@ -1125,7 +1125,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Cups12.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_knight",
       "upright_ko": "행동으로 옮기려는 에너지가 강해요.",
       "reversed_ko": "성급함·고집이 부담이 될 수 있어요.",
       "psychology_theme": "컵 · 추진 (마음·교감·수용)"
@@ -1149,7 +1149,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Cups13.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_queen",
       "upright_ko": "감정·경험을 부드럽게 다루는 힘이 있어요.",
       "reversed_ko": "과보호·감정 소모가 있을 수 있어요.",
       "psychology_theme": "컵 · 성숙 (마음·교감·수용)"
@@ -1173,7 +1173,7 @@
         "#1d3557",
         "#457b9d"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/5/58/Cups14.svg",
+      "image_url": "/api/v1/tarot/card-image/cups_king",
       "upright_ko": "책임 있게 방향을 잡을 수 있는 때예요.",
       "reversed_ko": "통제·경직으로 답답할 수 있어요.",
       "psychology_theme": "컵 · 통솔 (마음·교감·수용)"
@@ -1197,7 +1197,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Swords01.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_ace",
       "upright_ko": "새로운 사고·경계·진실의 씨앗이 보입니다.",
       "reversed_ko": "시작이 막히거나 의욕이 약해질 수 있어요.",
       "psychology_theme": "검 · 시작 (사고·경계·진실)"
@@ -1221,7 +1221,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Swords02.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_two",
       "upright_ko": "두 갈래 사이에서 균형을 찾는 때예요.",
       "reversed_ko": "우유부단함이나 회피가 느껴질 수 있어요.",
       "psychology_theme": "검 · 선택 (사고·경계·진실)"
@@ -1245,7 +1245,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Swords03.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_three",
       "upright_ko": "협력과 확장의 에너지가 흐릅니다.",
       "reversed_ko": "소통 부족이나 산만함이 보일 수 있어요.",
       "psychology_theme": "검 · 확장 (사고·경계·진실)"
@@ -1269,7 +1269,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/90/Swords04.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_four",
       "upright_ko": "기반을 다지고 쉬어 가도 좋아요.",
       "reversed_ko": "답답함·정체감이 올 수 있어요.",
       "psychology_theme": "검 · 안정 (사고·경계·진실)"
@@ -1293,7 +1293,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/72/Swords05.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_five",
       "upright_ko": "마찰 속에서 배우는 지점이 있어요.",
       "reversed_ko": "긴장이 길어지면 거리를 두세요.",
       "psychology_theme": "검 · 갈등 (사고·경계·진실)"
@@ -1317,7 +1317,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Swords06.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_six",
       "upright_ko": "지나간 흐름에서 도움을 받을 수 있어요.",
       "reversed_ko": "과거에 머물거나 비교가 많을 수 있어요.",
       "psychology_theme": "검 · 회복 (사고·경계·진실)"
@@ -1341,7 +1341,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/74/Swords07.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_seven",
       "upright_ko": "선택과 인내가 요구되는 구간이에요.",
       "reversed_ko": "불안·의심으로 흔들릴 수 있어요.",
       "psychology_theme": "검 · 시험 (사고·경계·진실)"
@@ -1365,7 +1365,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Swords08.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_eight",
       "upright_ko": "한 방향으로 힘을 모을 때입니다.",
       "reversed_ko": "조급함·과로로 지칠 수 있어요.",
       "psychology_theme": "검 · 집중 (사고·경계·진실)"
@@ -1389,7 +1389,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Swords09.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_nine",
       "upright_ko": "거의 다 왔지만 마음의 여유가 필요해요.",
       "reversed_ko": "걱정·피로가 크게 느껴질 수 있어요.",
       "psychology_theme": "검 · 마무리 (사고·경계·진실)"
@@ -1413,7 +1413,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/49/Swords10.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_ten",
       "upright_ko": "한 사이클의 무게와 결과가 보입니다.",
       "reversed_ko": "부담·과잉으로 무거울 수 있어요.",
       "psychology_theme": "검 · 완성 (사고·경계·진실)"
@@ -1437,7 +1437,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/31/Swords11.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_page",
       "upright_ko": "호기심과 새로운 소식을 받아들이는 시기예요.",
       "reversed_ko": "미숙함·산만함이 보일 수 있어요.",
       "psychology_theme": "검 · 탐색 (사고·경계·진실)"
@@ -1461,7 +1461,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Swords12.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_knight",
       "upright_ko": "행동으로 옮기려는 에너지가 강해요.",
       "reversed_ko": "성급함·고집이 부담이 될 수 있어요.",
       "psychology_theme": "검 · 추진 (사고·경계·진실)"
@@ -1485,7 +1485,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Swords13.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_queen",
       "upright_ko": "감정·경험을 부드럽게 다루는 힘이 있어요.",
       "reversed_ko": "과보호·감정 소모가 있을 수 있어요.",
       "psychology_theme": "검 · 성숙 (사고·경계·진실)"
@@ -1509,7 +1509,7 @@
         "#2b2d42",
         "#8d99ae"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/72/Swords14.svg",
+      "image_url": "/api/v1/tarot/card-image/swords_king",
       "upright_ko": "책임 있게 방향을 잡을 수 있는 때예요.",
       "reversed_ko": "통제·경직으로 답답할 수 있어요.",
       "psychology_theme": "검 · 통솔 (사고·경계·진실)"
@@ -1533,7 +1533,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Pents01.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_ace",
       "upright_ko": "새로운 생활·안정·돌봄의 씨앗이 보입니다.",
       "reversed_ko": "시작이 막히거나 의욕이 약해질 수 있어요.",
       "psychology_theme": "펜타클 · 시작 (생활·안정·돌봄)"
@@ -1557,7 +1557,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/18/Pents02.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_two",
       "upright_ko": "두 갈래 사이에서 균형을 찾는 때예요.",
       "reversed_ko": "우유부단함이나 회피가 느껴질 수 있어요.",
       "psychology_theme": "펜타클 · 선택 (생활·안정·돌봄)"
@@ -1581,7 +1581,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Pents03.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_three",
       "upright_ko": "협력과 확장의 에너지가 흐릅니다.",
       "reversed_ko": "소통 부족이나 산만함이 보일 수 있어요.",
       "psychology_theme": "펜타클 · 확장 (생활·안정·돌봄)"
@@ -1605,7 +1605,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Pents04.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_four",
       "upright_ko": "기반을 다지고 쉬어 가도 좋아요.",
       "reversed_ko": "답답함·정체감이 올 수 있어요.",
       "psychology_theme": "펜타클 · 안정 (생활·안정·돌봄)"
@@ -1629,7 +1629,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Pents05.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_five",
       "upright_ko": "마찰 속에서 배우는 지점이 있어요.",
       "reversed_ko": "긴장이 길어지면 거리를 두세요.",
       "psychology_theme": "펜타클 · 갈등 (생활·안정·돌봄)"
@@ -1653,7 +1653,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Pents06.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_six",
       "upright_ko": "지나간 흐름에서 도움을 받을 수 있어요.",
       "reversed_ko": "과거에 머물거나 비교가 많을 수 있어요.",
       "psychology_theme": "펜타클 · 회복 (생활·안정·돌봄)"
@@ -1677,7 +1677,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Pents07.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_seven",
       "upright_ko": "선택과 인내가 요구되는 구간이에요.",
       "reversed_ko": "불안·의심으로 흔들릴 수 있어요.",
       "psychology_theme": "펜타클 · 시험 (생활·안정·돌봄)"
@@ -1701,7 +1701,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Pents08.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_eight",
       "upright_ko": "한 방향으로 힘을 모을 때입니다.",
       "reversed_ko": "조급함·과로로 지칠 수 있어요.",
       "psychology_theme": "펜타클 · 집중 (생활·안정·돌봄)"
@@ -1725,7 +1725,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Pents09.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_nine",
       "upright_ko": "거의 다 왔지만 마음의 여유가 필요해요.",
       "reversed_ko": "걱정·피로가 크게 느껴질 수 있어요.",
       "psychology_theme": "펜타클 · 마무리 (생활·안정·돌봄)"
@@ -1749,7 +1749,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/f/ff/Pents10.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_ten",
       "upright_ko": "한 사이클의 무게와 결과가 보입니다.",
       "reversed_ko": "부담·과잉으로 무거울 수 있어요.",
       "psychology_theme": "펜타클 · 완성 (생활·안정·돌봄)"
@@ -1773,7 +1773,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Pents11.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_page",
       "upright_ko": "호기심과 새로운 소식을 받아들이는 시기예요.",
       "reversed_ko": "미숙함·산만함이 보일 수 있어요.",
       "psychology_theme": "펜타클 · 탐색 (생활·안정·돌봄)"
@@ -1797,7 +1797,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/0/02/Pents12.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_knight",
       "upright_ko": "행동으로 옮기려는 에너지가 강해요.",
       "reversed_ko": "성급함·고집이 부담이 될 수 있어요.",
       "psychology_theme": "펜타클 · 추진 (생활·안정·돌봄)"
@@ -1821,7 +1821,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/75/Pents13.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_queen",
       "upright_ko": "감정·경험을 부드럽게 다루는 힘이 있어요.",
       "reversed_ko": "과보호·감정 소모가 있을 수 있어요.",
       "psychology_theme": "펜타클 · 성숙 (생활·안정·돌봄)"
@@ -1845,7 +1845,7 @@
         "#1b4332",
         "#52b788"
       ],
-      "image_url": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Pents14.svg",
+      "image_url": "/api/v1/tarot/card-image/pentacles_king",
       "upright_ko": "책임 있게 방향을 잡을 수 있는 때예요.",
       "reversed_ko": "통제·경직으로 답답할 수 있어요.",
       "psychology_theme": "펜타클 · 통솔 (생활·안정·돌봄)"

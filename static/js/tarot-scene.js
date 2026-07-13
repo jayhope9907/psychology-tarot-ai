@@ -95,9 +95,7 @@
     const key = `${card?.id || "unknown"}_${card?.reversed ? "rev" : "up"}`;
     if (textureCache.has(key)) return Promise.resolve(textureCache.get(key));
 
-    const hidden = global.TarotImageSettings?.getMode?.() === "hidden";
-
-    if (hidden || !card?.image_url) {
+    if (!card?.image_url) {
       const tex = createCanvasTexture((ctx) => drawFallbackFace(ctx, card));
       textureCache.set(key, tex);
       return Promise.resolve(tex);
@@ -105,7 +103,10 @@
 
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      // Same-origin proxy URLs do not need CORS; leave unset for reliability.
+      if (/^https?:\/\//i.test(card.image_url)) {
+        img.crossOrigin = "anonymous";
+      }
       img.onload = () => {
         const tex = createCanvasTexture((ctx) => {
           ctx.fillStyle = "#0f1714";

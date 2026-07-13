@@ -1,5 +1,7 @@
 /**
- * Tarot card image visibility: hidden (default, fair pick) | peek
+ * Tarot card image visibility for pick UI:
+ * - hidden (default): backs stay blank until flipped; revealed faces always use original art
+ * - peek: faint face image on backs / pick tiles
  */
 (function (global) {
   const KEY = "psychology_ai_tarot_card_images";
@@ -16,8 +18,8 @@
     global.dispatchEvent(new CustomEvent("tarot-image-mode-change", { detail: { mode: getMode() } }));
   }
 
+  /** Revealed faces always use original Rider–Waite (etc.) art when available. */
   function shouldShowImage(flipped) {
-    if (getMode() === MODES.HIDDEN) return false;
     return !!flipped;
   }
 

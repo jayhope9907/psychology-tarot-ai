@@ -385,9 +385,9 @@
             </details>
           </div>
           <div class="tarot-img-setting" hidden>
-            <label for="imageModePeek">카드 그림 표시 (뽑기 전에는 숨김이 규칙)</label>
+            <label for="imageModePeek">뽑기 전 뒷면 살짝 보기 (공개된 카드는 항상 원본 그림)</label>
             <div class="image-mode-btns" id="imageModeBtns">
-              <button type="button" data-mode="hidden" class="active">그림 숨기기</button>
+              <button type="button" data-mode="hidden" class="active">뒷면만</button>
               <button type="button" data-mode="peek">살짝 보기</button>
             </div>
           </div>
@@ -596,8 +596,7 @@
 
     function cardImgHtml(card, flipped) {
       if (!flipped) return cardBackHtml(card);
-      const mode = TarotImageSettings.getMode();
-      if (mode === "hidden" || !card.image_url) {
+      if (!card.image_url) {
         return `<div class="card-symbol-face"><span class="sym">${card.symbol || "✦"}</span></div>`;
       }
       const cls = card.reversed ? " reversed" : "";

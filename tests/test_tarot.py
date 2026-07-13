@@ -59,11 +59,11 @@ def test_list_deck_catalog_endpoint():
     assert payload.get("major_count") == 22
     assert payload.get("minor_count") == 56
     assert "three_card" in payload["spreads"]
-    assert payload["cards"][0]["image_url"].startswith("https://")
+    assert payload["cards"][0]["image_url"].startswith("/api/v1/tarot/card-image/")
     assert "upright_ko" in payload["cards"][0]
     minor = next(c for c in payload["cards"] if c.get("arcana") == "minor")
     assert minor["suit"] in ("wands", "cups", "swords", "pentacles")
-    assert minor["image_url"].endswith(".svg")
+    assert "/api/v1/tarot/card-image/" in minor["image_url"]
 
 
 def test_pick_endpoint_user_selected_minor_card():
@@ -75,7 +75,7 @@ def test_pick_endpoint_user_selected_minor_card():
     payload = response.json()
     assert len(payload["cards"]) == 3
     assert payload["cards"][1]["id"] == "wands_ace"
-    assert payload["cards"][1]["image_url"].startswith("https://")
+    assert payload["cards"][1]["image_url"].startswith("/api/v1/tarot/card-image/")
 
 
 def test_pick_endpoint_user_selected_cards():
@@ -87,7 +87,23 @@ def test_pick_endpoint_user_selected_cards():
     payload = response.json()
     assert len(payload["cards"]) == 3
     assert payload["cards"][0]["id"] == "fool"
-    assert payload["cards"][0]["image_url"].startswith("https://")
+    assert payload["cards"][0]["image_url"].startswith("/api/v1/tarot/card-image/")
+
+
+def test_card_image_endpoint_serves_original(monkeypatch, tmp_path):
+    from app.services import tarot as tarot_svc
+
+    sample = tmp_path / "fool.jpg"
+    sample.write_bytes(b"\xff\xd8\xff" + b"0" * 1200)
+
+    monkeypatch.setattr(tarot_svc, "resolve_card_image_file", lambda card_id: sample if card_id == "fool" else None)
+    response = client.get("/api/v1/tarot/card-image/fool")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/")
+    assert len(response.content) > 1000
+
+    missing = client.get("/api/v1/tarot/card-image/not_a_card")
+    assert missing.status_code == 404
 
 
 def test_build_draw_from_picks():
