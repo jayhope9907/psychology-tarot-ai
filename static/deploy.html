@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="마음쉼터 임시·상시 배포 콘솔" />
+  <title>마음쉼터 · 배포 콘솔</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #12151c;
+      --panel: #1a2030;
+      --ink: #eef2f8;
+      --muted: rgba(238,242,248,0.62);
+      --line: rgba(150,170,210,0.22);
+      --good: #5a8f78;
+      --warm: #d4a574;
+      --accent: #7f9fc8;
+      --danger: #c27a7a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--ink);
+      font-family: "IBM Plex Sans KR", sans-serif;
+      background:
+        radial-gradient(ellipse 50% 40% at 10% 0%, rgba(90,143,120,0.18), transparent 55%),
+        radial-gradient(ellipse 40% 35% at 100% 20%, rgba(212,165,116,0.12), transparent 50%),
+        var(--bg);
+      line-height: 1.55;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 22px 16px 80px; }
+    nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.82rem; }
+    .logo { color: var(--ink); font-weight: 700; }
+    h1 {
+      font-family: "Fraunces", serif; font-size: clamp(1.6rem, 4vw, 2.2rem);
+      margin: 0 0 8px; letter-spacing: -0.02em;
+    }
+    .lead { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; }
+    .banner {
+      padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line);
+      background: rgba(127,159,200,0.1); margin-bottom: 16px; font-size: 0.82rem; color: var(--muted);
+    }
+    .status {
+      display: grid; gap: 8px; padding: 14px; border-radius: 16px;
+      border: 1px solid var(--line); background: var(--panel); margin-bottom: 16px;
+    }
+    .status strong { font-size: 0.95rem; }
+    .pill {
+      display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem;
+      background: rgba(90,143,120,0.2); color: #9fd0b8; margin-right: 6px;
+    }
+    .pill.warn { background: rgba(212,165,116,0.18); color: var(--warm); }
+    .pill.off { background: rgba(194,122,122,0.18); color: #e0a0a0; }
+    .url-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .url {
+      flex: 1; min-width: 200px; padding: 10px 12px; border-radius: 10px;
+      background: rgba(0,0,0,0.28); border: 1px solid var(--line);
+      font-size: 0.82rem; word-break: break-all;
+    }
+    .modes { display: grid; gap: 12px; }
+    .mode {
+      padding: 16px; border-radius: 16px; border: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .mode h2 { margin: 0 0 6px; font-size: 1.05rem; }
+    .mode p { margin: 0 0 12px; color: var(--muted); font-size: 0.84rem; }
+    .meta { font-size: 0.74rem; color: var(--warm); margin-bottom: 10px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    button, .btn {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.04);
+      color: var(--ink); border-radius: 10px; padding: 10px 14px;
+      font: inherit; font-size: 0.84rem; font-weight: 600; cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--good), #3d6b5a); border: none; color: #fff;
+    }
+    .btn-warm {
+      background: linear-gradient(135deg, #c4a574, #8f6f45); border: none; color: #1a1208;
+    }
+    pre.cmd {
+      margin: 10px 0 0; padding: 10px 12px; border-radius: 10px;
+      background: #0d1016; color: #c9d4e4; font-size: 0.74rem; overflow-x: auto;
+      border: 1px solid var(--line); white-space: pre-wrap;
+    }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 8px; margin-top: 14px;
+    }
+    .share {
+      padding: 12px; border-radius: 12px; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03); text-decoration: none; color: var(--ink);
+    }
+    .share strong { display: block; font-size: 0.88rem; margin-bottom: 4px; }
+    .share span { font-size: 0.72rem; color: var(--muted); word-break: break-all; }
+    .hints { margin: 18px 0 0; padding-left: 18px; color: var(--muted); font-size: 0.82rem; }
+    .toast {
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+      background: #243044; color: #fff; padding: 10px 14px; border-radius: 999px;
+      font-size: 0.82rem; opacity: 0; pointer-events: none; transition: .2s;
+      border: 1px solid var(--line);
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="/">마음쉼터</a>
+      <div>
+        <a href="/home">홈</a>
+        <a href="/tarot">타로</a>
+        <a href="/clinical">마음 돌보기</a>
+        <a href="/health">health</a>
+      </div>
+    </nav>
+
+    <h1>배포 콘솔</h1>
+    <p class="lead">영구 서버가 아니어도, 임시 공개 링크를 만들고 공유할 수 있는 운영 화면입니다. 필요하면 Render로도 올릴 수 있어요.</p>
+
+    <div class="banner">
+      임시 터널은 PC가 켜져 있고 <code>start-public.ps1</code> 터널이 살아 있을 때만 접속됩니다. 주소는 재배포마다 바뀝니다.
+    </div>
+
+    <section class="status" id="statusBox">
+      <div><span class="pill warn" id="modePill">상태 확인 중</span><strong id="statusTitle">배포 상태를 불러오는 중…</strong></div>
+      <div class="url-row">
+        <div class="url" id="activeUrl">—</div>
+        <button type="button" class="btn-primary" id="btnCopyActive">링크 복사</button>
+        <button type="button" id="btnRefresh">새로고침</button>
+      </div>
+      <div class="meta" id="statusMeta"></div>
+    </section>
+
+    <section class="modes" id="modes"></section>
+
+    <h2 style="margin:22px 0 8px;font-size:1rem">공유 바로가기</h2>
+    <div class="grid" id="shareGrid"></div>
+
+    <ul class="hints" id="hints"></ul>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let payload = null;
+
+    function toast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 1600);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("복사했어요");
+      } catch (_) {
+        toast("복사에 실패했어요");
+      }
+    }
+
+    function fmtAge(sec) {
+      if (sec == null) return "";
+      const m = Math.floor(sec / 60);
+      if (m < 60) return `${m}분 전 시작`;
+      return `${Math.floor(m / 60)}시간 ${m % 60}분 전 시작`;
+    }
+
+    function renderStatus() {
+      const tunnel = payload.tunnel || {};
+      const pill = document.getElementById("modePill");
+      const title = document.getElementById("statusTitle");
+      const url = document.getElementById("activeUrl");
+      const meta = document.getElementById("statusMeta");
+
+      if (tunnel.active && tunnel.public_url) {
+        pill.className = "pill";
+        pill.textContent = "임시 공개 중";
+        title.textContent = "터널로 외부 공유 가능한 상태";
+        url.textContent = tunnel.public_url;
+        meta.textContent = fmtAge(tunnel.age_seconds) || "public-url.json 기준";
+      } else {
+        pill.className = "pill warn";
+        pill.textContent = "로컬 / 미공개";
+        title.textContent = "지금은 이 PC 안에서만 열려 있어요";
+        url.textContent = payload.local_base || "http://127.0.0.1:8000";
+        meta.textContent = "임시 공개하려면 아래 PowerShell 명령을 실행하세요";
+      }
+    }
+
+    function renderModes() {
+      const box = document.getElementById("modes");
+      box.innerHTML = (payload.modes || []).map((m) => {
+        const action = m.action || {};
+        let buttons = "";
+        if (action.type === "link") {
+          buttons = `<a class="btn btn-warm" href="${action.href}" target="_blank" rel="noopener">${action.label_ko}</a>`;
+        } else if (action.type === "command") {
+          buttons = `<button type="button" class="btn-primary" data-copy="${encodeURIComponent(action.command)}">${action.label_ko} 명령 복사</button>`;
+        }
+        if (m.stop_command) {
+          buttons += `<button type="button" data-copy="${encodeURIComponent(m.stop_command)}">중지 명령 복사</button>`;
+        }
+        if (m.url) {
+          buttons += `<button type="button" data-copy="${encodeURIComponent(m.url)}">URL 복사</button>`;
+          if (m.url.startsWith("http")) {
+            buttons += `<a class="btn" href="${m.url}" target="_blank" rel="noopener">열기</a>`;
+          }
+        }
+        const cmd = action.command
+          ? `<pre class="cmd">${action.command}${m.stop_command ? "\n" + m.stop_command : ""}</pre>`
+          : "";
+        const ready = m.ready ? "준비됨" : "아직 비활성";
+        return `<article class="mode">
+          <div class="meta">${m.kind} · ${m.permanent ? "상시" : "임시"} · ${ready}</div>
+          <h2>${m.title_ko}</h2>
+          <p>${m.note_ko || ""}</p>
+          <div class="actions">${buttons}</div>
+          ${cmd}
+        </article>`;
+      }).join("");
+
+      box.querySelectorAll("[data-copy]").forEach((btn) => {
+        btn.addEventListener("click", () => copyText(decodeURIComponent(btn.dataset.copy)));
+      });
+    }
+
+    function renderShares() {
+      const grid = document.getElementById("shareGrid");
+      grid.innerHTML = (payload.share_links || []).map((s) => `
+        <a class="share" href="${s.url}" target="_blank" rel="noopener">
+          <strong>${s.label_ko}</strong>
+          <span>${s.url}</span>
+        </a>
+      `).join("");
+    }
+
+    function renderHints() {
+      document.getElementById("hints").innerHTML =
+        (payload.hints_ko || []).map((h) => `<li>${h}</li>`).join("");
+    }
+
+    async function load() {
+      const res = await fetch("/api/v1/deploy/status");
+      payload = await res.json();
+      renderStatus();
+      renderModes();
+      renderShares();
+      renderHints();
+    }
+
+    document.getElementById("btnCopyActive").onclick = () => {
+      copyText(document.getElementById("activeUrl").textContent.trim());
+    };
+    document.getElementById("btnRefresh").onclick = () => load().catch(console.error);
+    load().catch((e) => {
+      document.getElementById("statusTitle").textContent = "상태를 불러오지 못했어요";
+      console.error(e);
+    });
+  </script>
+</body>
+</html>

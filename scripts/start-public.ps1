@@ -153,6 +153,7 @@ $shareObj = [ordered]@{
     case_notes = "$publicUrl/case-notes"
     test = "$publicUrl/test"
     legal = "$publicUrl/legal"
+    deploy = "$publicUrl/deploy"
     started_at = (Get-Date).ToUniversalTime().ToString("o")
 }
 ($shareObj | ConvertTo-Json -Depth 3) | Set-Content (Join-Path $Root "public-url.json") -Encoding UTF8
@@ -175,7 +176,9 @@ Write-Host "에이전트: $($shareObj.agent_lab)"
 Write-Host "케이스노트: $($shareObj.case_notes)"
 Write-Host "법률 : $($shareObj.legal)"
 Write-Host "테스트: $($shareObj.test)"
+Write-Host "배포콘솔: $($shareObj.deploy)"
 Write-Host ""
 Write-Host "링크는 public-url.json 에 저장되었습니다."
 Write-Host "이 PC가 켜져 있고 터널 프로세스가 살아 있어야 접속됩니다."
+Write-Host "배포 콘솔: $($shareObj.deploy)"
 Write-Host "영구 URL: https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai"

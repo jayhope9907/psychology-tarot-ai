@@ -830,6 +830,22 @@ async def home_ui():
     raise HTTPException(status_code=404, detail="Home UI not found")
 
 
+@app.get("/deploy")
+async def deploy_console_ui():
+    path = STATIC_DIR / "deploy.html"
+    if path.exists():
+        return FileResponse(str(path))
+    raise HTTPException(status_code=404, detail="Deploy console not found")
+
+
+@app.get("/api/v1/deploy/status")
+async def deploy_status_api(request: Request):
+    from app.services.deploy_console import deploy_status
+
+    public_base = _resolve_public_base(request)
+    return deploy_status(request_base=public_base)
+
+
 @app.get("/chat")
 async def chat_ui():
     index_path = STATIC_DIR / "chat.html"
@@ -870,6 +886,7 @@ def _public_urls(public_base: str) -> Dict[str, str]:
         "theories": "/theories",
         "psychometrics": "/psychometrics",
         "associations": "/associations",
+        "deploy": "/deploy",
         "health": "/health",
         "tarot_deck_api": "/api/v1/tarot/deck",
         "research_kpis": "/api/v1/research/grant-kpis",
@@ -905,9 +922,11 @@ async def health_check(request: Request):
             "에이전트 랩": urls.get("agent_lab", "/agent-lab"),
             "MBTI·탐색": urls.get("psychometrics", "/psychometrics"),
             "학회 라이선스": urls.get("associations", "/associations"),
+            "배포 콘솔": urls.get("deploy", "/deploy"),
             "장애인용(보관)": urls.get("disability", "/disability"),
         },
         "deploy_hint": "https://render.com/deploy?repo=https://github.com/jayhope9907/psychology-tarot-ai",
+        "deploy_console": urls.get("deploy", "/deploy"),
     }
 
 
