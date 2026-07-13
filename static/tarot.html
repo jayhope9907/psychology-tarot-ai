@@ -86,8 +86,8 @@
       background: var(--glass); border: 1px solid var(--glass-border);
       backdrop-filter: blur(20px); overflow: hidden;
     }
-    .stage-panel { min-height: 560px; display: flex; flex-direction: column; }
-  #tarotCanvas { flex: 1; min-height: 520px; position: relative; }
+    .stage-panel { min-height: 620px; display: flex; flex-direction: column; }
+  #tarotCanvas { flex: 1; min-height: 580px; position: relative; }
   #tarotCanvas canvas { display: block; width: 100% !important; height: 100% !important; }
     .stage-footer {
       padding: 12px 16px; border-top: 1px solid var(--glass-border);
@@ -252,14 +252,30 @@
     }
     .pick-card.back img:not(.tarot-img-peek) { opacity: 0.15; }
     .tarot-img-hidden { display: none !important; }
+    .camera-panel {
+      margin: 10px 0 4px; padding: 12px; border-radius: 12px;
+      background: rgba(0,0,0,0.18); border: 1px solid var(--glass-border);
+    }
+    .camera-panel summary {
+      cursor: pointer; font-size: 0.78rem; color: var(--gold); font-weight: 600;
+      list-style: none;
+    }
+    .camera-panel summary::-webkit-details-marker { display: none; }
+    .camera-grid { display: grid; gap: 10px; margin-top: 10px; }
+    .camera-row { display: grid; gap: 4px; }
+    .camera-row label {
+      display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-soft);
+    }
+    .camera-row input[type="range"] { width: 100%; accent-color: var(--gold); }
+    .camera-actions { display: flex; gap: 8px; margin-top: 8px; }
   </style>
 </head>
 <body class="toss-ui tarot-page">
   <div class="shell">
     <header class="t-topbar">
       <div>
-        <h1>3D 타로</h1>
-        <p>카드로 마음을 가볍게 비춰 보기 → AI 대화</p>
+        <h1>3D 타로 · 원형 테이블</h1>
+        <p>위에서 내려다보며 78장 원형 배치 · 카메라 조절 가능</p>
       </div>
       <a class="t-back" href="/chat">← AI 대화</a>
     </header>
@@ -291,7 +307,7 @@
         <div id="tarotCanvas"></div>
         <div class="stage-footer">
           <span class="phase-pill" id="phaseLabel">준비</span>
-          <span id="stageHint">원형 탁자 위에서 카드를 섞고 뽑아 보세요</span>
+          <span id="stageHint">위에서 내려다보는 원형 탁자 — 카메라로 높이·줌을 맞춰 보세요</span>
         </div>
       </section>
 
@@ -305,6 +321,32 @@
           <div class="spread-options">
             <button type="button" class="spread-btn" data-spread="single" data-count="1">원카드</button>
             <button type="button" class="spread-btn active" data-spread="three_card" data-count="3">3카드</button>
+          </div>
+          <div class="camera-panel">
+            <details open>
+              <summary>카메라 커스텀 · 위에서 내려보기</summary>
+              <div class="camera-grid">
+                <div class="camera-row">
+                  <label>높이 <span id="camHeightVal">12.2</span></label>
+                  <input type="range" id="camHeight" min="7" max="18" step="0.1" value="12.2" />
+                </div>
+                <div class="camera-row">
+                  <label>시야(FOV) <span id="camFovVal">38</span></label>
+                  <input type="range" id="camFov" min="24" max="60" step="1" value="38" />
+                </div>
+                <div class="camera-row">
+                  <label>줌 <span id="camZoomVal">1.00</span></label>
+                  <input type="range" id="camZoom" min="0.7" max="1.45" step="0.01" value="1" />
+                </div>
+                <div class="camera-row">
+                  <label>테이블 회전 <span id="camOrbitVal">0°</span></label>
+                  <input type="range" id="camOrbit" min="0" max="360" step="1" value="0" />
+                </div>
+              </div>
+              <div class="camera-actions">
+                <button type="button" class="btn btn-ghost" id="btnCamReset">카메라 초기화</button>
+              </div>
+            </details>
           </div>
           <div class="tarot-img-setting">
             <label for="imageModePeek">카드 그림 표시</label>
@@ -381,10 +423,10 @@
       complete: "완료",
     };
     const HINTS = {
-      ready: "카드 섞기 버튼을 눌러 주세요",
-      shuffling: "탁자 위 원형 덱을 돌리며 섞는 중…",
-      picking: "탁자 원 안에서 직감으로 카드를 눌러 뽑으세요",
-      spreading: "뽑은 카드를 탁자 앞쪽으로 펼치는 중…",
+      ready: "위에서 내려다보는 원형 덱 — 카메라로 높이·줌을 맞춘 뒤 섞어 주세요",
+      shuffling: "원형 세 겹 링을 돌리며 섞는 중…",
+      picking: "위에서 보이는 카드 중 직감으로 눌러 뽑으세요",
+      spreading: "뽑은 카드를 탁자 중앙으로 모으는 중…",
       reveal: "카드를 눌러 그림을 확인하세요",
       complete: "마음 풀이를 받아 보세요",
     };
@@ -604,6 +646,48 @@
       els.fallbackCards.classList.add("visible");
     }
 
+    function syncCameraUI(prefs) {
+      const p = prefs || scene?.getCameraPrefs?.() || window.TarotCameraDefaults || {};
+      const height = document.getElementById("camHeight");
+      const fov = document.getElementById("camFov");
+      const zoom = document.getElementById("camZoom");
+      const orbit = document.getElementById("camOrbit");
+      if (!height) return;
+      height.value = p.height ?? 12.2;
+      fov.value = p.fov ?? 38;
+      zoom.value = p.zoom ?? 1;
+      orbit.value = Math.round(((p.orbit || 0) * 180) / Math.PI) % 360;
+      document.getElementById("camHeightVal").textContent = Number(height.value).toFixed(1);
+      document.getElementById("camFovVal").textContent = String(Math.round(Number(fov.value)));
+      document.getElementById("camZoomVal").textContent = Number(zoom.value).toFixed(2);
+      document.getElementById("camOrbitVal").textContent = `${orbit.value}°`;
+    }
+
+    function applyCameraFromUI() {
+      if (!scene?.setCameraPrefs) return;
+      const height = Number(document.getElementById("camHeight").value);
+      const fov = Number(document.getElementById("camFov").value);
+      const zoom = Number(document.getElementById("camZoom").value);
+      const orbitDeg = Number(document.getElementById("camOrbit").value);
+      scene.setCameraPrefs({
+        height,
+        fov,
+        zoom,
+        orbit: (orbitDeg * Math.PI) / 180,
+      });
+    }
+
+    ["camHeight", "camFov", "camZoom", "camOrbit"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("input", () => {
+        applyCameraFromUI();
+        syncCameraUI(scene?.getCameraPrefs?.());
+      });
+    });
+    document.getElementById("btnCamReset")?.addEventListener("click", () => {
+      if (scene?.resetCameraPrefs) syncCameraUI(scene.resetCameraPrefs());
+      else syncCameraUI(window.TarotCameraDefaults);
+    });
+
     async function loadDeck() {
       try {
         deckData = await TarotOffline.loadDeckCatalog();
@@ -615,6 +699,8 @@
             els.phaseLabel.textContent = PHASE_LABELS[phase] || phase;
             els.stageHint.textContent = HINTS[phase] || "";
           };
+          scene.onCameraChange = (prefs) => syncCameraUI(prefs);
+          syncCameraUI(scene.getCameraPrefs());
           scene.onCardFlip = (card, index) => {
             if (!flippedIndices.has(index) && currentDraw) {
               flippedIndices.add(index);
@@ -634,7 +720,7 @@
         deckReady = true;
         els.btnShuffle.disabled = false;
         const offlineNote = navigator.onLine === false ? " (오프라인 · 78장 전체)" : "";
-        setStatus(`준비 완료. 78장 덱 — 질문을 적고 카드를 섞어 주세요.${offlineNote}`);
+        setStatus(`준비 완료. 78장 원형 3링 — 카메라 맞추고 섞어 주세요.${offlineNote}`);
       } catch (err) {
         setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
       }

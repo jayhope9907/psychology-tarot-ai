@@ -89,6 +89,23 @@ def test_tarot_ui_route():
     response = client.get("/tarot")
     assert response.status_code == 200
     assert "3D 타로" in response.text
+    assert "카메라 커스텀" in response.text
+    assert "camHeight" in response.text
+
+
+def test_psychometrics_hosts_mind_themes():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    ui = TestClient(app).get("/psychometrics")
+    assert ui.status_code == 200
+    assert "마음 주제" in ui.text
+    assert "domainBar" in ui.text
+
+    clinical = TestClient(app).get("/clinical")
+    assert clinical.status_code == 200
+    assert "마음 주제 · 심리검사" in clinical.text
+    assert 'id="domainList"' not in clinical.text
 
 
 def test_tarot_reading_endpoint_with_mock_openai(monkeypatch):

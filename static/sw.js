@@ -1,4 +1,4 @@
-const CACHE = "maum-cache-v8";
+const CACHE = "maum-cache-v9";
 const ASSETS = [
   "/",
   "/home",

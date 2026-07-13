@@ -83,4 +83,5 @@ def test_assessment_syncs_to_agent():
 def test_psychometrics_ui():
     res = client.get("/psychometrics")
     assert res.status_code == 200
-    assert "MBTI" in res.text
+    assert "마음 주제" in res.text
+    assert "MBTI" in res.text or "심리" in res.text

@@ -107,7 +107,7 @@
       </button>
       <a class="c-track-btn" href="/psychometrics" style="text-decoration:none;color:inherit">
         <span class="emoji">🧭</span>
-        <div><div class="title">MBTI · 이상심리 탐색</div><div class="desc">짧은 문항 → AI 에이전트 자동 동기화</div></div>
+        <div><div class="title">마음 주제 · 심리검사</div><div class="desc">영역별 검사 목록 · 에이전트 자동 동기화</div></div>
       </a>
     </div>
     <div class="c-section" id="dreamSeedBox">
@@ -118,11 +118,6 @@
         <span class="emoji">🌱</span>
         <div><div class="title">꿈 이야기 나누기</div><div class="desc">돈·일 현실을 인정하고, 작은 미래를 함께 그려요</div></div>
       </button>
-    </div>
-    <div class="c-section">
-      <h2>마음 주제</h2>
-      <p class="sub">기분·관계·생각·그림 표현 등 — 편한 것부터 시작해 보세요</p>
-      <div id="domainList"></div>
     </div>
     <p class="c-disclaimer" id="disclaimer"></p>
   </div>
@@ -186,9 +181,9 @@
     function renderStats() {
       const c = catalog.counts || {};
       document.getElementById("statsGrid").innerHTML = `
-        <div class="c-stat"><strong>${c.unique_instruments || 0}</strong><span>마음 주제</span></div>
+        <div class="c-stat"><strong>${c.unique_instruments || 0}</strong><span>검사 종류</span></div>
         <div class="c-stat"><strong>${c.total_items || 0}</strong><span>질문·활동</span></div>
-        <div class="c-stat"><strong>${c.domains || 0}</strong><span>영역</span></div>`;
+        <div class="c-stat"><strong>${(catalog.formal_instruments || []).length || 0}</strong><span>짧게 확인</span></div>`;
       document.getElementById("hubTitle").textContent = catalog.user_title || catalog.title || "마음 돌보기";
       document.getElementById("hubSubtitle").textContent = catalog.user_subtitle || catalog.subtitle || "";
       document.getElementById("disclaimer").textContent = catalog.user_disclaimer || catalog.disclaimer || "";
@@ -214,15 +209,6 @@
       document.getElementById("progressFill").style.width = pct + "%";
       document.getElementById("progressLabel").textContent =
         `${o.total_answered_items} / ${o.total_catalog_items} (${pct}%) · 짧게 확인 ${o.formal_answered_items} · 그림·이야기 ${o.projective_answered_items}`;
-    }
-
-    function renderDomains() {
-      const el = document.getElementById("domainList");
-      el.innerHTML = catalog.domains.map(d => `
-        <div class="c-domain">
-          <strong>${d.user_label || d.label}</strong>
-          <span>${d.track === "projective" ? "그림·이야기" : "짧게 확인"}</span>
-        </div>`).join("");
     }
 
     function renderFormalList() {
@@ -349,7 +335,6 @@
       }
       renderStats();
       renderProgress();
-      renderDomains();
       renderFormalList();
     }
 

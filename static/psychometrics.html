@@ -42,6 +42,16 @@
     .screen { display: none; } .screen.active { display: block; }
     .inst { cursor: pointer; } .inst:hover { border-color: var(--accent); }
     a.inline { color: var(--warm); }
+    .domain-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+    .domain-chip {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.03); color: var(--muted);
+      border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 0.72rem; cursor: pointer;
+    }
+    .domain-chip.active { border-color: var(--accent); color: var(--ink); background: rgba(138,164,212,0.16); }
+    .domain-head {
+      margin: 18px 0 8px; font-size: 0.78rem; color: var(--warm); font-weight: 600;
+      letter-spacing: 0.02em;
+    }
   </style>
 </head>
 <body>
@@ -55,10 +65,11 @@
       </div>
     </nav>
     <div id="viewList" class="screen active">
-      <h1>심리검사 · 마음 탐색</h1>
-      <p class="lead">PHQ·GAD·DASS·WHO-5·MBTI 등 표준·확장 검사를 한곳에서. 답할수록 AI 에이전트에 자동 저장·동기화되어 당신을 더 입체적으로 이해합니다.</p>
-      <div class="notice">진단이 아닙니다. 기분·관계는 「힘들어 보이시네요」처럼 부드럽게 풀어 가며, 설문처럼 몰아 묻지 않습니다.</div>
+      <h1>마음 주제 · 심리검사</h1>
+      <p class="lead">영역별로 정리한 검사 카탈로그입니다. 답할수록 AI 에이전트에 자동 저장·동기화됩니다.</p>
+      <div class="notice">진단이 아닙니다. 「마음 돌보기」 허브에서는 주제 목록을 빼 두고, 여기서만 영역별로 고를 수 있어요.</div>
       <div class="panel" id="agentBox"><span class="chip">에이전트 동기화 대기</span></div>
+      <div class="domain-bar" id="domainBar"></div>
       <div id="list"></div>
     </div>
     <div id="viewRun" class="screen">
@@ -93,6 +104,7 @@
     localStorage.setItem(USER_KEY, userId);
     let sessionId = localStorage.getItem(SESSION_KEY);
     let catalog = [];
+    let domainFilter = "all";
     let current = null, itemIdx = 0, selected = null;
 
     function show(id) {
@@ -124,19 +136,60 @@
       } catch (e) {}
     }
 
+    function domainKeys() {
+      const map = new Map();
+      catalog.forEach((i) => {
+        const key = i.domain_label || i.school || "기타";
+        map.set(key, (map.get(key) || 0) + 1);
+      });
+      return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], "ko"));
+    }
+
+    function renderDomainBar() {
+      const bar = document.getElementById("domainBar");
+      const chips = [`<button type="button" class="domain-chip ${domainFilter === "all" ? "active" : ""}" data-d="all">전체 ${catalog.length}</button>`];
+      domainKeys().forEach(([label, count]) => {
+        chips.push(`<button type="button" class="domain-chip ${domainFilter === label ? "active" : ""}" data-d="${label.replace(/"/g, "")}">${label} ${count}</button>`);
+      });
+      bar.innerHTML = chips.join("");
+      bar.querySelectorAll(".domain-chip").forEach((btn) => {
+        btn.onclick = () => {
+          domainFilter = btn.dataset.d;
+          renderDomainBar();
+          renderList();
+        };
+      });
+    }
+
     function renderList() {
       const list = document.getElementById("list");
       if (!catalog.length) {
         list.innerHTML = "<p class='lead'>목록을 불러오지 못했어요.</p>";
         return;
       }
-      list.innerHTML = catalog.map((i) => `
+      const filtered = domainFilter === "all"
+        ? catalog
+        : catalog.filter((i) => (i.domain_label || i.school || "기타") === domainFilter);
+      if (!filtered.length) {
+        list.innerHTML = "<p class='lead'>이 주제에 해당하는 검사가 없어요.</p>";
+        return;
+      }
+      let html = "";
+      let lastDomain = null;
+      filtered.forEach((i) => {
+        const domain = i.domain_label || i.school || "기타";
+        if (domainFilter === "all" && domain !== lastDomain) {
+          html += `<div class="domain-head">마음 주제 · ${domain}</div>`;
+          lastDomain = domain;
+        }
+        html += `
         <div class="panel inst" data-id="${i.instrument_id}">
-          <div class="meta">${i.domain_label || i.school || ""} · ${i.item_count || (i.items || []).length}문항</div>
+          <div class="meta">${domain} · ${i.item_count || (i.items || []).length}문항</div>
           <h2>${i.user_title || i.display_name}</h2>
           <p class="lead">${i.intro || i.focus || ""}</p>
-        </div>
-      `).join("");
+        </div>`;
+      });
+      list.innerHTML = html;
       list.querySelectorAll(".inst").forEach((el) => el.addEventListener("click", () => start(el.dataset.id)));
     }
 
@@ -215,6 +268,7 @@
       .then((data) => {
         catalog = (data.formal_instruments || []).filter((i) => i.instrument_id !== "micro_emotion");
         catalog.sort((a, b) => (a.domain_label || "").localeCompare(b.domain_label || "", "ko"));
+        renderDomainBar();
         renderList();
       })
       .catch(() => {

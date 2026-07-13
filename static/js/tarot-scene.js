@@ -1,21 +1,38 @@
 /**
- * Three.js tarot — round table, circular flat spread, human-like shuffle & draw.
+ * Three.js tarot — top-down table view, circular archetype spread, custom camera.
  */
 (function (global) {
-  const CARD_W = 0.54;
-  const CARD_H = 0.87;
-  const CARD_DEPTH = 0.028;
-  const TABLE_RADIUS = 5.6;
+  const CARD_W = 0.36;
+  const CARD_H = 0.58;
+  const CARD_DEPTH = 0.022;
+  const TABLE_RADIUS = 6.4;
   const TABLE_TOP_Y = 0.68;
-  const TABLE_CENTER_Z = 0.35;
-  const CIRCLE_RADIUS_OUTER = 4.35;
-  const CIRCLE_RADIUS_INNER = 2.75;
-  const INNER_RING_SCALE = 0.82;
-  const CIRCLE_CENTER_Z = TABLE_CENTER_Z;
-  const CAMERA_FOV = 46;
-  const CAMERA_BASE = { x: 0, y: 5.2, z: 7.2 };
+  const TABLE_CENTER_Z = 0;
+  const RING_RADII = [5.05, 3.85, 2.65];
+  const CAMERA_DEFAULTS = { height: 12.2, fov: 38, zoom: 1, orbit: 0 };
   const CAMERA_LOOK = { x: 0, y: TABLE_TOP_Y, z: TABLE_CENTER_Z };
+  const STORAGE_KEY = "psychology_ai_tarot_camera";
   const textureCache = new Map();
+
+  function loadCameraPrefs() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      return {
+        height: Math.min(18, Math.max(7, Number(raw.height) || CAMERA_DEFAULTS.height)),
+        fov: Math.min(60, Math.max(24, Number(raw.fov) || CAMERA_DEFAULTS.fov)),
+        zoom: Math.min(1.45, Math.max(0.7, Number(raw.zoom) || CAMERA_DEFAULTS.zoom)),
+        orbit: Number.isFinite(Number(raw.orbit)) ? Number(raw.orbit) : 0,
+      };
+    } catch (e) {
+      return { ...CAMERA_DEFAULTS };
+    }
+  }
+
+  function saveCameraPrefs(prefs) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    } catch (e) {}
+  }
 
   function drawFallbackFace(ctx, card) {
     const colors = (card && card.gradient) || ["#1e3a5f", "#5b9bd5"];
@@ -143,6 +160,7 @@
       this.onPhaseChange = null;
       this.onPick = null;
       this.onPickComplete = null;
+      this.onCameraChange = null;
 
       this.pickMode = false;
       this.maxPicks = 3;
@@ -152,12 +170,13 @@
       this.circleRotation = 0;
       this.circleRadiusScale = 1;
       this._animToken = 0;
+      this.cameraPrefs = loadCameraPrefs();
 
       this.raycaster = new THREE.Raycaster();
       this.pointer = new THREE.Vector2();
 
       this.scene = new THREE.Scene();
-      this.camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 100);
+      this.camera = new THREE.PerspectiveCamera(this.cameraPrefs.fov, 1, 0.1, 100);
       this._updateCamera();
 
       this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -166,17 +185,17 @@
       this.renderer.shadowMap.enabled = true;
       container.appendChild(this.renderer.domElement);
 
-      this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.58));
-      const key = new THREE.DirectionalLight(0xffffff, 0.95);
-      key.position.set(2, 14, 10);
+      this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.72));
+      const key = new THREE.DirectionalLight(0xffffff, 0.85);
+      key.position.set(1.5, 16, 2);
       key.castShadow = true;
       key.shadow.mapSize.set(1024, 1024);
       this.scene.add(key);
-      const rim = new THREE.PointLight(0xc4a574, 0.5, 32);
-      rim.position.set(-3, 5, 8);
+      const rim = new THREE.PointLight(0xc4a574, 0.45, 36);
+      rim.position.set(-2, 8, -2);
       this.scene.add(rim);
-      const fill = new THREE.PointLight(0x5a8f78, 0.25, 24);
-      fill.position.set(4, 3, 2);
+      const fill = new THREE.PointLight(0x5a8f78, 0.28, 28);
+      fill.position.set(3, 6, 3);
       this.scene.add(fill);
 
       this._addTable();
@@ -193,62 +212,49 @@
       requestAnimationFrame(this._animate);
     }
 
+    getCameraPrefs() {
+      return { ...this.cameraPrefs };
+    }
+
+    setCameraPrefs(partial = {}) {
+      this.cameraPrefs = {
+        height: Math.min(18, Math.max(7, Number(partial.height ?? this.cameraPrefs.height))),
+        fov: Math.min(60, Math.max(24, Number(partial.fov ?? this.cameraPrefs.fov))),
+        zoom: Math.min(1.45, Math.max(0.7, Number(partial.zoom ?? this.cameraPrefs.zoom))),
+        orbit: Number(partial.orbit ?? this.cameraPrefs.orbit) || 0,
+      };
+      saveCameraPrefs(this.cameraPrefs);
+      this._updateCamera();
+      if (this.onCameraChange) this.onCameraChange(this.getCameraPrefs());
+      return this.getCameraPrefs();
+    }
+
+    resetCameraPrefs() {
+      return this.setCameraPrefs({ ...CAMERA_DEFAULTS });
+    }
+
     _addTable() {
       const wood = new THREE.MeshStandardMaterial({
         color: 0x4a3424,
         roughness: 0.82,
         metalness: 0.06,
       });
-      const cloth = new THREE.MeshStandardMaterial({
-        color: 0x162019,
-        roughness: 0.94,
-        metalness: 0.02,
-      });
-      const goldTrim = new THREE.MeshStandardMaterial({
-        color: 0xc4a574,
-        roughness: 0.45,
-        metalness: 0.35,
-        emissive: 0x1a1208,
-        emissiveIntensity: 0.08,
-      });
+      const table = new THREE.Mesh(new THREE.CylinderGeometry(TABLE_RADIUS, TABLE_RADIUS * 0.96, 0.18, 72), wood);
+      table.position.set(0, TABLE_TOP_Y - 0.09, TABLE_CENTER_Z);
+      table.receiveShadow = true;
+      table.castShadow = true;
+      this.scene.add(table);
 
-      const top = new THREE.Mesh(
-        new THREE.CylinderGeometry(TABLE_RADIUS, TABLE_RADIUS + 0.08, 0.14, 72),
-        wood
+      const rim = new THREE.Mesh(
+        new THREE.TorusGeometry(TABLE_RADIUS - 0.04, 0.05, 12, 96),
+        new THREE.MeshStandardMaterial({ color: 0xc4a574, roughness: 0.45, metalness: 0.35 })
       );
-      top.position.set(0, TABLE_TOP_Y - 0.07, TABLE_CENTER_Z);
-      top.receiveShadow = true;
-      top.castShadow = true;
-      this.scene.add(top);
-
-      const felt = new THREE.Mesh(
-        new THREE.CircleGeometry(TABLE_RADIUS - 0.18, 72),
-        cloth
-      );
-      felt.rotation.x = -Math.PI / 2;
-      felt.position.set(0, TABLE_TOP_Y + 0.002, TABLE_CENTER_Z);
-      felt.receiveShadow = true;
-      this.scene.add(felt);
-
-      const trim = new THREE.Mesh(
-        new THREE.TorusGeometry(TABLE_RADIUS - 0.2, 0.035, 12, 72),
-        goldTrim
-      );
-      trim.rotation.x = Math.PI / 2;
-      trim.position.set(0, TABLE_TOP_Y + 0.008, TABLE_CENTER_Z);
-      this.scene.add(trim);
-
-      const pedestal = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.42, 0.62, TABLE_TOP_Y - 0.1, 32),
-        wood
-      );
-      pedestal.position.set(0, (TABLE_TOP_Y - 0.1) / 2, TABLE_CENTER_Z);
-      pedestal.castShadow = true;
-      pedestal.receiveShadow = true;
-      this.scene.add(pedestal);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.set(0, TABLE_TOP_Y + 0.01, TABLE_CENTER_Z);
+      this.scene.add(rim);
 
       const floor = new THREE.Mesh(
-        new THREE.CircleGeometry(9.5, 48),
+        new THREE.CircleGeometry(11, 48),
         new THREE.MeshStandardMaterial({ color: 0x0a100e, roughness: 1 })
       );
       floor.rotation.x = -Math.PI / 2;
@@ -258,70 +264,74 @@
     }
 
     _addTableRing() {
-      for (const [radius, opacity] of [[CIRCLE_RADIUS_OUTER, 0.14], [CIRCLE_RADIUS_INNER, 0.1]]) {
+      RING_RADII.forEach((radius, idx) => {
         const ring = new THREE.Mesh(
-          new THREE.RingGeometry(radius - 0.05, radius + 0.05, 120),
+          new THREE.RingGeometry(radius - 0.04, radius + 0.04, 128),
           new THREE.MeshBasicMaterial({
             color: 0xc4a574,
             transparent: true,
-            opacity,
+            opacity: 0.16 - idx * 0.03,
             side: THREE.DoubleSide,
           })
         );
         ring.rotation.x = -Math.PI / 2;
-        ring.position.set(0, TABLE_TOP_Y + 0.012, CIRCLE_CENTER_Z);
+        ring.position.set(0, TABLE_TOP_Y + 0.012, TABLE_CENTER_Z);
         this.scene.add(ring);
-      }
+      });
 
       const inner = new THREE.Mesh(
-        new THREE.CircleGeometry(CIRCLE_RADIUS_INNER - 0.06, 120),
+        new THREE.CircleGeometry(RING_RADII[2] - 0.2, 120),
         new THREE.MeshBasicMaterial({
           color: 0x0f1714,
           transparent: true,
-          opacity: 0.32,
+          opacity: 0.28,
           side: THREE.DoubleSide,
         })
       );
       inner.rotation.x = -Math.PI / 2;
-      inner.position.set(0, TABLE_TOP_Y + 0.011, CIRCLE_CENTER_Z);
+      inner.position.set(0, TABLE_TOP_Y + 0.011, TABLE_CENTER_Z);
       this.scene.add(inner);
     }
 
     _updateCamera() {
-      const w = this.container.clientWidth || 640;
-      const h = this.container.clientHeight || 480;
-      const aspect = w / h;
-      const narrow = aspect < 0.92;
-      const z = narrow ? CAMERA_BASE.z * 0.88 : CAMERA_BASE.z;
-      const y = narrow ? CAMERA_BASE.y * 0.92 : CAMERA_BASE.y + (aspect > 1.2 ? 0.35 : 0);
-      this.camera.position.set(CAMERA_BASE.x, y, z);
+      const prefs = this.cameraPrefs;
+      this.camera.fov = prefs.fov;
+      const orbit = prefs.orbit || 0;
+      const height = prefs.height / prefs.zoom;
+      const bias = 0.35 / prefs.zoom;
+      this.camera.position.set(
+        Math.sin(orbit) * bias,
+        height,
+        Math.cos(orbit) * bias + TABLE_CENTER_Z
+      );
       this.camera.lookAt(CAMERA_LOOK.x, CAMERA_LOOK.y, CAMERA_LOOK.z);
+      this.camera.up.set(0, 0, -1);
+      this.camera.updateProjectionMatrix();
     }
 
     _resize() {
       const w = this.container.clientWidth;
       const h = this.container.clientHeight || 480;
       this.camera.aspect = w / h;
-      this.camera.updateProjectionMatrix();
       this._updateCamera();
       this.renderer.setSize(w, h);
     }
 
     _addParticles() {
-      const count = 80;
+      const count = 90;
       const geo = new THREE.BufferGeometry();
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         const a = (i / count) * Math.PI * 2;
-        const r = CIRCLE_RADIUS_OUTER + 0.25 + Math.random() * 0.35;
+        const r = RING_RADII[0] + 0.2 + Math.random() * 0.4;
         positions[i * 3] = Math.sin(a) * r;
         positions[i * 3 + 1] = TABLE_TOP_Y + 0.04 + Math.random() * 0.08;
-        positions[i * 3 + 2] = Math.cos(a) * r + CIRCLE_CENTER_Z;
+        positions[i * 3 + 2] = Math.cos(a) * r + TABLE_CENTER_Z;
       }
       geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
       this.particles = new THREE.Points(
         geo,
-        new THREE.PointsMaterial({ color: 0xc4a574, size: 0.028, transparent: true, opacity: 0.35 })
+        new THREE.PointsMaterial({ color: 0xc4a574, size: 0.028, transparent: true, opacity: 0.32 })
       );
       this.scene.add(this.particles);
     }
@@ -335,8 +345,8 @@
         new THREE.MeshStandardMaterial({ color: 0x222222 }),
         new THREE.MeshStandardMaterial({ color: 0x222222 }),
         new THREE.MeshStandardMaterial({ color: 0x222222 }),
-        new THREE.MeshStandardMaterial({ map: frontTex }),
         new THREE.MeshStandardMaterial({ map: backTex, emissive: 0x000000, emissiveIntensity: 0 }),
+        new THREE.MeshStandardMaterial({ map: frontTex }),
       ];
       const mesh = new THREE.Mesh(geo, mats);
       mesh.castShadow = true;
@@ -351,12 +361,20 @@
 
     async _applyFrontTexture(mesh, card) {
       const tex = await loadCardFrontTexture(card);
-      mesh.material[4].map = tex;
-      mesh.material[4].needsUpdate = true;
+      mesh.material[5].map = tex;
+      mesh.material[5].needsUpdate = true;
     }
 
     _circleAngleFor(mesh) {
       return mesh.userData.baseAngle + this.circleRotation;
+    }
+
+    _faceDownRx() {
+      return Math.PI / 2;
+    }
+
+    _faceUpRx() {
+      return -Math.PI / 2;
     }
 
     _circlePose(angle, radius, lift) {
@@ -364,10 +382,10 @@
       return {
         x: Math.sin(angle) * r,
         y: TABLE_TOP_Y + CARD_DEPTH / 2 + lift,
-        z: Math.cos(angle) * r + CIRCLE_CENTER_Z,
-        rx: -Math.PI / 2,
+        z: Math.cos(angle) * r + TABLE_CENTER_Z,
+        rx: this._faceDownRx(),
         ry: 0,
-        rz: -angle + Math.PI / 2,
+        rz: -angle,
       };
     }
 
@@ -375,10 +393,10 @@
       if (mesh.userData.selected && mesh.userData.drawPose) {
         const p = mesh.userData.drawPose;
         mesh.position.set(p.x, p.y, p.z);
-        mesh.rotation.set(p.rx ?? -0.35, p.ry ?? 0, p.rz ?? 0);
+        mesh.rotation.set(p.rx ?? this._faceDownRx(), p.ry ?? 0, p.rz ?? 0);
         return;
       }
-      const baseRadius = mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER;
+      const baseRadius = mesh.userData.ringRadius || RING_RADII[0];
       const hoverLift = mesh.userData.hoverLift || 0;
       const pose = this._circlePose(
         this._circleAngleFor(mesh),
@@ -392,31 +410,32 @@
     _layoutCircle() {
       const majorMeshes = this.meshes.filter((m) => !m.userData.card?.suit);
       const minorMeshes = this.meshes.filter((m) => m.userData.card?.suit);
+      const mid = Math.ceil(minorMeshes.length / 2);
+      const rings = [
+        { meshes: majorMeshes, radius: RING_RADII[0] },
+        { meshes: minorMeshes.slice(0, mid), radius: RING_RADII[1] },
+        { meshes: minorMeshes.slice(mid), radius: RING_RADII[2] },
+      ];
 
-      const placeRing = (ringMeshes, radius, innerRing) => {
+      rings.forEach(({ meshes: ringMeshes, radius }) => {
         ringMeshes.forEach((mesh, i) => {
           mesh.userData.ringRadius = radius;
-          mesh.userData.innerRing = innerRing;
-          mesh.userData.baseAngle = (i / ringMeshes.length) * Math.PI * 2 - Math.PI / 2;
+          mesh.userData.baseAngle = (i / Math.max(1, ringMeshes.length)) * Math.PI * 2 - Math.PI / 2;
           mesh.userData.circleIndex = i;
           mesh.userData.drawPose = null;
           mesh.userData.selected = false;
           mesh.userData.selectable = true;
           mesh.userData.hoverLift = 0;
-          const ringScale = innerRing ? INNER_RING_SCALE : 1;
-          mesh.scale.set(ringScale, ringScale, 1);
-          mesh.material[5].emissive.setHex(0x000000);
-          mesh.material[5].emissiveIntensity = 0;
+          mesh.scale.set(1, 1, 1);
+          mesh.material[4].emissive.setHex(0x000000);
+          mesh.material[4].emissiveIntensity = 0;
           mesh.material.forEach((mat) => {
             mat.transparent = false;
             mat.opacity = 1;
           });
           this._applyCirclePose(mesh, this.circleRadiusScale, 0);
         });
-      };
-
-      placeRing(majorMeshes, CIRCLE_RADIUS_OUTER, false);
-      placeRing(minorMeshes, CIRCLE_RADIUS_INNER, true);
+      });
     }
 
     buildDeck(catalog) {
@@ -448,27 +467,26 @@
     }
 
     _spreadSlots(count) {
-      const baseY = TABLE_TOP_Y + 0.55;
-      const baseZ = 1.85;
-      if (count <= 1) return [{ x: 0, y: baseY + 0.08, z: baseZ, ry: 0, rx: -0.55, rz: 0 }];
+      const y = TABLE_TOP_Y + CARD_DEPTH / 2 + 0.02;
+      if (count <= 1) return [{ x: 0, y, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: 0 }];
       if (count === 2) {
         return [
-          { x: -0.95, y: baseY, z: baseZ - 0.1, ry: 0.14, rx: -0.52, rz: 0.04 },
-          { x: 0.95, y: baseY, z: baseZ - 0.1, ry: -0.14, rx: -0.52, rz: -0.04 },
+          { x: -0.55, y, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: 0.04 },
+          { x: 0.55, y, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: -0.04 },
         ];
       }
       return [
-        { x: -1.45, y: baseY - 0.05, z: baseZ - 0.25, ry: 0.22, rx: -0.5, rz: 0.06 },
-        { x: 0, y: baseY + 0.12, z: baseZ + 0.15, ry: 0, rx: -0.58, rz: 0 },
-        { x: 1.45, y: baseY - 0.05, z: baseZ - 0.25, ry: -0.22, rx: -0.5, rz: -0.06 },
+        { x: -0.78, y, z: TABLE_CENTER_Z + 0.08, ry: 0, rx: this._faceDownRx(), rz: 0.06 },
+        { x: 0, y, z: TABLE_CENTER_Z - 0.05, ry: 0, rx: this._faceDownRx(), rz: 0 },
+        { x: 0.78, y, z: TABLE_CENTER_Z + 0.08, ry: 0, rx: this._faceDownRx(), rz: -0.06 },
       ];
     }
 
     _drawHoldPose(pickIndex) {
       const slots = [
-        { x: 0, y: TABLE_TOP_Y + 1.05, z: 2.15, ry: 0, rx: -0.42, rz: 0 },
-        { x: -1.05, y: TABLE_TOP_Y + 0.92, z: 2.05, ry: 0.18, rx: -0.38, rz: 0.05 },
-        { x: 1.05, y: TABLE_TOP_Y + 0.92, z: 2.05, ry: -0.18, rx: -0.38, rz: -0.05 },
+        { x: 0, y: TABLE_TOP_Y + 0.08, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: 0 },
+        { x: -0.42, y: TABLE_TOP_Y + 0.08, z: TABLE_CENTER_Z + 0.12, ry: 0, rx: this._faceDownRx(), rz: 0.05 },
+        { x: 0.42, y: TABLE_TOP_Y + 0.08, z: TABLE_CENTER_Z + 0.12, ry: 0, rx: this._faceDownRx(), rz: -0.05 },
       ];
       return slots[pickIndex] || slots[0];
     }
@@ -488,7 +506,7 @@
       const token = ++this._animToken;
       const startRot = this.circleRotation;
       const endRot = startRot + Math.PI * 2 * 2.2;
-      const duration = 3200;
+      const duration = 2800;
       const start = performance.now();
 
       await new Promise((resolve) => {
@@ -500,10 +518,10 @@
           const t = Math.min((now - start) / duration, 1);
           const ease = easeInOutCubic(t);
           this.circleRotation = THREE.MathUtils.lerp(startRot, endRot, ease);
-          this.circleRadiusScale = 1 - Math.sin(ease * Math.PI) * 0.07;
+          this.circleRadiusScale = 1 - Math.sin(ease * Math.PI) * 0.05;
           this.meshes.forEach((mesh) => {
             if (!mesh.userData.selected) {
-              const wobble = Math.sin(this._circleAngleFor(mesh) * 3 + ease * Math.PI * 4) * 0.012 * (1 - t);
+              const wobble = Math.sin(this._circleAngleFor(mesh) * 3 + ease * Math.PI * 4) * 0.01 * (1 - t);
               this._applyCirclePose(mesh, this.circleRadiusScale, wobble);
             }
           });
@@ -538,15 +556,15 @@
       if (this.hoveredMesh && this.hoveredMesh !== mesh) {
         this.hoveredMesh.userData.hoverLift = 0;
         if (!this.hoveredMesh.userData.selected) {
-          this.hoveredMesh.material[5].emissive.setHex(0x000000);
-          this.hoveredMesh.material[5].emissiveIntensity = 0;
+          this.hoveredMesh.material[4].emissive.setHex(0x000000);
+          this.hoveredMesh.material[4].emissiveIntensity = 0;
         }
       }
       this.hoveredMesh = mesh;
       if (mesh && this.pickMode && !mesh.userData.selected) {
-        mesh.userData.hoverLift = 0.1;
-        mesh.material[5].emissive.setHex(0x8a7348);
-        mesh.material[5].emissiveIntensity = 0.22;
+        mesh.userData.hoverLift = 0.06;
+        mesh.material[4].emissive.setHex(0x8a7348);
+        mesh.material[4].emissiveIntensity = 0.28;
       }
     }
 
@@ -607,7 +625,7 @@
           mesh.position.x = THREE.MathUtils.lerp(from.x, target.x, ease);
           mesh.position.y = THREE.MathUtils.lerp(from.y, target.y, ease);
           mesh.position.z = THREE.MathUtils.lerp(from.z, target.z, ease);
-          mesh.rotation.x = THREE.MathUtils.lerp(from.rx, target.rx ?? -Math.PI / 2, ease);
+          mesh.rotation.x = THREE.MathUtils.lerp(from.rx, target.rx ?? this._faceDownRx(), ease);
           mesh.rotation.y = THREE.MathUtils.lerp(from.ry, target.ry ?? 0, ease);
           mesh.rotation.z = THREE.MathUtils.lerp(from.rz, target.rz ?? 0, ease);
           if (t < 1) requestAnimationFrame(tick);
@@ -619,34 +637,34 @@
 
     async _drawCardFromCircle(mesh, pickIndex) {
       const startAngle = this._circleAngleFor(mesh);
-      const midR = (mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER) * 0.52;
+      const midR = (mesh.userData.ringRadius || RING_RADII[0]) * 0.45;
       const mid = {
         x: Math.sin(startAngle) * midR,
-        y: TABLE_TOP_Y + 0.55,
-        z: Math.cos(startAngle) * midR + CIRCLE_CENTER_Z,
-        rx: -0.65,
-        ry: -startAngle + Math.PI,
-        rz: 0,
+        y: TABLE_TOP_Y + 0.12,
+        z: Math.cos(startAngle) * midR + TABLE_CENTER_Z,
+        rx: this._faceDownRx(),
+        ry: 0,
+        rz: -startAngle,
       };
       const hold = this._drawHoldPose(pickIndex);
       mesh.userData.drawPose = null;
-      await this._animateMeshTo(mesh, mid, 420);
-      await this._animateMeshTo(mesh, hold, 520);
+      await this._animateMeshTo(mesh, mid, 380);
+      await this._animateMeshTo(mesh, hold, 480);
       mesh.userData.drawPose = { ...hold };
-      mesh.material[5].emissive.setHex(0xc4a574);
-      mesh.material[5].emissiveIntensity = 0.38;
+      mesh.material[4].emissive.setHex(0xc4a574);
+      mesh.material[4].emissiveIntensity = 0.42;
     }
 
     async _returnCardToCircle(mesh) {
       mesh.userData.drawPose = null;
       const pose = this._circlePose(
         this._circleAngleFor(mesh),
-        mesh.userData.ringRadius || CIRCLE_RADIUS_OUTER,
+        mesh.userData.ringRadius || RING_RADII[0],
         0
       );
-      await this._animateMeshTo(mesh, pose, 480);
-      mesh.material[5].emissive.setHex(0x000000);
-      mesh.material[5].emissiveIntensity = 0;
+      await this._animateMeshTo(mesh, pose, 420);
+      mesh.material[4].emissive.setHex(0x000000);
+      mesh.material[4].emissiveIntensity = 0;
     }
 
     _togglePick(mesh) {
@@ -693,7 +711,7 @@
       });
 
       const fadeStart = performance.now();
-      const fadeDuration = 700;
+      const fadeDuration = 600;
       await new Promise((resolve) => {
         const tick = (now) => {
           if (token !== this._animToken) {
@@ -704,9 +722,8 @@
           unselected.forEach((mesh) => {
             mesh.material.forEach((mat) => {
               mat.transparent = true;
-              mat.opacity = 1 - t * 0.88;
+              mat.opacity = 1 - t * 0.92;
             });
-            mesh.position.y = TABLE_TOP_Y - t * 0.28;
           });
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
@@ -732,9 +749,9 @@
           y: slot.y,
           z: slot.z,
           ry: slot.ry,
-          rx: slot.rx ?? -0.55,
+          rx: slot.rx ?? this._faceDownRx(),
           rz: slot.rz ?? 0,
-        }, 900);
+        }, 780);
       });
 
       await Promise.all(anims);
@@ -764,6 +781,9 @@
       this.meshes.forEach((mesh) => {
         if (mesh.userData.flipped && mesh.userData.card) {
           this._applyFrontTexture(mesh, mesh.userData.card);
+        } else {
+          mesh.material[4].map = createBackTexture();
+          mesh.material[4].needsUpdate = true;
         }
       });
     }
@@ -771,16 +791,20 @@
     _animateFlip(mesh) {
       const duration = 680;
       const start = performance.now();
-      const startZ = mesh.rotation.z;
       const startX = mesh.rotation.x;
+      const endX = this._faceUpRx();
+      const startY = mesh.position.y;
       return new Promise((resolve) => {
         const tick = (now) => {
           const t = Math.min((now - start) / duration, 1);
           const ease = easeInOutCubic(t);
-          mesh.rotation.z = THREE.MathUtils.lerp(startZ, startZ + Math.PI, ease);
-          mesh.rotation.x = THREE.MathUtils.lerp(startX, -0.72, ease);
+          mesh.rotation.x = THREE.MathUtils.lerp(startX, endX, ease);
+          mesh.position.y = startY + Math.sin(ease * Math.PI) * 0.22;
           if (t < 1) requestAnimationFrame(tick);
-          else resolve();
+          else {
+            mesh.position.y = startY;
+            resolve();
+          }
         };
         requestAnimationFrame(tick);
       });
@@ -793,22 +817,16 @@
     _animate() {
       requestAnimationFrame(this._animate);
       const now = performance.now();
-      if (this.particles) this.particles.rotation.y += 0.0004;
+      if (this.particles) this.particles.rotation.y += 0.00035;
 
       if (this.phase === "picking" && this.pickMode) {
         this.meshes.forEach((mesh) => {
           if (!mesh.userData.selected && !mesh.userData.drawPose) {
-            const lift = Math.sin(now * 0.0018 + mesh.userData.circleIndex * 0.4) * 0.008;
+            const lift = Math.sin(now * 0.0018 + mesh.userData.circleIndex * 0.4) * 0.006;
             this._applyCirclePose(mesh, this.circleRadiusScale, lift);
           }
         });
       }
-
-      this.meshes.forEach((mesh, i) => {
-        if (this.phase === "reveal" && mesh.userData.slot && !mesh.userData.flipped) {
-          mesh.position.y = mesh.userData.slot.y + Math.sin(now * 0.002 + i) * 0.018;
-        }
-      });
 
       this.renderer.render(this.scene, this.camera);
     }
@@ -822,5 +840,6 @@
   }
 
   global.TarotScene = TarotScene;
+  global.TarotCameraDefaults = CAMERA_DEFAULTS;
   global.loadCardFrontTexture = loadCardFrontTexture;
-})(window);
+})(typeof window !== "undefined" ? window : globalThis);
