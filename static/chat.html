@@ -3454,93 +3454,135 @@
       let buffer = "";
       let assistantBubble = null;
       let gotToken = false;
+      let lastDone = null;
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parsed = parseSseChunk(buffer);
-        buffer = parsed.remainder;
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parsed = parseSseChunk(buffer);
+          buffer = parsed.remainder;
 
-        parsed.events.forEach(({ event, data }) => {
-          if (event === "orchestrator") {
-            updatePace(data.fatigue);
-            updateCounselingPhase(data.counseling_phase);
-            if (data.persona?.persona_label) {
-              personaStatus.textContent = data.persona.persona_label;
+          parsed.events.forEach(({ event, data }) => {
+            if (event === "orchestrator") {
+              updatePace(data.fatigue);
+              updateCounselingPhase(data.counseling_phase);
+              if (data.persona?.persona_label) {
+                personaStatus.textContent = data.persona.persona_label;
+              }
             }
-          }
-          if (event === "assessment_package") {
-            if (navigator.onLine === false) renderOfflineAssessmentBlocked();
-            else renderAssessmentPackageCard(data);
-          }
-          if (event === "mood_briefing") {
-            if (data.mood) updateMoodChip(data.mood, data.mood);
-            if (data.message && !gotToken) {
-              hideTyping();
-              assistantBubble = createAssistantRow();
-              assistantBubble.textContent = data.message;
-              gotToken = true;
+            if (event === "assessment_package") {
+              if (navigator.onLine === false) renderOfflineAssessmentBlocked();
+              else renderAssessmentPackageCard(data);
+            }
+            if (event === "mood_briefing") {
+              if (data.mood) updateMoodChip(data.mood, data.mood);
+              if (data.message && !gotToken) {
+                hideTyping();
+                assistantBubble = createAssistantRow();
+                assistantBubble.textContent = data.message;
+                gotToken = true;
+                scrollToBottom();
+              }
+            }
+            if (event === "assessment") {
+              if (navigator.onLine === false) renderOfflineAssessmentBlocked();
+              else renderAssessmentCard(data);
+            }
+            if (event === "homework") renderHomeworkCard(data);
+            if (event === "crisis") showCrisisModal(data.resources);
+            if (event === "image_results") renderImageGallery(data);
+            if (event === "token") {
+              if (!gotToken) {
+                hideTyping();
+                assistantBubble = createAssistantRow();
+                gotToken = true;
+              }
+              assistantBubble.textContent += data.content || "";
               scrollToBottom();
             }
-          }
-          if (event === "assessment") {
-            if (navigator.onLine === false) renderOfflineAssessmentBlocked();
-            else renderAssessmentCard(data);
-          }
-          if (event === "homework") renderHomeworkCard(data);
-          if (event === "crisis") showCrisisModal(data.resources);
-          if (event === "image_results") renderImageGallery(data);
-          if (event === "token") {
-            if (!gotToken) {
+            if (event === "done") {
+              lastDone = data;
               hideTyping();
-              assistantBubble = createAssistantRow();
+              sessionId = data.session_id;
+              localStorage.setItem("psychology_ai_session_id", sessionId);
+              sessionChip.textContent = `대화 중 · ${sessionId.slice(0, 8)}`;
+              if (data.today_mood) updateMoodChip(data.today_mood, data.today_mood.agent);
+              if (data.counseling_style) applyCounselorUi(data.counseling_style);
+              if (data.association) updateLicenseChip(data.association);
+              if (data.assistant_message && assistantBubble) {
+                assistantBubble.textContent = data.assistant_message;
+              } else if (data.assistant_message && !gotToken) {
+                assistantBubble = createAssistantRow();
+                assistantBubble.textContent = data.assistant_message;
+                gotToken = true;
+              }
+              if (
+                data.assistant_message &&
+                (data.counseling_style?.auto_speak || counselingStyle?.auto_speak) &&
+                window.VoiceEngine
+              ) {
+                VoiceEngine.speak(data.assistant_message, data.voice_preset || data.counseling_style?.voice);
+              }
+              updatePace(data.profile_delta?.fatigue);
+              updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
+              updateClinicalInsight(data.profile_delta?.clinical_insight);
+              updatePsychProfile(data.psych_profile);
+              refreshBatteryStatus(sessionId);
+              refreshPsychProfile();
+              loadSessionList();
+              if (data.suggest_tarot) renderTarotSuggestBanner();
+              toggleSidebar(false);
+              if (window.MaumEmbed) MaumEmbed.refreshOrganism("chat_turn");
+            }
+            if (event === "error") {
+              hideTyping();
+              const bubble = assistantBubble || createAssistantRow();
+              bubble.textContent = data.message || "잠시 연결이 불안정해요. 다시 말씀해 주실 수 있을까요?";
               gotToken = true;
             }
-            assistantBubble.textContent += data.content || "";
-            scrollToBottom();
-          }
-          if (event === "done") {
-            hideTyping();
-            sessionId = data.session_id;
-            localStorage.setItem("psychology_ai_session_id", sessionId);
-            sessionChip.textContent = `대화 중 · ${sessionId.slice(0, 8)}`;
-            if (data.today_mood) updateMoodChip(data.today_mood, data.today_mood.agent);
-            if (data.counseling_style) applyCounselorUi(data.counseling_style);
-            if (data.association) updateLicenseChip(data.association);
-            if (data.assistant_message && assistantBubble) {
-              assistantBubble.textContent = data.assistant_message;
-            } else if (data.assistant_message && !gotToken) {
-              assistantBubble = createAssistantRow();
-              assistantBubble.textContent = data.assistant_message;
-            }
-            if (
-              data.assistant_message &&
-              (data.counseling_style?.auto_speak || counselingStyle?.auto_speak) &&
-              window.VoiceEngine
-            ) {
-              VoiceEngine.speak(data.assistant_message, data.voice_preset || data.counseling_style?.voice);
-            }
-            updatePace(data.profile_delta?.fatigue);
-            updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
-            updateClinicalInsight(data.profile_delta?.clinical_insight);
-            updatePsychProfile(data.psych_profile);
-            refreshBatteryStatus(sessionId);
-            refreshPsychProfile();
-            loadSessionList();
-            if (data.suggest_tarot) renderTarotSuggestBanner();
-            toggleSidebar(false);
-            if (window.MaumEmbed) MaumEmbed.refreshOrganism("chat_turn");
-          }
-          if (event === "error") {
-            hideTyping();
-            const bubble = assistantBubble || createAssistantRow();
-            bubble.textContent = data.message || "잠시 연결이 불안정해요. 다시 말씀해 주실 수 있을까요?";
-          }
-        });
-      }
+          });
+        }
 
-      if (!gotToken) hideTyping();
+        // 스트림이 잘려도 남은 버퍼 처리
+        if (buffer.trim()) {
+          const parsed = parseSseChunk(buffer + "\n\n");
+          parsed.events.forEach(({ event, data }) => {
+            if (event === "done") lastDone = data;
+            if (event === "token") {
+              if (!gotToken) {
+                hideTyping();
+                assistantBubble = createAssistantRow();
+                gotToken = true;
+              }
+              assistantBubble.textContent += data.content || "";
+            }
+          });
+        }
+        if (!gotToken && lastDone?.assistant_message) {
+          hideTyping();
+          assistantBubble = createAssistantRow();
+          assistantBubble.textContent = lastDone.assistant_message;
+          gotToken = true;
+        }
+        if (!gotToken) {
+          hideTyping();
+          const bubble = createAssistantRow();
+          bubble.textContent = "잠깐 답이 비었어요. 한 번만 더 말씀해 주실래요?";
+        }
+      } catch (_) {
+        hideTyping();
+        if (!gotToken) {
+          const bubble = createAssistantRow();
+          bubble.textContent = "연결이 잠깐 끊겼어요. 다시 보내 주시면 이어서 들을게요.";
+        }
+      } finally {
+        streaming = false;
+        sendButton.disabled = false;
+        hideTyping();
+        scrollToBottom();
+      }
     }
 
     function naturalAssessmentMessage(label, skipped) {

@@ -1,12 +1,5 @@
-const CACHE = "maum-cache-v14";
+const CACHE = "maum-cache-v15";
 const ASSETS = [
-  "/",
-  "/home",
-  "/chat",
-  "/tarot",
-  "/clinical",
-  "/picture-assessment",
-  "/legal",
   "/static/manifest.json",
   "/static/icons/icon.svg",
   "/static/css/toss-ui.css",
@@ -28,6 +21,18 @@ const BUNDLE_PATHS = new Set([
   "/static/counsel-offline.bundle.json",
 ]);
 
+const NETWORK_FIRST_PATHS = new Set([
+  "/",
+  "/home",
+  "/chat",
+  "/tarot",
+  "/clinical",
+  "/picture-assessment",
+  "/psychometrics",
+  "/legal",
+  "/deploy",
+]);
+
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).catch(() => {}));
   self.skipWaiting();
@@ -45,6 +50,24 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.pathname.startsWith("/api/")) return;
+
+  // HTML pages: always prefer network so chat/home fixes ship immediately
+  if (
+    event.request.mode === "navigate" ||
+    NETWORK_FIRST_PATHS.has(url.pathname) ||
+    (url.pathname.endsWith(".html"))
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy)).catch(() => {});
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   if (BUNDLE_PATHS.has(url.pathname)) {
     event.respondWith(
@@ -81,9 +104,8 @@ function scheduleDailyReminder(hour) {
   const delay = next.getTime() - now.getTime();
   setTimeout(() => {
     self.registration.showNotification("마음쉼터", {
-      body: "오늘 마음 체크인, 30초면 충분해요 🌙",
+      body: "오늘 마음은 어떤가요? 30초만 체크인해요.",
       icon: "/static/icons/icon.svg",
-      tag: "evening-checkin",
     });
     scheduleDailyReminder(hour);
   }, delay);
