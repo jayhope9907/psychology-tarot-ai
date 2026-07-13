@@ -24,6 +24,7 @@ from app.prompt_config import (
     build_user_prompt,
 )
 from app.services.assessment_battery import build_battery_status, next_recommended_instruments, sync_session_battery
+from app.services.assessment_directing import build_submit_directing_payload
 from app.services.assessment_package import PACKAGE_TIERS, build_assessment_package, complete_checkout, mark_package_presented
 from app.services.clinical_insight import build_clinical_insight, sync_session_insight
 from app.services.clinical_pipeline import (
@@ -247,6 +248,16 @@ class AssessmentSubmitRequest(BaseModel):
     value: Optional[Any] = None
     text: Optional[str] = None
     skipped: bool = False
+    item_index: Optional[int] = None
+    finished: bool = False
+
+
+class EfficacySeedRequest(BaseModel):
+    user_id: str
+    session_id: str
+    instrument: str
+    seed: str
+    strength_note: Optional[str] = None
 
 
 class CheckoutRequest(BaseModel):
@@ -2199,16 +2210,75 @@ async def assessments_submit(request: AssessmentSubmitRequest):
         )
     except Exception:
         agent_sync = None
+    answers = session.formal_answers.get(request.instrument) or {}
+    instrument = ALL_INSTRUMENTS.get(request.instrument)
+    total_items = len(instrument.items()) if instrument else 1
+    if request.item_index is not None:
+        item_index = max(0, min(int(request.item_index), max(total_items - 1, 0)))
+    else:
+        item_index = min(max(len(answers) - 1, 0), max(total_items - 1, 0))
+    instrument_complete = bool(request.finished)
+    if not instrument_complete and instrument and len(answers) >= total_items:
+        instrument_complete = True
+    score = (
+        ALL_INSTRUMENTS[request.instrument].score_partial(answers)
+        if request.instrument in ALL_INSTRUMENTS and answers
+        else None
+    )
+    directing_block = build_submit_directing_payload(
+        request.instrument,
+        item_index=item_index,
+        total_items=total_items,
+        score=score,
+        instrument_complete=instrument_complete,
+    )
     return {
         "recorded": recorded,
         "battery_coverage": battery,
         "clinical_insight": insight,
         "agent_sync": agent_sync,
         "formal_scores": {
-            instrument_id: ALL_INSTRUMENTS[instrument_id].score_partial(answers)
-            for instrument_id, answers in session.formal_answers.items()
-            if instrument_id in ALL_INSTRUMENTS and answers
+            instrument_id: ALL_INSTRUMENTS[instrument_id].score_partial(ans)
+            for instrument_id, ans in session.formal_answers.items()
+            if instrument_id in ALL_INSTRUMENTS and ans
         },
+        **directing_block,
+    }
+
+
+@app.post("/api/v1/assessments/efficacy-seed")
+async def assessments_efficacy_seed(request: EfficacySeedRequest):
+    """자기효능감 씨앗(작은 실천)을 세션에 저장한다."""
+    session = get_session(request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != request.user_id:
+        raise HTTPException(status_code=403, detail="Session user mismatch")
+    from app.services.assessment_directing import build_efficacy_card
+
+    seed = (request.seed or "").strip()
+    if not seed:
+        raise HTTPException(status_code=400, detail="seed required")
+    session.phase_notes = session.phase_notes or {}
+    seeds = list(session.phase_notes.get("efficacy_seeds") or [])
+    entry = {
+        "instrument": request.instrument,
+        "seed": seed,
+        "strength_note": (request.strength_note or "").strip() or None,
+        "at": datetime.now(timezone.utc).isoformat(),
+    }
+    seeds.append(entry)
+    session.phase_notes["efficacy_seeds"] = seeds[-30:]
+    session.phase_notes["last_efficacy"] = entry
+    save_session(session)
+    card = build_efficacy_card(request.instrument)
+    return {
+        "saved": True,
+        "entry": entry,
+        "count": len(session.phase_notes["efficacy_seeds"]),
+        "affirmation": card["affirmation"],
+        "message": f"좋아요. 「{seed}」을(를) 오늘의 작은 힘으로 남겨 두었어요.",
+        "disclaimer": card["disclaimer"],
     }
 
 

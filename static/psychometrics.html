@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="표준·확장 심리검사 카탈로그 — AI 에이전트 자동 동기화" />
+  <meta name="description" content="표준·확장 심리검사 — 레이어드 디렉팅과 자기효능감 키우기" />
   <title>마음쉼터 · 심리검사 탐색</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
   <style>
@@ -52,6 +52,30 @@
       margin: 18px 0 8px; font-size: 0.78rem; color: var(--warm); font-weight: 600;
       letter-spacing: 0.02em;
     }
+    .rail {
+      display: flex; gap: 4px; flex-wrap: wrap; margin: 10px 0 14px;
+    }
+    .rail-step {
+      flex: 1; min-width: 64px; text-align: center; font-size: 0.65rem; color: var(--muted);
+      padding: 6px 4px; border-radius: 8px; border: 1px solid transparent; background: rgba(255,255,255,0.03);
+    }
+    .rail-step.active { border-color: var(--accent); color: var(--ink); background: rgba(138,164,212,0.14); }
+    .rail-step.done { color: #9fd0b8; border-color: rgba(90,143,120,0.35); }
+    .coach {
+      margin: 0 0 12px; padding: 10px 12px; border-left: 3px solid var(--warm);
+      background: rgba(212,165,116,0.08); font-size: 0.82rem; color: var(--ink);
+    }
+    .progress-bar {
+      height: 4px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; margin: 8px 0 12px;
+    }
+    .progress-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--good)); width: 0%; transition: width .25s ease; }
+    .seed { border-style: dashed; }
+    .seed.picked { border-color: var(--good); background: rgba(90,143,120,0.16); }
+    details.debug { margin-top: 12px; color: var(--muted); font-size: 0.72rem; }
+    #strengthNote {
+      width: 100%; min-height: 64px; margin-top: 8px; border-radius: 10px; border: 1px solid var(--line);
+      background: #0d0f14; color: var(--ink); padding: 10px; font: inherit;
+    }
   </style>
 </head>
 <body>
@@ -60,21 +84,27 @@
       <a class="logo" href="/">마음쉼터</a>
       <div>
         <a href="/clinical">마음 돌보기</a>
-        <a href="/agent-lab">에이전트</a>
         <a href="/chat">AI 대화</a>
       </div>
     </nav>
     <div id="viewList" class="screen active">
-      <h1>마음 주제 · 심리검사</h1>
-      <p class="lead">영역별로 정리한 검사 카탈로그입니다. 답할수록 AI 에이전트에 자동 저장·동기화됩니다.</p>
-      <div class="notice">진단이 아닙니다. 「마음 돌보기」 허브에서는 주제 목록을 빼 두고, 여기서만 영역별로 고를 수 있어요.</div>
-      <div class="panel" id="agentBox"><span class="chip">에이전트 동기화 대기</span></div>
+      <h1>마음 탐색</h1>
+      <p class="lead">전체를 다 할 필요 없어요. 오늘은 추천 길 하나만 골라도 충분합니다.</p>
+      <div class="notice">진단이 아닙니다. 안내를 따라가면 되고, 끝나면 작은 힘(자기효능감)을 고를 수 있어요.</div>
+      <div class="panel" id="guidedBox"><span class="chip">오늘 추천 준비 중</span></div>
+      <div class="panel" id="agentBox"><span class="chip">기록 동기화</span></div>
       <div class="domain-bar" id="domainBar"></div>
-      <div id="list"></div>
+      <details id="fullCatalog">
+        <summary style="cursor:pointer;font-weight:600;margin-bottom:10px;color:var(--warm)">주제별 전체 목록 열기</summary>
+        <div id="list"></div>
+      </details>
     </div>
     <div id="viewRun" class="screen">
       <button type="button" id="btnBack">← 목록</button>
-      <div class="panel" style="margin-top:12px">
+      <div class="rail" id="runRail"></div>
+      <div class="coach" id="runCoach"></div>
+      <div class="progress-bar"><span id="runPct"></span></div>
+      <div class="panel" style="margin-top:4px">
         <div class="meta" id="runMeta"></div>
         <h2 id="runFraming"></h2>
         <p id="runPrompt" style="font-size:0.95rem;margin:10px 0"></p>
@@ -86,14 +116,22 @@
       </div>
     </div>
     <div id="viewDone" class="screen">
+      <div class="rail" id="doneRail"></div>
       <div class="panel">
-        <h2>에이전트에 반영했어요</h2>
+        <h2 id="doneTitle">방금 살펴본 것 · 효능감</h2>
         <p class="lead" id="doneMsg"></p>
-        <pre id="doneJson" style="white-space:pre-wrap;font-size:0.75rem;color:var(--muted);background:#0d0f14;padding:10px;border-radius:10px"></pre>
+        <p class="coach" id="doneAffirm" style="margin-top:10px"></p>
+        <p class="meta" id="doneStrength"></p>
+        <textarea id="strengthNote" placeholder="떠오르는 작은 근거를 한 줄로 적어도 좋아요 (선택)"></textarea>
+        <p class="meta" style="margin-top:12px">오늘 고를 씨앗 하나</p>
+        <div class="grid" id="seedBox"></div>
         <div class="row">
-          <button type="button" class="primary" id="btnAgain">다른 탐색</button>
+          <button type="button" class="primary" id="btnSaveSeed" disabled>이 힘으로 저장</button>
+          <button type="button" id="btnAgain">다른 탐색</button>
           <a class="inline" href="/chat">대화로 이어가기 →</a>
         </div>
+        <p class="lead" id="seedSaved" style="display:none;color:#9fd0b8;margin-top:10px"></p>
+        <details class="debug" hidden><summary>동기화 상세</summary><pre id="doneJson" style="white-space:pre-wrap"></pre></details>
       </div>
     </div>
   </div>
@@ -106,10 +144,32 @@
     let catalog = [];
     let domainFilter = "all";
     let current = null, itemIdx = 0, selected = null;
+    let lastEfficacy = null;
+    let pickedSeed = null;
 
     function show(id) {
       document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
       document.getElementById(id).classList.add("active");
+    }
+
+    function esc(s) {
+      return String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+    }
+
+    function renderRail(el, rail, activeOverride) {
+      if (!el) return;
+      const steps = rail || [
+        { id: "arrival", label: "왜 보나요", state: "todo" },
+        { id: "orient", label: "어떻게", state: "todo" },
+        { id: "progress", label: "함께", state: "todo" },
+        { id: "complete", label: "정리", state: "todo" },
+        { id: "efficacy", label: "효능감", state: "todo" },
+      ];
+      el.innerHTML = steps.map((s) => {
+        let state = s.state || "todo";
+        if (activeOverride && s.id === activeOverride) state = "active";
+        return `<div class="rail-step ${state}">${esc(s.label)}</div>`;
+      }).join("");
     }
 
     async function ensureSession() {
@@ -131,8 +191,8 @@
         const mbti = data.agent_fingerprint?.psychometric_profile?.mbti?.type_code_hint;
         const hist = Object.keys(data.agent_fingerprint?.assessment_hist || {}).length;
         document.getElementById("agentBox").innerHTML =
-          `<span class="chip">${data.algo_id || "ALG"}</span>` +
-          `<span class="meta">동기화 검사 ${hist}개` + (mbti ? ` · MBTI 힌트 ${mbti}` : "") + `</span>`;
+          `<span class="chip">기록됨</span>` +
+          `<span class="meta">지금까지 남긴 탐색 ${hist}개` + (mbti ? ` · 성향 힌트 ${mbti}` : "") + `</span>`;
       } catch (e) {}
     }
 
@@ -185,12 +245,34 @@
         html += `
         <div class="panel inst" data-id="${i.instrument_id}">
           <div class="meta">${domain} · ${i.item_count || (i.items || []).length}문항</div>
-          <h2>${i.user_title || i.display_name}</h2>
-          <p class="lead">${i.intro || i.focus || ""}</p>
+          <h2>${esc(i.user_title || i.display_name)}</h2>
+          <p class="lead">${esc(i.intro || i.focus || "")}</p>
         </div>`;
       });
       list.innerHTML = html;
       list.querySelectorAll(".inst").forEach((el) => el.addEventListener("click", () => start(el.dataset.id)));
+    }
+
+    function applyDirecting(directing, pctHint) {
+      const d = directing || current?.directing || {};
+      const layers = d.layers || {};
+      const rail = (d.rail || []).map((s) => {
+        if (s.id === "arrival") return { ...s, state: "done" };
+        if (s.id === "orient" && itemIdx === 0) return { ...s, state: "active" };
+        if (s.id === "orient" && itemIdx > 0) return { ...s, state: "done" };
+        if (s.id === "progress" && itemIdx > 0) return { ...s, state: "active" };
+        return s;
+      });
+      renderRail(document.getElementById("runRail"), rail);
+      const coach = d.coach_line
+        || layers.progress?.body
+        || layers.orient?.body
+        || current?.intro
+        || "편한 만큼만 골라 주세요.";
+      document.getElementById("runCoach").textContent = coach;
+      const total = current.items.length || 1;
+      const pct = pctHint != null ? pctHint : Math.round((100 * itemIdx) / total);
+      document.getElementById("runPct").style.width = `${Math.min(100, pct)}%`;
     }
 
     function start(id) {
@@ -198,7 +280,10 @@
       if (!current || !current.items?.length) return;
       itemIdx = 0;
       selected = null;
+      pickedSeed = null;
+      lastEfficacy = current.efficacy_preview || null;
       renderItem();
+      applyDirecting(current.directing, 0);
       show("viewRun");
     }
 
@@ -210,7 +295,7 @@
       document.getElementById("runPrompt").textContent = item.prompt;
       const box = document.getElementById("runOptions");
       box.innerHTML = (item.options || []).map((o) =>
-        `<button type="button" class="pick" data-v="${o.value}">${o.label}</button>`
+        `<button type="button" class="pick" data-v="${o.value}">${esc(o.label)}</button>`
       ).join("");
       selected = null;
       document.getElementById("btnNext").disabled = true;
@@ -220,11 +305,53 @@
         selected = Number(b.dataset.v);
         document.getElementById("btnNext").disabled = false;
       }));
+      applyDirecting(current.directing, Math.round((100 * itemIdx) / current.items.length));
+    }
+
+    function showEfficacy(data) {
+      const directing = data.directing || {};
+      const efficacy = data.efficacy || directing.layers?.efficacy || lastEfficacy || {};
+      lastEfficacy = efficacy;
+      const completeBody = directing.layers?.complete?.body
+        || "에이전트에 반영했어요. 이제 작은 힘으로 이어가 볼까요.";
+      document.getElementById("doneMsg").textContent = completeBody;
+      document.getElementById("doneAffirm").textContent = efficacy.affirmation || "작은 성공을 고르는 힘이 자기효능감이에요.";
+      document.getElementById("doneStrength").textContent = efficacy.strength_prompt || "작은 근거 하나";
+      document.getElementById("strengthNote").value = "";
+      document.getElementById("seedSaved").style.display = "none";
+      pickedSeed = null;
+      document.getElementById("btnSaveSeed").disabled = true;
+      const seeds = efficacy.seeds || [];
+      const box = document.getElementById("seedBox");
+      box.innerHTML = seeds.map((s) =>
+        `<button type="button" class="pick seed" data-seed="${esc(s)}">${esc(s)}</button>`
+      ).join("");
+      box.querySelectorAll(".seed").forEach((b) => {
+        b.onclick = () => {
+          box.querySelectorAll(".seed").forEach((x) => x.classList.remove("picked"));
+          b.classList.add("picked");
+          pickedSeed = b.dataset.seed;
+          document.getElementById("btnSaveSeed").disabled = !pickedSeed;
+        };
+      });
+      const rail = (directing.rail || []).map((s) => ({
+        ...s,
+        state: s.id === "efficacy" ? "active" : "done",
+      }));
+      renderRail(document.getElementById("doneRail"), rail, "efficacy");
+      document.getElementById("doneJson").textContent = JSON.stringify(
+        { efficacy, agent_sync: data.agent_sync, score: data.formal_scores?.[current.instrument_id] },
+        null,
+        2
+      );
+      show("viewDone");
+      loadAgent();
     }
 
     async function submit(skipped) {
       await ensureSession();
       const item = current.items[itemIdx];
+      const finished = itemIdx >= current.items.length - 1;
       const res = await fetch("/api/v1/assessments/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -235,6 +362,8 @@
           item_id: item.item_id,
           value: skipped ? undefined : selected,
           skipped: !!skipped,
+          item_index: itemIdx,
+          finished,
         }),
       });
       const data = await res.json();
@@ -242,32 +371,78 @@
         alert(typeof data.detail === "string" ? data.detail : "저장에 실패했어요");
         return;
       }
+      if (data.directing) applyDirecting(data.directing, data.directing.layers?.progress?.pct);
       itemIdx += 1;
       if (itemIdx >= current.items.length) {
-        document.getElementById("doneMsg").textContent =
-          "답변이 AI 에이전트에 자동 저장·동기화되었습니다. 대화에서 더 부드럽게 맞춰 드릴게요.";
-        document.getElementById("doneJson").textContent = JSON.stringify(
-          data.agent_sync || data.formal_scores?.[current.instrument_id] || {},
-          null,
-          2
-        );
-        show("viewDone");
-        loadAgent();
+        showEfficacy(data);
         return;
       }
       renderItem();
+    }
+
+    async function saveSeed() {
+      if (!pickedSeed) return;
+      await ensureSession();
+      const res = await fetch("/api/v1/assessments/efficacy-seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId,
+          instrument: current?.instrument_id || "unknown",
+          seed: pickedSeed,
+          strength_note: document.getElementById("strengthNote").value.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(typeof data.detail === "string" ? data.detail : "저장 실패");
+        return;
+      }
+      const el = document.getElementById("seedSaved");
+      el.style.display = "block";
+      el.textContent = data.message || "저장했어요.";
     }
 
     document.getElementById("btnBack").onclick = () => show("viewList");
     document.getElementById("btnAgain").onclick = () => show("viewList");
     document.getElementById("btnSkip").onclick = () => submit(true);
     document.getElementById("btnNext").onclick = () => submit(false);
+    document.getElementById("btnSaveSeed").onclick = () => saveSeed();
+
+    function renderGuided(guided) {
+      const box = document.getElementById("guidedBox");
+      if (!box || !guided) return;
+      const starters = guided.starters || [];
+      if (!starters.length) {
+        box.innerHTML = `<p class="lead">${esc(guided.subheadline || "오늘은 하나만 골라도 돼요.")}</p>`;
+        return;
+      }
+      box.innerHTML =
+        `<div class="meta">${esc(guided.headline || "오늘 추천")}</div>` +
+        `<p class="lead" style="margin:0 0 10px">${esc(guided.subheadline || "")}</p>` +
+        starters.slice(0, 6).map((s) => `
+          <button type="button" class="pick" data-gid="${esc(s.instrument_id)}" style="width:100%;margin-bottom:6px">
+            <strong>${esc(s.user_title)}</strong>
+            <span class="meta" style="display:block;margin:4px 0 0">${esc(s.domain_label || "")} · ${s.item_count || "?"}문항</span>
+            <span class="lead" style="display:block;margin-top:4px">${esc(s.intro || s.why || "")}</span>
+          </button>`).join("");
+      box.querySelectorAll("[data-gid]").forEach((btn) => {
+        btn.onclick = () => start(btn.dataset.gid);
+      });
+    }
 
     fetch("/api/v1/clinical/catalog")
       .then((r) => r.json())
       .then((data) => {
         catalog = (data.formal_instruments || []).filter((i) => i.instrument_id !== "micro_emotion");
+        // starters may include micro_emotion — keep full map for start()
+        const all = data.formal_instruments || [];
+        all.forEach((i) => {
+          if (!catalog.find((c) => c.instrument_id === i.instrument_id)) catalog.push(i);
+        });
         catalog.sort((a, b) => (a.domain_label || "").localeCompare(b.domain_label || "", "ko"));
+        renderGuided(data.guided);
         renderDomainBar();
         renderList();
       })

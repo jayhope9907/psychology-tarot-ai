@@ -147,6 +147,7 @@ $shareObj = [ordered]@{
     disability_picto = "$publicUrl/disability/picto"
     associations = "$publicUrl/associations"
     clinical = "$publicUrl/clinical"
+    psychometrics = "$publicUrl/psychometrics"
     picture_assessment = "$publicUrl/picture-assessment"
     innovation = "$publicUrl/innovation"
     agent_lab = "$publicUrl/agent-lab"

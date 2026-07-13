@@ -107,7 +107,7 @@
       </button>
       <a class="c-track-btn" href="/psychometrics" style="text-decoration:none;color:inherit">
         <span class="emoji">🧭</span>
-        <div><div class="title">마음 주제 · 심리검사</div><div class="desc">영역별 검사 목록 · 에이전트 자동 동기화</div></div>
+        <div><div class="title">마음 주제 더 보기</div><div class="desc">오늘 추천 길 · 필요할 때만 전체</div></div>
       </a>
     </div>
     <div class="c-section" id="dreamSeedBox">
@@ -124,16 +124,35 @@
 
   <div id="viewScreening" class="c-screen">
     <button type="button" class="c-back" id="backFromScreening">← 마음 돌보기</button>
-    <h2 style="margin:0 0 12px;font-size:1.1rem">짧게 확인하기</h2>
+    <h2 style="margin:0 0 6px;font-size:1.1rem">짧게 확인하기</h2>
+    <p style="margin:0 0 12px;font-size:0.8rem;color:var(--t-text-secondary)">오늘은 추천 몇 개만 해도 충분해요. 전체는 아래에 있어요.</p>
+    <div id="formalGuided" style="margin-bottom:14px"></div>
     <div id="formalList"></div>
   </div>
 
   <div id="viewFormalRun" class="c-screen">
     <button type="button" class="c-back" id="backFromFormal">← 목록으로</button>
+    <div id="formalCoach" style="font-size:0.8rem;color:var(--t-text-secondary);margin-bottom:10px;padding:10px;background:var(--t-blue-soft);border-radius:10px"></div>
     <div id="formalRunner"></div>
     <div class="c-actions">
       <button type="button" class="c-btn c-btn-ghost" id="btnSkipFormal">넘기기</button>
       <button type="button" class="c-btn c-btn-primary" id="btnNextFormal">다음</button>
+    </div>
+  </div>
+
+  <div id="viewEfficacy" class="c-screen">
+    <button type="button" class="c-back" id="backFromEfficacy">← 목록으로</button>
+    <div class="c-section">
+      <h2 id="effTitle">작은 힘으로 키우기</h2>
+      <p class="sub" id="effBody"></p>
+      <p id="effAffirm" style="font-weight:700;margin:8px 0"></p>
+      <p class="sub" id="effStrength"></p>
+      <div class="c-options" id="effSeeds"></div>
+      <div class="c-actions" style="margin-top:12px">
+        <button type="button" class="c-btn c-btn-primary" id="btnSaveEff" disabled>이 힘으로 저장</button>
+      </div>
+      <p class="c-disclaimer" id="effSaved" hidden></p>
+      <p class="c-disclaimer">진단이 아니라, 스스로 알아차리고 작은 힘을 키우는 연습이에요.</p>
     </div>
   </div>
 
@@ -147,6 +166,7 @@
     let licenseKey = "";
     try { localStorage.removeItem(LICENSE_KEY); } catch (e) {}
     let formalQueue = [], formalIdx = 0, selectedValue = null;
+    let lastEfficacy = null, pickedEffSeed = null, lastFormalInstrument = null;
 
     if (!userId) {
       userId = (window.MaumOrganism && MaumOrganism.userId()) || `user-${crypto.randomUUID().slice(0, 8)}`;
@@ -179,11 +199,11 @@
     }
 
     function renderStats() {
-      const c = catalog.counts || {};
+      const guidedN = (catalog.guided?.starters || []).length;
       document.getElementById("statsGrid").innerHTML = `
-        <div class="c-stat"><strong>${c.unique_instruments || 0}</strong><span>검사 종류</span></div>
-        <div class="c-stat"><strong>${c.total_items || 0}</strong><span>질문·활동</span></div>
-        <div class="c-stat"><strong>${(catalog.formal_instruments || []).length || 0}</strong><span>짧게 확인</span></div>`;
+        <div class="c-stat"><strong>${guidedN || 6}</strong><span>오늘 추천</span></div>
+        <div class="c-stat"><strong>${(catalog.formal_instruments || []).length || 0}</strong><span>전체 주제</span></div>
+        <div class="c-stat"><strong>1</strong><span>하나만 해도 OK</span></div>`;
       document.getElementById("hubTitle").textContent = catalog.user_title || catalog.title || "마음 돌보기";
       document.getElementById("hubSubtitle").textContent = catalog.user_subtitle || catalog.subtitle || "";
       document.getElementById("disclaimer").textContent = catalog.user_disclaimer || catalog.disclaimer || "";
@@ -208,19 +228,36 @@
       const pct = Math.round(o.completion_rate * 100);
       document.getElementById("progressFill").style.width = pct + "%";
       document.getElementById("progressLabel").textContent =
-        `${o.total_answered_items} / ${o.total_catalog_items} (${pct}%) · 짧게 확인 ${o.formal_answered_items} · 그림·이야기 ${o.projective_answered_items}`;
+        `지금까지 ${o.total_answered_items}문항 남겼어요 · 전부 다 할 필요 없어요`;
     }
 
     function renderFormalList() {
+      const gEl = document.getElementById("formalGuided");
+      const starters = catalog.guided?.starters || [];
+      if (gEl) {
+        gEl.innerHTML = starters.length
+          ? `<div style="font-size:0.78rem;font-weight:800;margin-bottom:8px">${catalog.guided.headline || "오늘 추천"}</div>` +
+            starters.map(s => `<button type="button" class="c-track-btn" data-iid="${s.instrument_id}">
+              <span class="emoji">✨</span>
+              <div><div class="title">${s.user_title}</div>
+              <div class="desc">${s.domain_label || ""} · ${s.item_count || "?"}문항 · ${s.why || ""}</div></div></button>`).join("")
+          : "";
+        gEl.querySelectorAll("[data-iid]").forEach(btn => {
+          btn.onclick = () => startFormal(btn.dataset.iid);
+        });
+      }
+      const starterIds = new Set(starters.map(s => s.instrument_id));
       const el = document.getElementById("formalList");
-      el.innerHTML = catalog.formal_instruments.map(f => {
+      const rest = (catalog.formal_instruments || []).filter(f => !starterIds.has(f.instrument_id));
+      el.innerHTML = `<details><summary style="cursor:pointer;font-weight:700;margin:8px 0">전체 목록 (${rest.length})</summary>` +
+        rest.map(f => {
         const prog = (summary?.formal_progress || {})[f.instrument_id];
         const badge = prog ? `${prog.answered}/${prog.total}` : `${f.item_count}질문`;
         return `<button type="button" class="c-track-btn" data-iid="${f.instrument_id}">
           <span class="emoji">📋</span>
           <div><div class="title">${f.user_display_name || f.user_title || f.display_name}</div>
           <div class="desc">${f.domain_label || ""} · ${badge}</div></div></button>`;
-      }).join("");
+      }).join("") + `</details>`;
       el.querySelectorAll("[data-iid]").forEach(btn => {
         btn.onclick = () => startFormal(btn.dataset.iid);
       });
@@ -246,6 +283,14 @@
     function showFormalItem() {
       const { form, item } = formalQueue[formalIdx];
       selectedValue = null;
+      lastFormalInstrument = form.instrument_id;
+      const d = form.directing || {};
+      const coachEl = document.getElementById("formalCoach");
+      if (coachEl) {
+        coachEl.textContent = d.coach_line
+          || form.intro
+          || "편한 만큼만 골라 주세요. 레이어를 따라 천천히 가요.";
+      }
       const box = document.getElementById("formalRunner");
       let optionsHtml = "";
       const rt = item.response_type;
@@ -258,7 +303,7 @@
       }
       box.innerHTML = `
         <div class="c-item-card">
-          <div style="font-size:0.72rem;color:var(--t-text-secondary)">${form.user_title} · ${formalIdx + 1}/${formalQueue.length}</div>
+          <div style="font-size:0.72rem;color:var(--t-text-secondary)">${form.user_title} · ${formalIdx + 1}/${formalQueue.length} · 디렉팅 레이어</div>
           <h3 style="margin:8px 0;font-size:1rem">${item.prompt}</h3>
           <p style="margin:0;font-size:0.8rem;color:var(--t-text-secondary)">${item.framing || ""}</p>
           ${optionsHtml}
@@ -289,19 +334,48 @@
       }
     }
 
+    function showEfficacyFrom(data, form) {
+      const efficacy = data.efficacy || data.directing?.layers?.efficacy || form?.efficacy_preview || {};
+      lastEfficacy = efficacy;
+      pickedEffSeed = null;
+      document.getElementById("effBody").textContent = data.directing?.layers?.complete?.body || "여기까지 살펴본 것만으로도 자기돌봄이에요.";
+      document.getElementById("effAffirm").textContent = efficacy.affirmation || "작은 성공을 고르는 힘이 자기효능감이에요.";
+      document.getElementById("effStrength").textContent = efficacy.strength_prompt || "";
+      document.getElementById("effSaved").hidden = true;
+      document.getElementById("btnSaveEff").disabled = true;
+      const box = document.getElementById("effSeeds");
+      box.innerHTML = (efficacy.seeds || []).map(s =>
+        `<button type="button" class="c-opt" data-seed="${s.replace(/"/g, "&quot;")}">${s}</button>`
+      ).join("");
+      box.querySelectorAll(".c-opt").forEach(btn => {
+        btn.onclick = () => {
+          box.querySelectorAll(".c-opt").forEach(b => b.classList.remove("selected"));
+          btn.classList.add("selected");
+          pickedEffSeed = btn.dataset.seed;
+          document.getElementById("btnSaveEff").disabled = !pickedEffSeed;
+        };
+      });
+      showView("viewEfficacy");
+    }
+
     async function submitFormal(skipped) {
       await ensureSession();
       const { form, item } = formalQueue[formalIdx];
+      const sameInstrumentNext = formalIdx + 1 < formalQueue.length
+        && formalQueue[formalIdx + 1].form.instrument_id === form.instrument_id;
+      const finished = !sameInstrumentNext;
       const body = {
         user_id: userId, session_id: sessionId,
         instrument: form.instrument_id, item_id: item.item_id, skipped,
+        item_index: form.items.findIndex(i => i.item_id === item.item_id),
+        finished,
       };
       if (!skipped) {
         if (item.response_type === "open_text") {
-          if (!selectedValue) return false;
+          if (!selectedValue) return null;
           body.text = selectedValue;
         } else {
-          if (selectedValue === null) return false;
+          if (selectedValue === null) return null;
           body.value = selectedValue;
         }
       }
@@ -309,7 +383,8 @@
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      return res.ok;
+      if (!res.ok) return null;
+      return await res.json();
     }
 
     async function loadAll() {
@@ -344,19 +419,56 @@
     document.getElementById("btnDreamChat").onclick = navToChat;
     document.getElementById("backFromScreening").onclick = () => showView("viewHub");
     document.getElementById("backFromFormal").onclick = () => showView("viewScreening");
+    document.getElementById("backFromEfficacy").onclick = () => showView("viewScreening");
+    document.getElementById("btnSaveEff").onclick = async () => {
+      if (!pickedEffSeed) return;
+      await ensureSession();
+      const res = await fetch("/api/v1/assessments/efficacy-seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId,
+          instrument: lastFormalInstrument || "unknown",
+          seed: pickedEffSeed,
+        }),
+      });
+      const data = await res.json();
+      const el = document.getElementById("effSaved");
+      el.hidden = false;
+      el.textContent = data.message || "저장했어요.";
+    };
     document.getElementById("btnSkipFormal").onclick = async () => {
-      await submitFormal(true);
+      const data = await submitFormal(true);
+      const { form } = formalQueue[formalIdx];
       formalIdx++;
-      if (formalIdx >= formalQueue.length) { await loadAll(); showView("viewScreening"); }
-      else showFormalItem();
+      if (formalIdx >= formalQueue.length) {
+        await loadAll();
+        if (data) showEfficacyFrom(data, form);
+        else showView("viewScreening");
+      } else if (data?.efficacy) {
+        showEfficacyFrom(data, form);
+        // continue queue after seed screen via back; keep index for next start if needed
+      } else showFormalItem();
     };
     document.getElementById("btnNextFormal").onclick = async () => {
-      if (!(await submitFormal(false))) return;
+      const data = await submitFormal(false);
+      if (!data) return;
+      const { form } = formalQueue[formalIdx];
       formalIdx++;
       if (formalIdx >= formalQueue.length) {
         await loadAll();
         if (window.MaumOrganism) MaumOrganism.broadcastRefresh("assessment");
-        showView("viewScreening");
+        showEfficacyFrom(data, form);
+      } else if (data.efficacy) {
+        // Instrument boundary with more items queued — still offer efficacy, then user returns to list
+        // But starting one instrument at a time: continue same run if same queue has more instruments
+        const next = formalQueue[formalIdx];
+        if (next && next.form.instrument_id !== form.instrument_id) {
+          showEfficacyFrom(data, form);
+        } else {
+          showFormalItem();
+        }
       } else showFormalItem();
     };
 

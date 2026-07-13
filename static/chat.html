@@ -1921,7 +1921,7 @@
         </div>
 
         <div class="psych-track-card" id="psychTrackCard">
-          <h3>임상·심리 추적 (DSM-5 스크리닝)</h3>
+          <h3>내 마음 흐름 (참고용)</h3>
           <div class="psych-pipeline" id="psychPipeline" aria-live="polite">
             <span data-stage="tarot">① 타로 탐색</span>
             <span data-stage="counseling">② 상담</span>
@@ -1933,7 +1933,7 @@
           </ul>
           <ul class="psych-rec-list" id="psychRecList"></ul>
           <p class="psych-disclaimer">웰니스·스크리닝 참고용이며 DSM-5 진단·의료행위가 아닙니다.</p>
-          <button type="button" class="psych-rebuild-btn" id="btnPsychRebuild">과거 데이터 백필 · 프로필 재구성</button>
+          <button type="button" class="psych-rebuild-btn" id="btnPsychRebuild" hidden>기록 다시 정리하기</button>
         </div>
 
         <div class="stats">
@@ -2000,12 +2000,12 @@
             <span class="t-stat-sub">마음 풀이 연결</span>
           </a>
           <div class="t-stat-card is-amber" id="dashTask">
-            <span class="t-stat-label">후처리 과제</span>
+            <span class="t-stat-label">오늘 해볼 것</span>
             <span class="t-stat-value" id="dashTaskValue">대기</span>
             <span class="t-stat-sub" id="dashTaskSub">일기·감정 기록</span>
           </div>
           <div class="t-stat-card" id="dashBattery">
-            <span class="t-stat-label">마음 조사</span>
+            <span class="t-stat-label">오늘 체크</span>
             <span class="t-stat-value" id="dashBatteryValue">준비 중</span>
             <span class="t-stat-sub" id="dashPaceSub">페이스 여유롭게</span>
           </div>
@@ -2956,7 +2956,9 @@
         const pct = Math.round((data.overall_completion_rate || 0) * 100);
         const touched = data.instruments_touched || 0;
         const total = data.instruments_total || 0;
-        batteryChip.textContent = `${pct}% · ${touched}/${total} 검사`;
+        batteryChip.textContent = touched
+          ? `오늘 확인 ${touched}개`
+          : "오늘은 대화만 해도 돼요";
         updateDashBattery(`${pct}%`);
         setBatteryProgress(pct);
 
@@ -3076,18 +3078,18 @@
       wrap.innerHTML = `
         <div class="package-card" id="assessmentPackageCard">
           <div class="package-head">
-            <h3>맞춤 마음 체크 패키지 · ${pkg.tier_label || ""}</h3>
-            <p>주호소: ${pkg.chief_complaint || "지금까지 나눈 마음"} · 예상 ${pkg.estimated_duration_minutes || 15}분 · ${pkg.total_instruments || 0}개 검사</p>
+            <h3>오늘 맞춰 본 짧은 마음 체크</h3>
+            <p>${pkg.chief_complaint || "지금까지 나눈 마음"}을 기준으로, 약 ${pkg.estimated_duration_minutes || 15}분 · 몇 문항만 가볍게요.</p>
           </div>
           ${moodIntro}
           ${tierTip}
 
           <div class="case-preview-block">
-            <span class="case-badge">케이스 초기 분류 · 라포 형성 이후</span>
-            <p class="case-summary">${preview.classification_summary || "대화를 바탕으로 케이스 유형을 분류했습니다."}</p>
+            <span class="case-badge">지금까지 들은 이야기 요약</span>
+            <p class="case-summary">${preview.classification_summary || "대화를 바탕으로 지금 마음에 가까운 방향을 정리했어요."}</p>
             <div class="hypothesis-list">${hypothesesHtml}</div>
             ${preview.comorbidity_note ? `<p class="case-summary" style="font-size:0.78rem;color:var(--text-muted)">${preview.comorbidity_note}</p>` : ""}
-            <p class="package-disclaimer" style="margin:0">${preview.disclaimer || ""}</p>
+            <p class="package-disclaimer" style="margin:0">${preview.disclaimer || "진단이 아니라 참고용이에요."}</p>
           </div>
 
           ${dreamBlock}
@@ -3185,7 +3187,7 @@
           <div class="assessment-head">
             <div class="mini-avatar" aria-hidden="true">서</div>
             <div>
-              <strong>${COUNSELOR_NAME} AI 가이드 · 후처리 과제</strong>
+              <strong>${COUNSELOR_NAME} · 오늘 해볼 작은 것</strong>
               <span>약 ${pkg.assignments[0].duration_min || 5}분 · 일기·감정 기록</span>
             </div>
           </div>
@@ -3277,7 +3279,7 @@
     async function submitHomework(assignmentId, responses, skipped) {
       if (!sessionId) return;
       const message = skipped
-        ? "후처리 과제는 나중에 할게요."
+        ? "작은 실천은 나중에 할게요."
         : "방금 일기·감정 기록 과제를 작성했어요. 같이 살펴봐 주세요.";
       appendUserMessage(message);
       await submitMessage(message, null, {

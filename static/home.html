@@ -129,25 +129,17 @@
     <span class="streak-pill" id="streakPill" hidden>🔥 연속 0일</span>
   </header>
 
+  <section class="checkin-card" style="background:linear-gradient(135deg,rgba(49,130,246,0.12),rgba(255,255,255,0.9));border-color:rgba(49,130,246,0.25)">
+    <h2 style="margin:0 0 4px">지금 마음이 무거운가요?</h2>
+    <p class="desc" style="margin:0 0 12px">검사나 진단이 아니에요. 이서연과 2분만 이야기해도 충분해요.</p>
+    <a class="submit-checkin" href="/chat" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">지금 이야기하기</a>
+    <p class="desc" style="margin:10px 0 0;text-align:center;font-size:0.75rem">또는 아래에서 오늘 기분만 가볍게 남겨도 돼요.</p>
+  </section>
+
   <section class="checkin-card" id="checkinCard">
-    <h2>입체 마음 체크인</h2>
-    <p class="desc">기분·에너지·불안·관계·수면 — 5축 조합으로 오늘 마음을 세밀하게 기록해요.</p>
-    <span class="agent-pill" id="agentPill" hidden>맞춤 AI · 준비 중</span>
-
-    <div class="mood-portrait" id="moodPortrait">
-      <div class="fp" id="moodFingerprint">오늘의 마음 좌표</div>
-      <p class="nar" id="moodNarrative">슬라이더를 움직이면 5축 조합이 실시간으로 반영돼요.</p>
-    </div>
-
-    <div class="mood-sphere-stage" aria-hidden="true">
-      <div class="mood-sphere" id="moodSphere">
-        <div class="sphere-glow" id="sphereGlow"></div>
-        <div class="sphere-orbit"></div>
-        <div class="sphere-core" id="sphereCore"></div>
-      </div>
-    </div>
-
-    <p class="desc" style="margin:-4px 0 10px;text-align:center" id="dimensionSummary">5축 슬라이더를 조절해 보세요</p>
+    <h2>오늘 기분 · 한 번만</h2>
+    <p class="desc">이모지로 고르면 끝이에요. 5축은 원하면 아래에 열어 주세요.</p>
+    <span class="agent-pill" id="agentPill" hidden>당신 이야기에 맞춰 가는 중</span>
 
     <div class="mood-row" id="moodRow">
       <button type="button" class="mood-btn" data-score="1" aria-label="매우 힘듦">😔</button>
@@ -156,29 +148,43 @@
       <button type="button" class="mood-btn" data-score="4" aria-label="괜찮음">🙂</button>
       <button type="button" class="mood-btn" data-score="5" aria-label="좋음">😊</button>
     </div>
-    <div class="mood-labels"><span>기분 빠른 선택</span><span></span><span></span><span></span><span></span></div>
+    <div class="mood-labels"><span>매우 힘듦</span><span></span><span>보통</span><span></span><span>좋음</span></div>
 
-    <div class="dim-grid" id="dimGrid"></div>
-
-    <div class="checkin-card" style="margin:12px 0 0;padding:14px;box-shadow:none">
-      <h2 style="font-size:0.9rem;margin:0 0 8px">오늘 5축 프로필</h2>
-      <div class="axis-bars" id="axisBarsToday"></div>
-    </div>
+    <details id="detailAxes" style="margin-top:12px">
+      <summary style="cursor:pointer;font-size:0.82rem;font-weight:700;color:var(--t-blue-dark)">자세히 · 5축으로 표현하기</summary>
+      <div style="margin-top:12px">
+        <div class="mood-portrait" id="moodPortrait">
+          <div class="fp" id="moodFingerprint">오늘의 마음 좌표</div>
+          <p class="nar" id="moodNarrative">슬라이더를 움직이면 조합이 반영돼요.</p>
+        </div>
+        <div class="mood-sphere-stage" aria-hidden="true">
+          <div class="mood-sphere" id="moodSphere">
+            <div class="sphere-glow" id="sphereGlow"></div>
+            <div class="sphere-orbit"></div>
+            <div class="sphere-core" id="sphereCore"></div>
+          </div>
+        </div>
+        <p class="desc" style="margin:-4px 0 10px;text-align:center" id="dimensionSummary">5축 슬라이더</p>
+        <div class="dim-grid" id="dimGrid"></div>
+        <div class="checkin-card" style="margin:12px 0 0;padding:14px;box-shadow:none">
+          <h2 style="font-size:0.9rem;margin:0 0 8px">오늘 5축 프로필</h2>
+          <div class="axis-bars" id="axisBarsToday"></div>
+        </div>
+      </div>
+    </details>
 
     <textarea class="note-input" id="checkinNote" placeholder="한 줄 메모 (선택)"></textarea>
     <button type="button" class="submit-checkin" id="btnCheckin" disabled>체크인 저장</button>
     <p id="checkinStatus" style="margin:10px 0 0;font-size:0.8rem;color:var(--t-text-secondary)"></p>
+    <p id="checkinEfficacy" hidden style="margin:10px 0 0;padding:10px;border-radius:12px;background:rgba(45,106,79,0.08);font-size:0.8rem;line-height:1.5"></p>
   </section>
 
   <div class="quick-grid">
-    <a class="quick-card" href="/tarot"><strong>✦ 타로</strong><span>가볍게 마음 비추기</span></a>
-    <a class="quick-card" href="/chat"><strong>💬 AI 대화</strong><span>이서연 상담사와 대화</span></a>
-    <a class="quick-card" href="/clinical"><strong>💚 마음 돌보기</strong><span>가볍게 확인·그림 표현</span></a>
-    <a class="quick-card" href="/chat"><strong>🌱 꿈 심기</strong><span>돈·일 현실 + 작은 미래</span></a>
-    <a class="quick-card" href="/psychometrics"><strong>🧭 MBTI·탐색</strong><span>성격·이상심리 짧은 검사</span></a>
-    <a class="quick-card" href="/agent-lab"><strong>🧬 에이전트 랩</strong><span>나만의 심리 알고리즘</span></a>
-    <a class="quick-card" href="/test"><strong>🧪 테스트</strong><span>API·상태 확인</span></a>
-    <a class="quick-card" href="/deploy"><strong>🚀 배포 콘솔</strong><span>임시 공개 · Render 원클릭</span></a>
+    <a class="quick-card" href="/chat"><strong>💬 이야기하기</strong><span>이서연과 편하게</span></a>
+    <a class="quick-card" href="/tarot"><strong>✦ 타로</strong><span>이미지로 마음 비추기</span></a>
+    <a class="quick-card" href="/clinical"><strong>💚 짧게 확인</strong><span>기분·걱정·잠 몇 문항</span></a>
+    <a class="quick-card" href="/psychometrics"><strong>🧭 마음 탐색</strong><span>추천 경로 · 주제별</span></a>
+    <a class="quick-card" href="/chat"><strong>🌱 꿈·내일</strong><span>작은 미래 한 조각</span></a>
     <a class="quick-card" href="/chat" id="continueChat"><strong>↩ 이어하기</strong><span id="continueHint">최근 대화 이어가기</span></a>
   </div>
 
@@ -470,11 +476,21 @@
       const data = await res.json();
       selectedMood = data.mood_score;
       document.getElementById("checkinStatus").textContent =
-        `저장됐어요! ${data.mood_portrait?.fingerprint || data.agent?.label || data.mood_label} · 연속 ${data.streak_days}일`;
+        `저장됐어요 · 연속 ${data.streak_days || 1}일`;
+      const eff = document.getElementById("checkinEfficacy");
+      if (eff) {
+        const seeds = [
+          "오늘, 나를 돌본 선택 하나를 인정해 주세요.",
+          "물 한 잔·숨 세 번처럼 아주 작은 돌봄이면 충분해요.",
+          "이 체크인 자체가 ‘나는 내 마음에 귀 기울였다’는 증거예요.",
+        ];
+        eff.hidden = false;
+        eff.textContent = seeds[Math.floor(Math.random() * seeds.length)] + " · 이야기가 더 필요하면 위에서 「지금 이야기하기」로요.";
+      }
       if (data.agent?.label) {
         const pill = document.getElementById("agentPill");
         pill.hidden = false;
-        pill.textContent = `맞춤 AI · ${data.agent.label}`;
+        pill.textContent = `당신 이야기에 맞춰요 · ${data.agent.label}`;
       }
       if (data.mood_portrait) renderMoodPortrait(data.mood_portrait);
       if (window.MaumEmbed) MaumEmbed.refreshOrganism("checkin");

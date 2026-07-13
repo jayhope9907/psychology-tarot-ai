@@ -8,7 +8,9 @@ from app.assessments.base import ResponseType
 from app.assessments.projective_battery import PROJECTIVE_INSTRUMENTS, projective_battery_catalog
 from app.assessments.user_voice import INSTRUMENT_USER_VOICE, enrich_assessment_payload, user_instrument_title
 from app.services.assessment_battery import build_battery_status
+from app.services.assessment_directing import build_assessment_directing
 from app.services.clinical_user_voice import HUB, TRACKS as USER_TRACKS, apply_user_voice_to_catalog, friendly_domain_label
+from app.services.consumer_guided import guided_catalog_slice
 from app.services.persistence import load_latest_session_for_user
 from app.services.picture_assessment import STORE_KEY, picture_assessment_results
 
@@ -52,6 +54,7 @@ def build_formal_instrument(instrument_id: str) -> Dict[str, Any]:
     domain = ASSESSMENT_DOMAINS.get(domain_id, {})
     voice = INSTRUMENT_USER_VOICE.get(instrument_id, {})
     items = [_formal_item_payload(instrument_id, item) for item in instrument.items()]
+    directing = build_assessment_directing(instrument_id, item_index=0, total_items=len(items), completed=False)
     return {
         "instrument_id": instrument_id,
         "track": "screening",
@@ -64,6 +67,9 @@ def build_formal_instrument(instrument_id: str) -> Dict[str, Any]:
         "intro": voice.get("intro", ""),
         "item_count": len(items),
         "items": items,
+        "directing": directing,
+        "directing_rail": directing.get("rail") or [],
+        "efficacy_preview": directing["layers"]["efficacy"],
     }
 
 
@@ -135,6 +141,7 @@ def unified_clinical_catalog(entitlements: Optional[Dict[str, Any]] = None) -> D
             catalog.setdefault("license", {})["org_name"] = entitlements.get("org_name")
         catalog = filter_catalog_by_entitlements(catalog, entitlements)
         catalog = apply_user_voice_to_catalog(catalog)
+    catalog["guided"] = guided_catalog_slice(catalog.get("formal_instruments") or [])
     return catalog
 
 def build_user_clinical_summary(user_id: str) -> Dict[str, Any]:
