@@ -1870,5 +1870,8 @@
   "total": 78,
   "major_count": 22,
   "minor_count": 56,
+  "ui": {
+    "show_hover_hints": true
+  },
   "bundle_version": 1
 }

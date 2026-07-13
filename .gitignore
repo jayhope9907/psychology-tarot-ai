@@ -16,3 +16,5 @@ tools/
 logs/
 data/
 .cache/
+
+public-url.json
