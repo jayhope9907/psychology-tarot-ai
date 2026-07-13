@@ -978,10 +978,53 @@
 
     .assessment-example {
       margin: 0 0 10px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .efficacy-inline {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed rgba(196, 165, 116, 0.35);
+    }
+    .efficacy-inline .eff-label {
+      margin: 0 0 6px;
       font-size: 0.78rem;
+      font-weight: 700;
       color: var(--accent);
+    }
+    .efficacy-inline .eff-aff {
+      margin: 0 0 8px;
+      font-size: 0.8rem;
+      color: var(--text-soft);
+      line-height: 1.5;
+    }
+    .efficacy-seeds {
+      display: grid;
+      gap: 6px;
+    }
+    .efficacy-seed {
+      text-align: left;
+      border: 1px dashed rgba(90, 143, 120, 0.4);
+      background: rgba(90, 143, 120, 0.06);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 0.8rem;
       line-height: 1.45;
-      font-style: italic;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .efficacy-seed.picked {
+      border-style: solid;
+      border-color: rgba(90, 143, 120, 0.7);
+      background: rgba(90, 143, 120, 0.14);
+    }
+    .efficacy-saved {
+      margin: 8px 0 0;
+      font-size: 0.76rem;
+      color: #3d6b5a;
     }
 
     .assessment-text-input {
@@ -3013,112 +3056,22 @@
       const preview = pkg.case_preview || {};
       const wrap = document.createElement("div");
       wrap.className = "package-wrap";
-
-      const moodIntro = pkg.mood_intro
-        ? `<p class="package-mood-intro">${pkg.mood_intro}</p>`
-        : "";
-      const moodPay = pkg.mood_payment_copy
-        ? `<p class="package-mood-pay">${pkg.mood_payment_copy}</p>`
-        : "";
-      const tierTip = pkg.mood_tier_suggestion
-        ? `<div class="mood-tier-tip"><strong>${pkg.mood_tier_suggestion.tier_label} · ${pkg.mood_tier_suggestion.price_label}</strong><br/>${pkg.mood_tier_suggestion.reason}</div>`
-        : "";
-
-      const payLabel = (pkg.consumer_open || pkg.payment_required === false || !pkg.price_krw)
-        ? "부담 없이 마음 확인 시작"
-        : ((pkg.mood_context?.score || 5) <= 2
-          ? "부담 없이 핵심 검사 시작"
-          : "마음 확인 이어가기");
-
-      const hypothesesHtml = (preview.hypotheses || []).map((row, index) => `
-        <div class="hypothesis-row">
-          <div class="label">${index === 0 ? "★ " : ""}${row.case_type || row.label}</div>
-          <div class="hypothesis-pct">${row.probability_label || ""}</div>
-          <div class="note">${row.screening_note || ""} · ${row.confidence_band || ""}</div>
-          <div class="hypothesis-bar"><span style="width:${row.probability || 0}%"></span></div>
-        </div>
-      `).join("");
-
-      const futureHtml = (preview.future_vision || []).map((item) => `<li>${item}</li>`).join("");
-      const defenseHtml = (preview.defense_points || []).map((item) => `<li>${item}</li>`).join("");
-      const dream = pkg.dream_seed || preview.dream_seed || {};
-      const dreamPromptsHtml = (dream.dream_prompts || []).map((item) => `<li>${item}</li>`).join("");
-      const microSeedsHtml = (dream.micro_seeds || []).map((s) =>
-        `<li><strong>${s.seed}</strong><br/><span style="font-size:0.75rem;color:var(--text-muted)">${s.why || ""}</span></li>`
-      ).join("");
-      const dreamBlock = dream.active ? `
-          <div class="value-block dream-seed">
-            <h4>🌱 ${dream.headline || "꿈을 심는 시간"}</h4>
-            <p class="sub">${dream.acknowledgment || ""}</p>
-            <p class="sub">${dream.subheadline || ""}</p>
-            ${dreamPromptsHtml ? `<p class="sub" style="margin-top:8px">함께 떠올려볼 질문</p><ul>${dreamPromptsHtml}</ul>` : ""}
-            ${microSeedsHtml ? `<p class="sub">오늘 심을 작은 씨앗</p><ul>${microSeedsHtml}</ul>` : ""}
-          </div>` : "";
-
-      const timelineHtml = (pkg.process_timeline || []).map((step) => `
-        <div class="timeline-step ${step.status || ""}">
-          <strong>${step.title}</strong>
-          <p>${step.description}</p>
-        </div>
-      `).join("");
-
-      const instrumentsHtml = (pkg.instrument_steps || []).map((step) => `
-        <div class="instrument-step">
-          <div class="order">${step.order}</div>
-          <div class="meta">
-            <strong>${step.title}</strong>
-            <span>${step.subtitle}${step.focus ? ` · ${step.focus}` : ""}</span>
-          </div>
-          <div class="time">~${step.estimated_minutes}분</div>
-        </div>
-      `).join("");
-
-      const vp = preview.value_proposition || {};
+      const summary =
+        preview.classification_summary
+        || pkg.mood_intro
+        || `${pkg.chief_complaint || "지금까지 나눈 마음"}을 짧게 함께 살펴볼까요.`;
+      const minutes = pkg.estimated_duration_minutes || 10;
 
       wrap.innerHTML = `
         <div class="package-card" id="assessmentPackageCard">
           <div class="package-head">
-            <h3>오늘 맞춰 본 짧은 마음 체크</h3>
-            <p>${pkg.chief_complaint || "지금까지 나눈 마음"}을 기준으로, 약 ${pkg.estimated_duration_minutes || 15}분 · 몇 문항만 가볍게요.</p>
+            <h3>짧은 마음 체크</h3>
+            <p>${summary}</p>
+            <p style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">약 ${minutes}분 · 진단이 아니라 참고용이에요.</p>
           </div>
-          ${moodIntro}
-          ${tierTip}
-
-          <div class="case-preview-block">
-            <span class="case-badge">지금까지 들은 이야기 요약</span>
-            <p class="case-summary">${preview.classification_summary || "대화를 바탕으로 지금 마음에 가까운 방향을 정리했어요."}</p>
-            <div class="hypothesis-list">${hypothesesHtml}</div>
-            ${preview.comorbidity_note ? `<p class="case-summary" style="font-size:0.78rem;color:var(--text-muted)">${preview.comorbidity_note}</p>` : ""}
-            <p class="package-disclaimer" style="margin:0">${preview.disclaimer || "진단이 아니라 참고용이에요."}</p>
-          </div>
-
-          ${dreamBlock}
-
-          <div class="value-block">
-            <h4>${vp.headline || "이 검사로 그릴 수 있는 미래"}</h4>
-            <p class="sub">${vp.subheadline || ""}</p>
-            <ul>${futureHtml}</ul>
-          </div>
-
-          <div class="value-block defense">
-            <h4>${vp.prevention_headline || "함께 지켜낼 수 있는 것"}</h4>
-            <p class="sub">${vp.prevention_subheadline || ""}</p>
-            <ul>${defenseHtml}</ul>
-          </div>
-
-          <div class="package-price-row">
-            <strong>${pkg.price_label || ""}</strong>
-            <span>${pkg.tier_description || ""}</span>
-          </div>
-          ${moodPay}
-          <p class="timeline-title">진행 과정</p>
-          <div class="process-timeline">${timelineHtml}</div>
-          <p class="instruments-title">포함 검사 순서</p>
-          <div class="instrument-flow">${instrumentsHtml}</div>
-          <p class="package-disclaimer">${pkg.disclaimer || ""}</p>
           <div class="package-actions">
-            <button type="button" class="pay-btn" id="packagePayBtn">${payLabel}</button>
-            <button type="button" class="secondary" id="packageLaterBtn">조금 더 이야기 후 결정</button>
+            <button type="button" class="pay-btn" id="packagePayBtn">시작</button>
+            <button type="button" class="secondary" id="packageLaterBtn">조금 더</button>
           </div>
         </div>
       `;
@@ -3127,9 +3080,13 @@
       scrollToBottom();
 
       wrap.querySelector("#packagePayBtn")?.addEventListener("click", () => checkoutPackage(pkg.tier_id));
-      wrap.querySelector("#packageLaterBtn")?.addEventListener("click", () => {
-        wrap.style.opacity = "0.7";
+      wrap.querySelector("#packageLaterBtn")?.addEventListener("click", async () => {
+        wrap.style.opacity = "0.75";
         wrap.querySelectorAll("button").forEach((btn) => { btn.disabled = true; });
+        const bubble = createAssistantRow();
+        bubble.textContent = "좋아요. 조금 더 이야기한 뒤, 준비되면 언제든 다시 시작할 수 있어요.";
+        scrollToBottom();
+        await submitMessage("조금 더 이야기하다가 할게요.");
       });
     }
 
@@ -3168,7 +3125,7 @@
       } catch (error) {
         if (payBtn) {
           payBtn.disabled = false;
-          payBtn.textContent = "마음 확인 시작하기";
+          payBtn.textContent = "시작";
         }
         const bubble = createAssistantRow();
         bubble.textContent = error.message || "잠시 후 다시 시도해 주세요.";
@@ -3315,10 +3272,16 @@
           <p class="assessment-example"></p>
           <p class="assessment-note"></p>
           <div class="options"></div>
+          <div class="efficacy-inline" hidden>
+            <p class="eff-label">작은 힘으로 · 자기효능감</p>
+            <p class="eff-aff"></p>
+            <div class="efficacy-seeds"></div>
+            <p class="efficacy-saved" hidden></p>
+          </div>
         </div>
       `;
 
-      wrap.querySelector(".assessment-framing").textContent = assessment.framing || "";
+      wrap.querySelector(".assessment-framing").textContent = assessment.framing || assessment.coach_line || "";
       wrap.querySelector(".assessment-prompt").textContent = assessment.prompt || "";
       const exampleEl = wrap.querySelector(".assessment-example");
       if (assessment.example) {
@@ -3326,9 +3289,7 @@
       } else {
         exampleEl.remove();
       }
-      const note = assessment.selection?.rationale
-        ? `${assessment.counselor_note || ""} · ${assessment.selection.rationale}`
-        : (assessment.counselor_note || "편한 만큼만 답해 주셔도 괜찮아요.");
+      const note = assessment.counselor_note || "편한 만큼만 답해 주셔도 괜찮아요.";
       wrap.querySelector(".assessment-note").textContent = note;
 
       const optionsEl = wrap.querySelector(".options");
@@ -3372,8 +3333,73 @@
       skip.addEventListener("click", () => submitAssessmentAnswer(null, null, true));
       optionsEl.appendChild(skip);
 
+      mountEfficacyInCard(wrap, assessment);
+
       messagesEl.appendChild(wrap);
       scrollToBottom();
+    }
+
+    function mountEfficacyInCard(wrap, assessment) {
+      const block = wrap.querySelector(".efficacy-inline");
+      const efficacy = assessment.efficacy || {};
+      const seeds = efficacy.seeds || [];
+      if (!block || !seeds.length) return;
+      block.hidden = false;
+      block.querySelector(".eff-aff").textContent =
+        efficacy.affirmation || efficacy.how_to || "고른 작은 실천이 ‘나는 할 수 있다’는 증거가 됩니다.";
+      const box = block.querySelector(".efficacy-seeds");
+      const savedEl = block.querySelector(".efficacy-saved");
+      box.innerHTML = "";
+      seeds.forEach((seed) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "efficacy-seed";
+        btn.textContent = seed;
+        btn.addEventListener("click", async () => {
+          if (btn.disabled) return;
+          box.querySelectorAll(".efficacy-seed").forEach((el) => {
+            el.classList.toggle("picked", el === btn);
+            el.disabled = true;
+          });
+          const ok = await saveEfficacySeed(assessment.instrument, seed);
+          if (savedEl) {
+            savedEl.hidden = false;
+            savedEl.textContent = ok
+              ? "좋아요. 오늘의 작은 힘으로 남겨 두었어요."
+              : "저장이 잠깐 안 됐지만, 마음에 남겨 두셔도 충분해요.";
+          }
+        });
+        box.appendChild(btn);
+      });
+    }
+
+    async function saveEfficacySeed(instrument, seed) {
+      try {
+        if (!sessionId) {
+          const res = await fetch(`/api/v1/chat/sessions/new?user_id=${encodeURIComponent(userId)}&plan=PLUS`, {
+            method: "POST",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            sessionId = data.session_id;
+            if (sessionId) localStorage.setItem("psychology_ai_session_id", sessionId);
+          }
+        }
+        if (!sessionId || !seed) return false;
+        const res = await fetch("/api/v1/assessments/efficacy-seed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            session_id: sessionId,
+            instrument: instrument || "chat",
+            seed,
+          }),
+        });
+        return res.ok;
+      } catch (_) {
+        return false;
+      }
     }
 
     function parseSseChunk(buffer) {
@@ -3630,8 +3656,8 @@
 
       const card = messagesEl.querySelector(".assessment-wrap:last-of-type");
       if (card) {
-        card.style.opacity = "0.65";
-        card.querySelectorAll("button, textarea").forEach((el) => { el.disabled = true; });
+        card.style.opacity = "0.92";
+        card.querySelectorAll(".options button, .options textarea").forEach((el) => { el.disabled = true; });
       }
 
       const message = naturalAssessmentMessage(label, skipped);

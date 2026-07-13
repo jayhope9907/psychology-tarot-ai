@@ -42,6 +42,8 @@ def test_serialize_assessment_applies_user_voice():
     assert out["response_type"] == "open_text"
     assert out["user_title"] == "문장 이어쓰기 · 마음 글씨"
     assert "자신" in out["prompt"] or "자신" in out.get("framing", "")
+    assert out.get("efficacy", {}).get("seeds")
+    assert out["efficacy"]["affirmation"]
 
 
 def test_sct_scores_text_answers():

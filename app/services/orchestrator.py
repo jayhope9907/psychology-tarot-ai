@@ -15,6 +15,7 @@ from app.assessments.user_voice import enrich_assessment_payload
 
 from app.services.assessment_battery import next_recommended_instruments, sync_session_battery
 
+from app.services.assessment_directing import build_efficacy_card
 from app.services.clinical_insight import sync_session_insight
 
 from app.services.counseling_phase import (
@@ -95,7 +96,20 @@ def _serialize_assessment(item: AssessmentItem, optional: bool = True, selection
 
         payload["selection"] = selection
 
-    return enrich_assessment_payload(payload)
+    enriched = enrich_assessment_payload(payload)
+    instrument_id = str(enriched.get("instrument") or item.instrument or "")
+    if instrument_id:
+        card = build_efficacy_card(instrument_id)
+        enriched["efficacy"] = {
+            "headline": card.get("headline"),
+            "affirmation": card.get("affirmation"),
+            "strength_prompt": card.get("strength_prompt"),
+            "seeds": card.get("seeds") or [],
+            "how_to": card.get("how_to"),
+            "disclaimer": card.get("disclaimer"),
+        }
+        enriched["coach_line"] = card.get("affirmation") or enriched.get("counselor_note")
+    return enriched
 
 
 

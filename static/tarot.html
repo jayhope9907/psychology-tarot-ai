@@ -274,8 +274,8 @@
   <div class="shell">
     <header class="t-topbar">
       <div>
-        <h1>3D 타로 · 원형 테이블</h1>
-        <p>위에서 내려다보며 78장 원형 배치 · 카메라 조절 가능</p>
+        <h1>3D 타로 · 마음의 거울</h1>
+        <p>지금 마음을 살짝 비춰 보는 시간</p>
       </div>
       <a class="t-back" href="/chat">← AI 대화</a>
     </header>
@@ -307,7 +307,7 @@
         <div id="tarotCanvas"></div>
         <div class="stage-footer">
           <span class="phase-pill" id="phaseLabel">준비</span>
-          <span id="stageHint">위에서 내려다보는 원형 탁자 — 카메라로 높이·줌을 맞춰 보세요</span>
+          <span id="stageHint">마음에 닿는 질문을 적고, 카드를 섞어 보세요</span>
         </div>
       </section>
 
@@ -321,10 +321,10 @@
           <div class="spread-options">
             <button type="button" class="spread-btn active" data-spread="three_card" data-count="3" disabled>3카드 · 과거 · 현재 · 미래</button>
           </div>
-          <p class="step-desc" style="margin-top:4px;font-size:0.78rem">클래식 타로 규칙: 정확히 3장 · 정/역방향 공정 · 위치별 의미로만 읽습니다.</p>
-          <div class="camera-panel">
-            <details open>
-              <summary>카메라 커스텀 · 위에서 내려보기</summary>
+          <p class="step-desc" style="margin-top:4px;font-size:0.78rem">클래식 규칙: 정확히 3장 · 정/역방향 공정 · 위치별 의미로 읽어요.</p>
+          <div class="camera-panel" id="cameraPanel" hidden>
+            <details>
+              <summary>보기 설정 (카메라)</summary>
               <div class="camera-grid">
                 <div class="camera-row">
                   <label>높이 <span id="camHeightVal">12.2</span></label>
@@ -348,7 +348,7 @@
               </div>
             </details>
           </div>
-          <div class="tarot-img-setting">
+          <div class="tarot-img-setting" hidden>
             <label for="imageModePeek">카드 그림 표시 (뽑기 전에는 숨김이 규칙)</label>
             <div class="image-mode-btns" id="imageModeBtns">
               <button type="button" data-mode="hidden" class="active">그림 숨기기</button>
@@ -429,7 +429,7 @@
       complete: "완료",
     };
     const HINTS = {
-      ready: "위에서 내려다보는 원형 덱 — 카메라로 높이·줌을 맞춘 뒤 섞어 주세요",
+      ready: "질문을 적었다면 카드를 섞어 주세요",
       shuffling: "원형 세 겹 링을 돌리며 섞는 중…",
       picking: "위에서 보이는 카드 중 직감으로 눌러 뽑으세요",
       spreading: "뽑은 카드를 탁자 중앙으로 모으는 중…",
@@ -736,7 +736,7 @@
         deckReady = true;
         els.btnShuffle.disabled = false;
         const offlineNote = navigator.onLine === false ? " (오프라인 · 78장 전체)" : "";
-        setStatus(`준비 완료. 78장 원형 3링 — 카메라 맞추고 섞어 주세요.${offlineNote}`);
+        setStatus(`준비 완료. 마음에 닿는 카드 세 장을 골라 주세요.${offlineNote}`);
       } catch (err) {
         setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
       }
