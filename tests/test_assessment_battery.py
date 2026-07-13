@@ -18,8 +18,8 @@ def test_catalog_covers_all_domains_and_instruments():
     for meta in ASSESSMENT_DOMAINS.values():
         from_registry.update(meta["instruments"])
     assert registered == from_registry
-    assert len(ASSESSMENT_DOMAINS) >= 12
-    assert len(ALL_INSTRUMENTS) >= 13
+    assert len(ASSESSMENT_DOMAINS) >= 40
+    assert len(ALL_INSTRUMENTS) >= 60
 
 
 def test_battery_status_empty_session():
@@ -49,11 +49,7 @@ def test_boost_prefers_untouched_domains():
     state = ChatSessionState(user_id="battery-boost")
     state.turn_count = 3
     state.formal_answers["phq9"] = {
-        "phq9_q1": 1,
-        "phq9_q2": 1,
-        "phq9_q3": 1,
-        "phq9_q4": 1,
-        "phq9_q5": 1,
+        f"phq9_q{i}": 1 for i in range(1, 10)
     }
     base = {"phq9": 0.5, "isi": 0.5}
     boosted = boost_battery_coverage_scores(state, base)

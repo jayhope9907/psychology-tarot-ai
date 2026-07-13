@@ -28,14 +28,34 @@ PHQ9_ITEM_DEFINITIONS = [
     (
         "phq9_q5",
         "식욕이 줄었거나, 평소보다 많이 드신 적이 있으셨나요?",
-        "마지막으로 식사 쪽도 가볍게 여쭤볼게요.",
+        "식사 쪽도 가볍게 여쭤볼게요.",
+    ),
+    (
+        "phq9_q6",
+        "자신을 탓하거나, 실패자 같다고 느낀 적이 있으셨나요?",
+        "자기비판 쪽만 부드럽게 볼게요.",
+    ),
+    (
+        "phq9_q7",
+        "집중하기 어렵거나, 일·공부를 시작하기 힘들었나요?",
+        "집중·실행 쪽이에요.",
+    ),
+    (
+        "phq9_q8",
+        "움직임·말이 느려지거나, 반대로 안절부절 못한 적이 있으셨나요?",
+        "몸의 속도·에너지 쪽만요.",
+    ),
+    (
+        "phq9_q9",
+        "차라리 없어졌으면 하거나, 자신·타인을 다치게 할 생각이 든 적이 있으셨나요?",
+        "민감할 수 있어요. 편한 만큼만, 넘어가셔도 괜찮아요.",
     ),
 ]
 
 
 class PHQ9Instrument(AssessmentInstrument):
     instrument_id = "phq9"
-    display_name = "PHQ-9 (점진 도입)"
+    display_name = "PHQ-9"
 
     def items(self) -> List[AssessmentItem]:
         return [
@@ -57,11 +77,13 @@ class PHQ9Instrument(AssessmentInstrument):
         completed = len(valid)
         total_items = len(self.items())
         severity = "minimal"
-        if completed >= 2:
-            if total_score >= 10:
+        if completed >= 3:
+            if total_score >= 15:
                 severity = "moderate"
-            elif total_score >= 5:
+            elif total_score >= 10:
                 severity = "mild"
+            elif total_score >= 5:
+                severity = "minimal_elevated"
         return {
             "instrument": self.instrument_id,
             "completed_items": completed,

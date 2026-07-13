@@ -132,6 +132,10 @@ INSTRUMENT_USER_VOICE: Dict[str, Dict[str, str]] = {
     },
 }
 
+from app.assessments.extended_psych_screens import EXTENDED_USER_VOICE
+
+INSTRUMENT_USER_VOICE.update(EXTENDED_USER_VOICE)
+
 # 문항별 — SCT·자존감 등 쉬운 질문으로 재구성
 ITEM_USER_VOICE: Dict[str, Dict[str, str]] = {
     "rses_q1": {

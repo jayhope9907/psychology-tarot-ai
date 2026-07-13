@@ -44,7 +44,8 @@ def test_rapport_does_not_inject_assessment_without_payment():
     assert decision.action == "chat_only"
 
 
-def test_briefing_phase_shows_package_and_blocks_tests():
+def test_briefing_phase_shows_package_and_blocks_tests(monkeypatch):
+    monkeypatch.setattr("app.services.consumer_access.consumer_open", lambda: False)
     state = ChatSessionState(user_id="briefing-gate")
     state.turn_count = 3
     state.messages = [

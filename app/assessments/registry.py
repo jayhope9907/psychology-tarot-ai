@@ -309,6 +309,19 @@ INSTRUMENT_PROFILES: Dict[str, Dict[str, Any]] = {
     },
 }
 
+from app.assessments.extended_psych_screens import EXTENDED_DOMAINS, EXTENDED_PROFILES
+
+for _domain_id, _meta in EXTENDED_DOMAINS.items():
+    if _domain_id in ASSESSMENT_DOMAINS:
+        _existing = ASSESSMENT_DOMAINS[_domain_id]["instruments"]
+        for _iid in _meta["instruments"]:
+            if _iid not in _existing:
+                _existing.append(_iid)
+    else:
+        ASSESSMENT_DOMAINS[_domain_id] = _meta
+
+INSTRUMENT_PROFILES.update(EXTENDED_PROFILES)
+
 
 def profile_summary(instrument_id: str) -> str:
     profile = INSTRUMENT_PROFILES.get(instrument_id, {})

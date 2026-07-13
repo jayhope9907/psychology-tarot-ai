@@ -1,5 +1,6 @@
 from app.assessments.base import AssessmentItem, AssessmentInstrument, ResponseType
 from app.assessments.abnormal_psych_screens import ABNORMAL_INSTRUMENTS
+from app.assessments.extended_psych_screens import EXTENDED_INSTRUMENTS
 from app.assessments.clinical_screens import ISIInstrument, PCL5Instrument, PSSInstrument
 from app.assessments.gad7 import GAD7Instrument
 from app.assessments.mbti_preference import MBTIPreferenceInstrument
@@ -27,6 +28,7 @@ FORMAL_INSTRUMENTS = {
     "sct": SCTInstrument(),
     "mbti_preference": MBTIPreferenceInstrument(),
     **ABNORMAL_INSTRUMENTS,
+    **EXTENDED_INSTRUMENTS,
 }
 
 MICRO_INSTRUMENTS = {
