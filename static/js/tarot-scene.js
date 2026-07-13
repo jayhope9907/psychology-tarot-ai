@@ -441,6 +441,13 @@
     buildDeck(catalog) {
       this.clear();
       this.deckData = (catalog || []).slice();
+      // Fisher–Yates so visual ring order is not the fixed catalog order.
+      for (let i = this.deckData.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = this.deckData[i];
+        this.deckData[i] = this.deckData[j];
+        this.deckData[j] = tmp;
+      }
       this.deckData.forEach((card) => {
         const mesh = this._makeCardMesh(card);
         this.scene.add(mesh);
@@ -451,6 +458,63 @@
       this._layoutCircle();
       this.phase = "ready";
       this._emitPhase();
+    }
+
+    async shuffle() {
+      if (!this.meshes.length) {
+        this.phase = "shuffling";
+        this._emitPhase();
+        await new Promise((r) => setTimeout(r, 900));
+        this.phase = "ready";
+        this._emitPhase();
+        return;
+      }
+
+      this.phase = "shuffling";
+      this._emitPhase();
+      const token = ++this._animToken;
+      // Re-shuffle mesh order on rings for fair pick positions.
+      for (let i = this.meshes.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = this.meshes[i];
+        this.meshes[i] = this.meshes[j];
+        this.meshes[j] = tmp;
+      }
+      this._layoutCircle();
+      const startRot = this.circleRotation;
+      const endRot = startRot + Math.PI * 2 * 2.2;
+      const duration = 2800;
+      const start = performance.now();
+
+      await new Promise((resolve) => {
+        const tick = (now) => {
+          if (token !== this._animToken) {
+            resolve();
+            return;
+          }
+          const t = Math.min((now - start) / duration, 1);
+          const ease = easeInOutCubic(t);
+          this.circleRotation = THREE.MathUtils.lerp(startRot, endRot, ease);
+          this.circleRadiusScale = 1 - Math.sin(ease * Math.PI) * 0.05;
+          this.meshes.forEach((mesh) => {
+            if (!mesh.userData.selected) {
+              const wobble = Math.sin(this._circleAngleFor(mesh) * 3 + ease * Math.PI * 4) * 0.01 * (1 - t);
+              this._applyCirclePose(mesh, this.circleRadiusScale, wobble);
+            }
+          });
+          if (t < 1) requestAnimationFrame(tick);
+          else {
+            this.circleRadiusScale = 1;
+            this.meshes.forEach((mesh) => {
+              if (!mesh.userData.selected) this._applyCirclePose(mesh, 1, 0);
+            });
+            this.phase = "ready";
+            this._emitPhase();
+            resolve();
+          }
+        };
+        requestAnimationFrame(tick);
+      });
     }
 
     clear() {
@@ -489,55 +553,6 @@
         { x: 0.42, y: TABLE_TOP_Y + 0.08, z: TABLE_CENTER_Z + 0.12, ry: 0, rx: this._faceDownRx(), rz: -0.05 },
       ];
       return slots[pickIndex] || slots[0];
-    }
-
-    async shuffle() {
-      if (!this.meshes.length) {
-        this.phase = "shuffling";
-        this._emitPhase();
-        await new Promise((r) => setTimeout(r, 900));
-        this.phase = "ready";
-        this._emitPhase();
-        return;
-      }
-
-      this.phase = "shuffling";
-      this._emitPhase();
-      const token = ++this._animToken;
-      const startRot = this.circleRotation;
-      const endRot = startRot + Math.PI * 2 * 2.2;
-      const duration = 2800;
-      const start = performance.now();
-
-      await new Promise((resolve) => {
-        const tick = (now) => {
-          if (token !== this._animToken) {
-            resolve();
-            return;
-          }
-          const t = Math.min((now - start) / duration, 1);
-          const ease = easeInOutCubic(t);
-          this.circleRotation = THREE.MathUtils.lerp(startRot, endRot, ease);
-          this.circleRadiusScale = 1 - Math.sin(ease * Math.PI) * 0.05;
-          this.meshes.forEach((mesh) => {
-            if (!mesh.userData.selected) {
-              const wobble = Math.sin(this._circleAngleFor(mesh) * 3 + ease * Math.PI * 4) * 0.01 * (1 - t);
-              this._applyCirclePose(mesh, this.circleRadiusScale, wobble);
-            }
-          });
-          if (t < 1) requestAnimationFrame(tick);
-          else {
-            this.circleRadiusScale = 1;
-            this.meshes.forEach((mesh) => {
-              if (!mesh.userData.selected) this._applyCirclePose(mesh, 1, 0);
-            });
-            this.phase = "ready";
-            this._emitPhase();
-            resolve();
-          }
-        };
-        requestAnimationFrame(tick);
-      });
     }
 
     startPickMode(maxPicks) {

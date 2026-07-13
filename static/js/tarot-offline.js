@@ -52,18 +52,24 @@
 
   function buildDrawFromPicks(cardIds, spread, catalog, reversedFlags) {
     const spreads = catalog?.spreads || {};
-    const spreadMeta = spreads[spread] || spreads.three_card || { label_ko: spread, positions: [] };
+    const spreadMeta =
+      spreads.three_card ||
+      spreads[spread] || {
+        label_ko: "3카드 스프레드",
+        positions: ["과거·뿌리", "현재·핵심", "미래·방향"],
+      };
     const positions = spreadMeta.positions || [];
     const map = cardMap(catalog);
     const drawn = [];
+    const uniqueIds = [...new Set(cardIds)].slice(0, 3);
 
-    cardIds.forEach((id, index) => {
+    uniqueIds.forEach((id, index) => {
       const card = map[id];
       if (!card) return;
       const reversed =
         reversedFlags && index < reversedFlags.length
           ? reversedFlags[index]
-          : Math.random() < 0.28;
+          : Math.random() < 0.5;
       const position = positions[index] || `카드 ${index + 1}`;
       drawn.push({
         id: card.id,
@@ -86,10 +92,11 @@
     });
 
     return {
-      spread,
-      spread_label_ko: spreadMeta.label_ko || spread,
+      spread: "three_card",
+      spread_label_ko: spreadMeta.label_ko || "3카드 스프레드",
       positions: positions.slice(0, drawn.length),
       cards: drawn,
+      rules: { spread: "three_card", count: 3, reverse_chance: 0.5 },
       offline: navigator.onLine === false,
     };
   }

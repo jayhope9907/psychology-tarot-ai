@@ -30,7 +30,7 @@ def test_build_tarot_handoff():
 
 def test_apply_tarot_handoff_to_session():
     state = ChatSessionState(user_id="blend-user")
-    draw = draw_cards(count=1, spread="single", seed=8)
+    draw = draw_cards(count=3, spread="three_card", seed=8)
     reading = {"summary": "요약", "psychology_themes": ["자기효능감"]}
     handoff = build_tarot_handoff("불안해요", draw, reading)
     result = apply_tarot_handoff(state, handoff)

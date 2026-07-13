@@ -319,9 +319,9 @@
           <textarea id="userStory" placeholder="예: 요즘 직장이 막막해요. 지금 제 마음이 어떤 쪽인지 가볍게 보고 싶어요."></textarea>
           <label>스프레드</label>
           <div class="spread-options">
-            <button type="button" class="spread-btn" data-spread="single" data-count="1">원카드</button>
-            <button type="button" class="spread-btn active" data-spread="three_card" data-count="3">3카드</button>
+            <button type="button" class="spread-btn active" data-spread="three_card" data-count="3" disabled>3카드 · 과거 · 현재 · 미래</button>
           </div>
+          <p class="step-desc" style="margin-top:4px;font-size:0.78rem">클래식 타로 규칙: 정확히 3장 · 정/역방향 공정 · 위치별 의미로만 읽습니다.</p>
           <div class="camera-panel">
             <details open>
               <summary>카메라 커스텀 · 위에서 내려보기</summary>
@@ -496,11 +496,10 @@
     setTarotStep(1);
 
     document.querySelectorAll(".spread-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".spread-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        selectedSpread = btn.dataset.spread;
-        selectedCount = Number(btn.dataset.count);
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        selectedSpread = "three_card";
+        selectedCount = 3;
       });
     });
 

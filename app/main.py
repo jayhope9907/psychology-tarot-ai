@@ -1137,19 +1137,25 @@ async def tarot_deck_catalog():
 
 @app.post("/api/v1/tarot/draw")
 async def tarot_draw(request: TarotDrawRequest):
-    count = min(max(request.count, 1), 3)
-    return draw_cards(count=count, spread=request.spread, seed=request.seed)
+    from app.services.tarot import normalize_three_card_spread
+
+    spread, count = normalize_three_card_spread(request.spread, request.count)
+    return draw_cards(count=count, spread=spread, seed=request.seed)
 
 
 @app.post("/api/v1/tarot/pick")
 async def tarot_pick(request: TarotPickRequest):
+    from app.services.tarot import THREE_CARD_COUNT, normalize_three_card_spread
+
     if not request.card_ids:
         raise HTTPException(status_code=400, detail="card_ids required")
-    if len(request.card_ids) > 3:
-        raise HTTPException(status_code=400, detail="max 3 cards")
+    unique_ids = list(dict.fromkeys(request.card_ids))
+    if len(unique_ids) != THREE_CARD_COUNT:
+        raise HTTPException(status_code=400, detail="exactly 3 unique cards required")
+    spread, _ = normalize_three_card_spread(request.spread, len(unique_ids))
     result = build_draw_from_picks(
-        card_ids=request.card_ids,
-        spread=request.spread,
+        card_ids=unique_ids,
+        spread=spread,
         reversed_flags=request.reversed_flags,
     )
     draw_id = record_tarot_draw(request.user_id, result)
@@ -1427,10 +1433,13 @@ async def voice_presets(query: str = "", gender: Optional[str] = None, counselor
 
 @app.post("/api/v1/tarot/reading")
 async def tarot_reading(request: TarotReadingRequest):
+    from app.services.tarot import normalize_three_card_spread
+
+    spread, count = normalize_three_card_spread(request.spread, request.count)
     draw_result = (
-        {"spread": request.spread, "cards": request.cards}
+        {"spread": spread, "cards": request.cards}
         if request.cards
-        else draw_cards(count=request.count, spread=request.spread)
+        else draw_cards(count=count, spread=spread)
     )
     local = build_local_reading(request.user_story, draw_result)
     primary_card = local.get("primary_card") or "The Fool"

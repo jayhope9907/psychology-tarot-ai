@@ -65,9 +65,36 @@ def test_pick_endpoint_user_selected_cards():
 
 
 def test_build_draw_from_picks():
-    result = build_draw_from_picks(["empress", "moon"], spread="three_card", reversed_flags=[False, True])
-    assert len(result["cards"]) == 2
+    result = build_draw_from_picks(
+        ["empress", "moon", "sun"], spread="three_card", reversed_flags=[False, True, False]
+    )
+    assert len(result["cards"]) == 3
     assert result["cards"][1]["reversed"] is True
+    assert result["spread"] == "three_card"
+    assert result["positions"] == ["과거·뿌리", "현재·핵심", "미래·방향"]
+
+
+def test_draw_forces_three_card_even_if_single_requested():
+    result = draw_cards(count=1, spread="single", seed=42)
+    assert len(result["cards"]) == 3
+    assert result["spread"] == "three_card"
+    assert result["rules"]["reverse_chance"] == 0.5
+
+
+def test_pick_rejects_non_three():
+    response = client.post(
+        "/api/v1/tarot/pick",
+        json={"spread": "single", "card_ids": ["fool"]},
+    )
+    assert response.status_code == 400
+
+
+def test_tarot_ui_is_three_card_only():
+    response = client.get("/tarot")
+    assert response.status_code == 200
+    assert "원카드" not in response.text
+    assert "3카드" in response.text
+    assert "과거" in response.text
 
 
 def test_draw_three_cards_with_positions():
@@ -91,6 +118,10 @@ def test_tarot_ui_route():
     assert "3D 타로" in response.text
     assert "카메라 커스텀" in response.text
     assert "camHeight" in response.text
+    assert "원카드" not in response.text
+    assert "3카드" in response.text
+    assert "과거" in response.text
+    assert "원카드" not in response.text
 
 
 def test_psychometrics_hosts_mind_themes():
@@ -122,13 +153,13 @@ def test_tarot_reading_endpoint_with_mock_openai(monkeypatch):
 
     monkeypatch.setattr(main_module, "client", FakeClient())
 
-    draw = draw_cards(count=1, spread="single", seed=99)
+    draw = draw_cards(count=3, spread="three_card", seed=99)
     response = client.post(
         "/api/v1/tarot/reading",
         json={
             "user_story": "요즘 직장에서 힘들어요",
-            "spread": "single",
-            "count": 1,
+            "spread": "three_card",
+            "count": 3,
             "cards": draw["cards"],
         },
     )
@@ -142,8 +173,8 @@ def test_tarot_reading_endpoint_with_mock_openai(monkeypatch):
 def test_local_reading_workplace_actions():
     draw = draw_cards(count=3, spread="three_card", seed=1)
     reading = build_local_reading("직장에서 스트레스가 심해요", draw)
-    assert reading.get("reading_tone") == "light_projection"
-    assert "거울" in reading["summary"]
+    assert reading.get("reading_tone") == "three_card_classic"
+    assert "3카드" in reading["summary"] or "과거" in reading["summary"]
     assert any("직장" in action for action in reading["cbt_actions"])
 
 
@@ -153,6 +184,8 @@ def test_tarot_reading_prompt_is_light_projection():
     prompt = build_tarot_reading_system_prompt()
     assert "깊게" in prompt
     assert "그림자" in prompt
+    assert "3카드" in prompt
+    assert "과거" in prompt
 
 
 def test_archetype_map_covers_all_major_arcana():
