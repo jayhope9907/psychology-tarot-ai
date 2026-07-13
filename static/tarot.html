@@ -532,13 +532,46 @@
       });
     }
 
+    let showHoverHints = true;
+
+    function detectHoverHintsFallback() {
+      const host = location.hostname || "";
+      if (host.includes("onrender.com")) return false;
+      return (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.endsWith(".trycloudflare.com") ||
+        host === ""
+      );
+    }
+
+    function applyHoverHintPolicy(deckPayload) {
+      if (deckPayload?.ui && typeof deckPayload.ui.show_hover_hints === "boolean") {
+        showHoverHints = deckPayload.ui.show_hover_hints;
+      } else {
+        showHoverHints = detectHoverHintsFallback();
+      }
+      // Production host always wins over a leaked tunnel/offline cache.
+      if ((location.hostname || "").includes("onrender.com")) {
+        showHoverHints = false;
+      }
+      const hintCopy = document.querySelector(".gesture-hint");
+      if (hintCopy) {
+        hintCopy.textContent = showHoverHints
+          ? "핀치·휠로 줌, 빈 곳을 드래그해 회전할 수 있어요. 카드에 올리면 아키타입 힌트가 보여요."
+          : "핀치·휠로 줌, 빈 곳을 드래그해 회전할 수 있어요. 직감으로 카드를 골라 주세요.";
+      }
+      if (!showHoverHints) setArchetypeHint("");
+    }
+
     function setArchetypeHint(text) {
       const el = document.getElementById("archetypeHint");
       if (!el) return;
-      if (text) {
+      if (showHoverHints && text) {
         el.textContent = text;
         el.classList.add("visible");
       } else {
+        el.textContent = "";
         el.classList.remove("visible");
       }
     }
@@ -774,6 +807,7 @@
         deckData = await TarotOffline.loadDeckCatalog();
         if (!deckData?.cards?.length) throw new Error("deck fetch failed");
         deckCatalog = deckData.cards || [];
+        applyHoverHintPolicy(deckData);
         try {
           const rulesRes = await fetch("/api/v1/tarot/rules");
           if (rulesRes.ok) {
@@ -792,7 +826,7 @@
             els.stageHint.textContent = HINTS[phase] || "";
           };
           scene.onCameraChange = (prefs) => syncCameraUI(prefs);
-          scene.onHover = (text) => setArchetypeHint(text);
+          scene.onHover = showHoverHints ? (text) => setArchetypeHint(text) : null;
           syncCameraUI(scene.getCameraPrefs());
           scene.onCardFlip = (card, index) => {
             if (!flippedIndices.has(index) && currentDraw) {

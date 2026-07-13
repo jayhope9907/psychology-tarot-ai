@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -165,9 +166,20 @@ def build_archetype_map() -> Dict[str, Dict[str, Any]]:
 TAROT_ARCHETYPE_MAP = build_archetype_map()
 
 
-def _catalog_entry(card: Dict[str, Any]) -> Dict[str, Any]:
+def tarot_ui_flags() -> Dict[str, bool]:
+    """Hover spoilers stay on for tunnel/local tests; off on Render production."""
+    override = os.getenv("TAROT_SHOW_HOVER_HINTS")
+    if override is not None and str(override).strip() != "":
+        show = str(override).strip().lower() in {"1", "true", "yes", "on"}
+    else:
+        # Render.com sets RENDER=true on every service.
+        show = os.getenv("RENDER", "").lower() not in {"true", "1"}
+    return {"show_hover_hints": show}
+
+
+def _catalog_entry(card: Dict[str, Any], *, redact_meanings: bool = False) -> Dict[str, Any]:
     image_file = card.get("image_file")
-    return {
+    entry = {
         "id": card["id"],
         "number": card["number"],
         "arcana": card.get("arcana", "major"),
@@ -183,16 +195,28 @@ def _catalog_entry(card: Dict[str, Any]) -> Dict[str, Any]:
         "reversed_ko": card["reversed_ko"],
         "psychology_theme": card["psychology_theme"],
     }
+    if redact_meanings:
+        # Keep ids for picking; meanings arrive after draw/pick so hovering cannot spoil.
+        entry["name_en"] = ""
+        entry["name_ko"] = ""
+        entry["keywords_ko"] = []
+        entry["upright_ko"] = ""
+        entry["reversed_ko"] = ""
+        entry["psychology_theme"] = ""
+    return entry
 
 
 def list_deck_catalog() -> Dict[str, Any]:
-    cards = [_catalog_entry(card) for card in get_full_deck()]
+    ui = tarot_ui_flags()
+    redact = not ui["show_hover_hints"]
+    cards = [_catalog_entry(card, redact_meanings=redact) for card in get_full_deck()]
     return {
         "cards": cards,
         "spreads": _load_deck()["spreads"],
         "total": len(cards),
         "major_count": len(get_major_arcana()),
         "minor_count": len(get_minor_arcana()),
+        "ui": ui,
     }
 
 

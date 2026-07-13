@@ -61,9 +61,25 @@ def test_list_deck_catalog_endpoint():
     assert "three_card" in payload["spreads"]
     assert payload["cards"][0]["image_url"].startswith("/api/v1/tarot/card-image/")
     assert "upright_ko" in payload["cards"][0]
+    assert payload.get("ui", {}).get("show_hover_hints") is True
     minor = next(c for c in payload["cards"] if c.get("arcana") == "minor")
     assert minor["suit"] in ("wands", "cups", "swords", "pentacles")
     assert "/api/v1/tarot/card-image/" in minor["image_url"]
+
+
+def test_deck_catalog_hides_meanings_on_render(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.delenv("TAROT_SHOW_HOVER_HINTS", raising=False)
+    response = client.get("/api/v1/tarot/deck")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ui"]["show_hover_hints"] is False
+    card = payload["cards"][0]
+    assert card["psychology_theme"] == ""
+    assert card["upright_ko"] == ""
+    assert card["keywords_ko"] == []
+    assert card["name_ko"] == ""
+    assert card["id"]
 
 
 def test_pick_endpoint_user_selected_minor_card():
