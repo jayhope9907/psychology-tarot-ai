@@ -34,6 +34,14 @@
     } catch (e) {}
   }
 
+  function archetypeHint(card) {
+    if (!card) return "";
+    const theme = (card.psychology_theme || "").trim();
+    const kw = Array.isArray(card.keywords_ko) ? card.keywords_ko.filter(Boolean).slice(0, 2).join(" · ") : "";
+    const detail = theme || kw || (card.upright_ko || "").split(/[.。]/)[0] || "";
+    return detail ? `${card.name_ko} — ${detail}` : (card.name_ko || "");
+  }
+
   function drawFallbackFace(ctx, card) {
     const colors = (card && card.gradient) || ["#1e3a5f", "#5b9bd5"];
     const grad = ctx.createLinearGradient(0, 0, 512, 800);
@@ -166,11 +174,24 @@
       this.maxPicks = 3;
       this.selectedMeshes = [];
       this.pickedCardIds = [];
+      this.contextMeshes = [];
       this.hoveredMesh = null;
       this.circleRotation = 0;
       this.circleRadiusScale = 1;
       this._animToken = 0;
       this.cameraPrefs = loadCameraPrefs();
+      this.onHover = null;
+      this._pointers = new Map();
+      this._gesture = {
+        mode: null,
+        startX: 0,
+        startY: 0,
+        moved: false,
+        pendingPick: null,
+        orbitStart: 0,
+        pinchDist: 0,
+        pinchZoom: 1,
+      };
 
       this.raycaster = new THREE.Raycaster();
       this.pointer = new THREE.Vector2();
@@ -184,6 +205,8 @@
       this.renderer.setClearColor(0x000000, 0);
       this.renderer.shadowMap.enabled = true;
       container.appendChild(this.renderer.domElement);
+      this.renderer.domElement.style.touchAction = "none";
+      this.renderer.domElement.style.cursor = "grab";
 
       this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.72));
       const key = new THREE.DirectionalLight(0xffffff, 0.85);
@@ -203,11 +226,22 @@
       this._addParticles();
       this._resize();
       this._onResize = () => this._resize();
-      this._onPointerDown = (e) => this._handlePointer(e);
-      this._onPointerMove = (e) => this._handlePointerMove(e);
+      this._onPointerDown = (e) => this._gesturePointerDown(e);
+      this._onPointerMove = (e) => this._gesturePointerMove(e);
+      this._onPointerUp = (e) => this._gesturePointerUp(e);
+      this._onWheel = (e) => this._gestureWheel(e);
       window.addEventListener("resize", this._onResize);
-      this.renderer.domElement.addEventListener("pointerdown", this._onPointerDown);
-      this.renderer.domElement.addEventListener("pointermove", this._onPointerMove);
+      const el = this.renderer.domElement;
+      this._onPointerLeave = (e) => {
+        this._setHover(null);
+        this._onPointerUp(e);
+      };
+      el.addEventListener("pointerdown", this._onPointerDown);
+      el.addEventListener("pointermove", this._onPointerMove);
+      el.addEventListener("pointerup", this._onPointerUp);
+      el.addEventListener("pointercancel", this._onPointerUp);
+      el.addEventListener("pointerleave", this._onPointerLeave);
+      el.addEventListener("wheel", this._onWheel, { passive: false });
       this._animate = this._animate.bind(this);
       requestAnimationFrame(this._animate);
     }
@@ -231,6 +265,164 @@
 
     resetCameraPrefs() {
       return this.setCameraPrefs({ ...CAMERA_DEFAULTS });
+    }
+
+    nudgeZoom(factor) {
+      const next = Math.min(1.45, Math.max(0.7, this.cameraPrefs.zoom * factor));
+      return this.setCameraPrefs({ zoom: next });
+    }
+
+    nudgeOrbit(deltaRad) {
+      return this.setCameraPrefs({ orbit: (this.cameraPrefs.orbit || 0) + deltaRad });
+    }
+
+    _eventToNDC(event) {
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      return rect;
+    }
+
+    _hitMeshes(filterFn) {
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const pool = filterFn ? this.meshes.filter(filterFn) : this.meshes;
+      const hits = this.raycaster.intersectObjects(pool, false);
+      return hits.length ? hits[0].object : null;
+    }
+
+    _pointerDistance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.hypot(dx, dy);
+    }
+
+    _gestureWheel(event) {
+      event.preventDefault();
+      const factor = event.deltaY > 0 ? 0.94 : 1.06;
+      this.nudgeZoom(factor);
+    }
+
+    _gesturePointerDown(event) {
+      try {
+        this.renderer.domElement.setPointerCapture(event.pointerId);
+      } catch (_) {}
+      this._pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      this._eventToNDC(event);
+
+      if (this._pointers.size === 2) {
+        const pts = [...this._pointers.values()];
+        this._gesture.mode = "pinch";
+        this._gesture.pendingPick = null;
+        this._gesture.pinchDist = this._pointerDistance(pts[0], pts[1]);
+        this._gesture.pinchZoom = this.cameraPrefs.zoom;
+        this.renderer.domElement.style.cursor = "grabbing";
+        return;
+      }
+
+      this._gesture.mode = "pending";
+      this._gesture.moved = false;
+      this._gesture.startX = event.clientX;
+      this._gesture.startY = event.clientY;
+      this._gesture.orbitStart = this.cameraPrefs.orbit || 0;
+
+      if (this.pickMode) {
+        const mesh = this._hitMeshes((m) => m.userData.selectable && !m.userData.selected);
+        this._gesture.pendingPick = mesh || null;
+      } else if (this.phase === "reveal") {
+        this._gesture.pendingPick = this._hitMeshes((m) => m.userData.slot && !m.userData.flipped);
+      } else {
+        this._gesture.pendingPick = null;
+      }
+    }
+
+    _gesturePointerMove(event) {
+      if (this._pointers.has(event.pointerId)) {
+        this._pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      }
+
+      if (this._pointers.size >= 2 && this._gesture.mode === "pinch") {
+        const pts = [...this._pointers.values()];
+        const dist = this._pointerDistance(pts[0], pts[1]);
+        if (this._gesture.pinchDist > 0) {
+          const ratio = dist / this._gesture.pinchDist;
+          this.setCameraPrefs({ zoom: Math.min(1.45, Math.max(0.7, this._gesture.pinchZoom * ratio)) });
+        }
+        this._setHover(null);
+        return;
+      }
+
+      if (!this._pointers.has(event.pointerId)) {
+        // hover-only move
+        this._eventToNDC(event);
+        this._updateHoverFromPointer();
+        return;
+      }
+
+      const dx = event.clientX - this._gesture.startX;
+      const dy = event.clientY - this._gesture.startY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 10) {
+        this._gesture.moved = true;
+        if (this._gesture.mode === "pending") {
+          this._gesture.mode = "orbit";
+          this._gesture.pendingPick = null;
+          this.renderer.domElement.style.cursor = "grabbing";
+        }
+      }
+
+      if (this._gesture.mode === "orbit") {
+        // horizontal drag rotates table view; vertical nudges height slightly
+        const orbit = this._gesture.orbitStart - (dx / 180) * Math.PI;
+        const height = Math.min(18, Math.max(7, this.cameraPrefs.height + dy * -0.01));
+        this.setCameraPrefs({ orbit, height });
+        this._setHover(null);
+        return;
+      }
+
+      this._eventToNDC(event);
+      this._updateHoverFromPointer();
+    }
+
+    _gesturePointerUp(event) {
+      const wasPending = this._gesture.mode === "pending" && !this._gesture.moved;
+      const pending = this._gesture.pendingPick;
+      this._pointers.delete(event.pointerId);
+      try {
+        this.renderer.domElement.releasePointerCapture(event.pointerId);
+      } catch (_) {}
+
+      if (this._pointers.size < 2 && this._gesture.mode === "pinch") {
+        this._gesture.mode = null;
+      }
+      if (this._pointers.size === 0) {
+        if (wasPending && pending) {
+          if (this.pickMode && pending.userData.selectable) {
+            this._togglePick(pending);
+          } else if (this.phase === "reveal" && pending.userData.slot && !pending.userData.flipped) {
+            this.flipCard(pending.userData.index);
+          }
+        }
+        this._gesture.mode = null;
+        this._gesture.pendingPick = null;
+        this._gesture.moved = false;
+        this.renderer.domElement.style.cursor = this.pickMode ? "pointer" : "grab";
+      }
+    }
+
+    _updateHoverFromPointer() {
+      if (this._gesture.mode === "orbit" || this._gesture.mode === "pinch") {
+        this._setHover(null);
+        return;
+      }
+      let mesh = null;
+      if (this.pickMode) {
+        mesh = this._hitMeshes((m) => m.userData.selectable && !m.userData.selected);
+      } else if (this.phase === "ready" || this.phase === "picking") {
+        mesh = this._hitMeshes((m) => !m.userData.selected);
+      } else if (this.phase === "reveal" || this.phase === "complete") {
+        mesh = this._hitMeshes((m) => !!m.userData.slot || m.userData.selected);
+      }
+      this._setHover(mesh);
     }
 
     _addTable() {
@@ -425,6 +617,7 @@
           mesh.userData.drawPose = null;
           mesh.userData.selected = false;
           mesh.userData.selectable = true;
+          mesh.userData.dimmed = false;
           mesh.userData.hoverLift = 0;
           mesh.scale.set(1, 1, 1);
           mesh.material[4].emissive.setHex(0x000000);
@@ -518,8 +711,11 @@
     }
 
     clear() {
-      this.meshes.forEach((m) => this.scene.remove(m));
+      [...this.meshes, ...this.contextMeshes].forEach((m) => {
+        if (m.parent) this.scene.remove(m);
+      });
       this.meshes = [];
+      this.contextMeshes = [];
       this.drawnCards = [];
       this.selectedMeshes = [];
       this.pickedCardIds = [];
@@ -528,6 +724,7 @@
       this.hoveredMesh = null;
       this.circleRotation = 0;
       this.circleRadiusScale = 1;
+      if (this.onHover) this.onHover("", null);
     }
 
     _spreadSlots(count) {
@@ -570,52 +767,30 @@
     _setHover(mesh) {
       if (this.hoveredMesh && this.hoveredMesh !== mesh) {
         this.hoveredMesh.userData.hoverLift = 0;
-        if (!this.hoveredMesh.userData.selected) {
+        if (!this.hoveredMesh.userData.selected && !this.hoveredMesh.userData.dimmed) {
           this.hoveredMesh.material[4].emissive.setHex(0x000000);
           this.hoveredMesh.material[4].emissiveIntensity = 0;
         }
       }
       this.hoveredMesh = mesh;
-      if (mesh && this.pickMode && !mesh.userData.selected) {
-        mesh.userData.hoverLift = 0.06;
+      if (mesh && !mesh.userData.selected && !mesh.userData.dimmed) {
+        mesh.userData.hoverLift = this.pickMode ? 0.06 : 0.03;
         mesh.material[4].emissive.setHex(0x8a7348);
-        mesh.material[4].emissiveIntensity = 0.28;
+        mesh.material[4].emissiveIntensity = this.pickMode ? 0.28 : 0.16;
+      }
+      if (this.onHover) {
+        const card = mesh?.userData?.card;
+        this.onHover(card ? archetypeHint(card) : "", card || null);
       }
     }
 
+    // legacy aliases kept for safety
     _handlePointerMove(event) {
-      if (!this.pickMode) {
-        this._setHover(null);
-        return;
-      }
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-      const hits = this.raycaster.intersectObjects(
-        this.meshes.filter((m) => m.userData.selectable && !m.userData.selected),
-        false
-      );
-      this._setHover(hits.length ? hits[0].object : null);
+      this._gesturePointerMove(event);
     }
 
     _handlePointer(event) {
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-      const hits = this.raycaster.intersectObjects(this.meshes, false);
-      if (!hits.length) return;
-      const mesh = hits[0].object;
-
-      if (this.pickMode && mesh.userData.selectable) {
-        this._togglePick(mesh);
-        return;
-      }
-
-      if (this.phase === "reveal" && mesh.userData.slot && !mesh.userData.flipped) {
-        this.flipCard(mesh.userData.index);
-      }
+      this._gesturePointerDown(event);
     }
 
     _animateMeshTo(mesh, target, duration) {
@@ -723,10 +898,11 @@
 
       unselected.forEach((mesh) => {
         mesh.userData.selectable = false;
+        mesh.userData.dimmed = true;
       });
 
       const fadeStart = performance.now();
-      const fadeDuration = 600;
+      const fadeDuration = 650;
       await new Promise((resolve) => {
         const tick = (now) => {
           if (token !== this._animToken) {
@@ -737,8 +913,10 @@
           unselected.forEach((mesh) => {
             mesh.material.forEach((mat) => {
               mat.transparent = true;
-              mat.opacity = 1 - t * 0.92;
+              // Keep ring context visible (fade, don't remove).
+              mat.opacity = 1 - t * 0.72;
             });
+            mesh.scale.setScalar(1 - t * 0.08);
           });
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
@@ -746,7 +924,7 @@
         requestAnimationFrame(tick);
       });
 
-      unselected.forEach((mesh) => this.scene.remove(mesh));
+      this.contextMeshes = unselected.slice();
 
       const slots = this._spreadSlots(this.selectedMeshes.length);
       this.phase = "spreading";
@@ -757,11 +935,17 @@
         mesh.userData.slot = slots[i];
         mesh.userData.index = i;
         mesh.userData.card = this.drawnCards[i] || mesh.userData.card;
+        mesh.userData.dimmed = false;
+        mesh.material.forEach((mat) => {
+          mat.transparent = false;
+          mat.opacity = 1;
+        });
+        mesh.scale.set(1, 1, 1);
         this._applyFrontTexture(mesh, mesh.userData.card);
         const slot = slots[i];
         return this._animateMeshTo(mesh, {
           x: slot.x,
-          y: slot.y,
+          y: slot.y + 0.03,
           z: slot.z,
           ry: slot.ry,
           rx: slot.rx ?? this._faceDownRx(),
@@ -848,13 +1032,19 @@
 
     dispose() {
       window.removeEventListener("resize", this._onResize);
-      this.renderer.domElement.removeEventListener("pointerdown", this._onPointerDown);
-      this.renderer.domElement.removeEventListener("pointermove", this._onPointerMove);
+      const el = this.renderer.domElement;
+      el.removeEventListener("pointerdown", this._onPointerDown);
+      el.removeEventListener("pointermove", this._onPointerMove);
+      el.removeEventListener("pointerup", this._onPointerUp);
+      el.removeEventListener("pointercancel", this._onPointerUp);
+      el.removeEventListener("pointerleave", this._onPointerLeave);
+      el.removeEventListener("wheel", this._onWheel);
       this.renderer.dispose();
     }
   }
 
   global.TarotScene = TarotScene;
   global.TarotCameraDefaults = CAMERA_DEFAULTS;
+  global.tarotArchetypeHint = archetypeHint;
   global.loadCardFrontTexture = loadCardFrontTexture;
 })(typeof window !== "undefined" ? window : globalThis);

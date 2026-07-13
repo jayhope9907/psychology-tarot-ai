@@ -87,7 +87,7 @@
       backdrop-filter: blur(20px); overflow: hidden;
     }
     .stage-panel { min-height: 620px; display: flex; flex-direction: column; }
-  #tarotCanvas { flex: 1; min-height: 580px; position: relative; }
+  #tarotCanvas { flex: 1; min-height: 580px; position: relative; touch-action: none; }
   #tarotCanvas canvas { display: block; width: 100% !important; height: 100% !important; }
     .stage-footer {
       padding: 12px 16px; border-top: 1px solid var(--glass-border);
@@ -268,6 +268,34 @@
     }
     .camera-row input[type="range"] { width: 100%; accent-color: var(--gold); }
     .camera-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .deck-toggle {
+      display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px;
+    }
+    .deck-toggle button {
+      flex: 1; min-width: 120px; border: 1px solid var(--line, rgba(196,165,116,0.35));
+      background: rgba(255,252,247,0.04); color: inherit; border-radius: 12px;
+      padding: 10px 12px; font: inherit; font-size: 0.82rem; cursor: pointer;
+    }
+    .deck-toggle button.active {
+      border-color: var(--gold, #c4a574); background: rgba(196,165,116,0.16);
+      font-weight: 700;
+    }
+    .gesture-hint {
+      margin: 6px 0 0; font-size: 0.72rem; color: var(--text-soft);
+      line-height: 1.45;
+    }
+    .archetype-hint {
+      position: absolute; left: 12px; right: 12px; bottom: 52px;
+      z-index: 3; pointer-events: none;
+      padding: 8px 12px; border-radius: 12px;
+      background: rgba(12, 16, 14, 0.78); color: #f4f1eb;
+      font-size: 0.8rem; line-height: 1.45;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .archetype-hint.visible {
+      opacity: 1; transform: translateY(0);
+    }
   </style>
 </head>
 <body class="toss-ui tarot-page">
@@ -304,7 +332,9 @@
 
     <div class="layout">
       <section class="stage-panel">
-        <div id="tarotCanvas"></div>
+        <div id="tarotCanvas">
+          <div class="archetype-hint" id="archetypeHint" aria-live="polite"></div>
+        </div>
         <div class="stage-footer">
           <span class="phase-pill" id="phaseLabel">준비</span>
           <span id="stageHint">마음에 닿는 질문을 적고, 카드를 섞어 보세요</span>
@@ -322,6 +352,12 @@
             <button type="button" class="spread-btn active" data-spread="three_card" data-count="3" disabled>3카드 · 과거 · 현재 · 미래</button>
           </div>
           <p class="step-desc" style="margin-top:4px;font-size:0.78rem">클래식 규칙: 정확히 3장 · 정/역방향 공정 · 위치별 의미로 읽어요.</p>
+          <label>덱 범위</label>
+          <div class="deck-toggle" id="deckToggle">
+            <button type="button" data-deck="major" class="active">메이저만 · 22장</button>
+            <button type="button" data-deck="full">전체 78장</button>
+          </div>
+          <p class="gesture-hint">핀치·휠로 줌, 빈 곳을 드래그해 회전할 수 있어요. 카드에 올리면 아키타입 힌트가 보여요.</p>
           <div class="camera-panel" id="cameraPanel" hidden>
             <details>
               <summary>보기 설정 (카메라)</summary>
@@ -446,6 +482,7 @@
     let scene = null;
     let deckData = null;
     let deckCatalog = [];
+    let deckMode = localStorage.getItem("psychology_ai_tarot_deck_mode") || "major";
     let currentDraw = null;
     let currentReading = null;
     let selectedSpread = "three_card";
@@ -482,6 +519,30 @@
       blendBanner: document.getElementById("blendBanner"),
     };
 
+    function activeDeckCatalog() {
+      if (deckMode === "major") {
+        return deckCatalog.filter((c) => c.arcana === "major" || (!c.suit && c.number != null && !c.rank));
+      }
+      return deckCatalog.slice();
+    }
+
+    function syncDeckToggleUI() {
+      document.querySelectorAll("#deckToggle [data-deck]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.deck === deckMode);
+      });
+    }
+
+    function setArchetypeHint(text) {
+      const el = document.getElementById("archetypeHint");
+      if (!el) return;
+      if (text) {
+        el.textContent = text;
+        el.classList.add("visible");
+      } else {
+        el.classList.remove("visible");
+      }
+    }
+
     function setStatus(text) {
       els.statusLine.textContent = text || "";
     }
@@ -500,6 +561,22 @@
       });
     }
     setTarotStep(1);
+
+    document.querySelectorAll("#deckToggle [data-deck]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        deckMode = btn.dataset.deck === "full" ? "full" : "major";
+        localStorage.setItem("psychology_ai_tarot_deck_mode", deckMode);
+        syncDeckToggleUI();
+        const cards = activeDeckCatalog();
+        if (use3d && scene) scene.buildDeck(cards);
+        setStatus(
+          deckMode === "major"
+            ? `메이저 ${cards.length}장으로 가볍게 준비됐어요. 섞기를 눌러 주세요.`
+            : `전체 ${cards.length}장 원형 덱이에요. 섞기를 눌러 주세요.`
+        );
+      });
+    });
+    syncDeckToggleUI();
 
     document.querySelectorAll(".spread-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -553,7 +630,7 @@
     function renderPickDeck() {
       if (use3d) return;
       const mode = TarotImageSettings.getMode();
-      els.pickDeck.innerHTML = deckCatalog.map((c) => {
+      els.pickDeck.innerHTML = activeDeckCatalog().map((c) => {
         const peekImg = mode === "peek" && c.image_url
           ? `<img class="tarot-img-peek" src="${c.image_url}" alt="" loading="lazy" onerror="this.classList.add('tarot-img-hidden')" />`
           : "";
@@ -716,6 +793,7 @@
             els.stageHint.textContent = HINTS[phase] || "";
           };
           scene.onCameraChange = (prefs) => syncCameraUI(prefs);
+          scene.onHover = (text) => setArchetypeHint(text);
           syncCameraUI(scene.getCameraPrefs());
           scene.onCardFlip = (card, index) => {
             if (!flippedIndices.has(index) && currentDraw) {
@@ -728,15 +806,19 @@
               }
             }
           };
-          scene.buildDeck(deckCatalog);
+          scene.buildDeck(activeDeckCatalog());
         } else {
           use3d = false;
           els.stageHint.textContent = "3D 미리보기 대신 카드 풀이 모드로 진행합니다";
         }
         deckReady = true;
         els.btnShuffle.disabled = false;
-        const offlineNote = navigator.onLine === false ? " (오프라인 · 78장 전체)" : "";
-        setStatus(`준비 완료. 마음에 닿는 카드 세 장을 골라 주세요.${offlineNote}`);
+        const n = activeDeckCatalog().length;
+        const offlineNote = navigator.onLine === false ? " (오프라인)" : "";
+        setStatus(
+          (deckMode === "major" ? `메이저 ${n}장` : `전체 ${n}장`) +
+            ` 준비. 핀치·드래그로 보고, 직감으로 3장을 골라 주세요.${offlineNote}`
+        );
       } catch (err) {
         setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
       }
@@ -814,7 +896,7 @@
         setTarotStep(2);
         setStatus("카드를 섞는 중이에요…");
         if (use3d && scene) {
-          scene.buildDeck(deckCatalog);
+          scene.buildDeck(activeDeckCatalog());
           await scene.shuffle();
           scene.onPick = (count, max) => setStatus(`${count}/${max}장 뽑음 — 원 안에서 카드를 눌러 주세요`);
           scene.onPickComplete = (ids) => {
@@ -823,7 +905,7 @@
             finalizePicks();
           };
           scene.startPickMode(selectedCount);
-          setStatus(`원형 덱에서 직감으로 ${selectedCount}장을 뽑아 주세요`);
+          setStatus(`원형 덱에서 직감으로 ${selectedCount}장을 뽑아 주세요 · 핀치/드래그로 시선 조절`);
         } else {
           renderPickDeck();
           updatePickUI();
@@ -957,7 +1039,7 @@
       els.btnShuffle.disabled = false;
       setTarotStep(1);
       setStatus("다시 질문을 적고 카드를 섞어 주세요.");
-      if (use3d && scene) scene.buildDeck(deckCatalog);
+      if (use3d && scene) scene.buildDeck(activeDeckCatalog());
     });
 
     loadDeck();
