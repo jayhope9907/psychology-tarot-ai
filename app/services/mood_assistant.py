@@ -243,7 +243,7 @@ def mood_priority_reply(
             return (
                 f"오늘 입체 체크인을 보니{concern_ref} 느껴지시는군요.{note_ref} "
                 f"{'**' + agent_label + '** 모드로 ' if agent_label else ''}"
-                "충분히 이해돼요. 지금 몸이나 마음에서 가장 먼저 느껴지는 건 어떤가요?"
+                "지금 몸이나 마음에서 가장 크게 느껴지는 부분을 한 가지 말씀해 주실 수 있을까요?"
             )
         if ctx.score >= 4:
             return (

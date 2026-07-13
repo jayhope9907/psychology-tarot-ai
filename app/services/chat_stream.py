@@ -177,9 +177,9 @@ def fallback_reply(
 
     if state.counseling_phase == "rapport" and not detect_distress(user_message) and not detect_assessment_request(user_message):
         return (
-            "안녕하세요, 편하게 오신 것만으로도 큰 용기예요. "
-            "이곳은 비밀이 보장되고, 편한 속도로 이야기할 수 있는 공간이에요. "
-            "지금 가장 먼저 나누고 싶은 마음이 있다면 들려주세요."
+            "이야기를 나눠 주셔서 고마워요. "
+            "방금 말씀하신 부분에서 무엇이 가장 마음에 걸리시는지, "
+            "한 장면만 짧게 이어서 들려주실 수 있을까요?"
         )
 
     if state.counseling_phase == "termination":
@@ -287,8 +287,8 @@ def fallback_reply(
         )
 
     return (
-        "천천히 들려주셔서 고마워요. "
-        "지금 이 순간, 가장 먼저 풀고 싶은 마음이나 궁금한 점이 있다면 무엇인가요?"
+        "이야기해 주셔서 고마워요. "
+        "방금 나누신 내용 중 조금 더 짚고 싶은 지점이 있다면 어디인지 말씀해 주세요."
     )
 
 
@@ -299,7 +299,7 @@ def enrich_assistant_reply(
     decision: Optional[OrchestratorDecision] = None,
     assessment_response: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Replace thin or off-topic model output with contextual fallback."""
+    """Keep model output when usable; only swap truly empty/off-topic replies."""
     cleaned = (text or "").strip()
     fallback = fallback_reply(user_message, state, decision, assessment_response)
 
@@ -307,20 +307,18 @@ def enrich_assistant_reply(
         return fallback
 
     if detect_assessment_request(user_message):
-        if "가능" not in cleaned and "검사" not in cleaned:
+        if "가능" not in cleaned and "검사" not in cleaned and "체크" not in cleaned:
             return fallback
 
     if decision and decision.action == "inject_assessment":
-        label = _instrument_label((decision.selection or {}).get("instrument_id", ""))
-        if len(cleaned) < 35 or "가장 먼저" in cleaned or user_message.strip() in cleaned:
-            return fallback
-        if label.split("(")[0] not in cleaned and "검사" not in cleaned and "질문" not in cleaned:
+        # Allow natural counselor language; only replace empty/near-echo replies.
+        if len(cleaned) < 18 or user_message.strip() in cleaned:
             return fallback
 
     if (detect_distress(user_message) or session_has_distress(state, user_message)) and user_message.strip() in cleaned:
         return fallback
 
-    result = cleaned if cleaned else fallback
+    result = cleaned
     last = _last_assistant_message(state)
     if _is_near_duplicate(result, last):
         return _anti_repeat_reply(user_message, state, decision, assessment_response, blocked=result)
@@ -380,7 +378,10 @@ def build_chat_messages(
     )
 
     if state.counseling_phase == "rapport" and state.turn_count <= 2:
-        system_prompt += "\n\n이번 턴은 관계 형성·첫 인사에 가깝습니다. 따뜻하게 환영하고, 부담 없이 한 문장만 더 물어보세요."
+        system_prompt += (
+            "\n\n관계 형성 초반입니다. UI에서 이미 인사했다면 재환영하지 말고, "
+            "내담자 이번 말에 구체적으로 반응한 뒤 초점 질문 하나만 이어가세요."
+        )
 
     system_prompt += "\n\n" + build_phase_prompt(state, user_message)
     system_prompt += build_tarot_system_block(state)

@@ -50,8 +50,8 @@ def test_mbti_score_leanings():
 def test_soft_observation_phrase():
     state = ChatSessionState(user_id="soft-u", session_id="soft-s")
     state.messages = [{"role": "user", "content": "회사에서 너무 힘들고 지쳐요"}]
-    line = soft_observation_line(state, "회사에서 너무 힘들고 지쳐요")
-    assert "힘들" in line or "힘드" in line
+    focus = soft_observation_line(state, "회사에서 너무 힘들고 지쳐요")
+    assert focus in {"work_role", "work_and_relationships", "current_distress"}
 
 
 def test_assessment_syncs_to_agent():

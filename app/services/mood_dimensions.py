@@ -494,7 +494,7 @@ def build_agent_welcome(profile: MoodAgentProfile, note: str = "", has_checkin: 
             f"안녕하세요, {counselor}예요.\n\n"
             "홈에서 **입체 마음 체크인**(기분·에너지·불안·관계·수면)을 해 주시면, "
             "그에 맞춘 AI 상담 에이전트로 더 정확히 돕고 싶어요.\n\n"
-            "지금 가장 먼저 나누고 싶은 마음이 있다면 들려주세요."
+            "오늘 마음에 걸리는 장면을 하나 골라 말씀해 주시면 이어서 들을게요."
         )
 
     note_line = f'\n메모: "{note}"\n' if note else "\n"
