@@ -233,37 +233,19 @@
 
     .avatar-ring {
       position: relative;
-      width: 88px;
-      height: 88px;
+      width: 72px;
+      height: 72px;
       margin-bottom: 14px;
     }
 
     .avatar-ring svg.ring {
-      position: absolute;
-      inset: 0;
-      transform: rotate(-90deg);
-    }
-
-    .avatar-ring svg.ring circle.track {
-      fill: none;
-      stroke: var(--accent-soft);
-      stroke-width: 3;
-    }
-
-    .avatar-ring svg.ring circle.progress {
-      fill: none;
-      stroke: url(#ringGrad);
-      stroke-width: 3;
-      stroke-linecap: round;
-      stroke-dasharray: 251.2;
-      stroke-dashoffset: 251.2;
-      transition: stroke-dashoffset 0.8s var(--ease);
+      display: none;
     }
 
     .avatar {
       position: absolute;
-      inset: 8px;
-      border-radius: 50%;
+      inset: 0;
+      border-radius: 18px;
       background: linear-gradient(145deg, var(--accent-light), var(--accent));
       color: white;
       display: grid;
@@ -2244,6 +2226,10 @@
     }
 
     let personaCatalog = null;
+    let styleCatalog = null;
+    let counselingStyle = null;
+    let selectedGender = "female";
+    let saveStyleTimer = null;
 
     function renderPersonaOptions() {
       if (!personaCatalog?.length) return;
@@ -2304,11 +2290,6 @@
       syncPersonaButtons();
     });
     syncPersonaButtons();
-
-    let styleCatalog = null;
-    let counselingStyle = null;
-    let selectedGender = "female";
-    let saveStyleTimer = null;
 
     function applyCounselorUi(style) {
       if (!style?.counselor) return;
@@ -2527,7 +2508,7 @@
       `;
       messagesEl.appendChild(row);
       const bubble = row.querySelector(".bubble");
-      if (counselingStyle?.voice_enabled && window.VoiceEngine) {
+      if (counselingStyle && counselingStyle.voice_enabled && window.VoiceEngine) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "speak-btn";
