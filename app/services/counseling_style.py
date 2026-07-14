@@ -250,6 +250,22 @@ COUNSELORS: Dict[str, Dict[str, Any]] = {
         "default_voice": "male_yoonseok_soft",
         "default_texture": "calm",
     },
+    "minjae": {
+        "id": "minjae",
+        "name": "정민재",
+        "gender": "male",
+        "title": "중독·습관 회복 AI 웰니스 가이드",
+        "tagline": "동기강화 · 재발예방 · 갈망 다루기",
+        "primary_school": "ADDICTION_CBT",
+        "secondary_schools": ["MOTIVATIONAL", "RELAPSE_PREVENTION", "CRAVING_MINDFULNESS", "HARM_REDUCTION"],
+        "techniques": ["기능분석", "OARS", "고위험 상황 지도", "urge surfing", "거절 기술", "전문연계"],
+        "bio": (
+            "중독 상담 문헌(MI·CBT·RP·해로줄이기)을 웰니스 가이드로 안내합니다. "
+            "진단·해독·처방은 하지 않으며, 필요 시 1332·전문기관 연계를 우선합니다."
+        ),
+        "default_voice": "male_taemin_clear",
+        "default_texture": "professional",
+    },
 }
 
 USER_COUNSELOR_LABELS: Dict[str, Dict[str, str]] = {
@@ -269,6 +285,7 @@ USER_COUNSELOR_LABELS: Dict[str, Dict[str, str]] = {
     "jaemin": {"user_title": "용기·목표 상담", "user_specialty": "자신감·소속감"},
     "taemin": {"user_title": "가족상담", "user_specialty": "관계·역할 이해"},
     "yoonseok": {"user_title": "마음 회복 상담", "user_specialty": "안전·회복"},
+    "minjae": {"user_title": "중독·습관 회복 상담", "user_specialty": "동기·재발예방·갈망"},
 }
 
 
