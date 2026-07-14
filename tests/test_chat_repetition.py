@@ -47,7 +47,21 @@ def test_enrich_swaps_near_duplicate_llm_output():
     assert not _repeats_recent_assistant(state, result)
 
 
-def test_multi_turn_fake_llm_avoids_identical_assistant_messages():
+def test_distress_detects_hard_day_language():
+    from app.services.fatigue_manager import detect_distress
+
+    assert detect_distress("요즘 직장 때문에 많이 힘들어요") is True
+    assert detect_distress("출근하기가 무서워요") is True
+
+
+def test_fallback_workplace_is_content_specific():
+    from app.services.chat_stream import fallback_reply
+
+    state = ChatSessionState(user_id="wp-fallback")
+    state.counseling_phase = "rapport"
+    reply = fallback_reply("요즘 직장 때문에 많이 힘들어요", state)
+    assert "장면" in reply or "회사" in reply or "직장" in reply or "일하" in reply
+    assert "방금 말씀하신 부분에서 특히 마음에 걸리는 장면" not in reply
     async def fake_stream(messages, max_tokens, client, assessment_response=None):
         user = messages[-1]["content"] if messages else ""
         if isinstance(user, list):

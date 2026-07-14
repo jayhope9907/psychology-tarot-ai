@@ -148,10 +148,17 @@ def _repeats_recent_assistant(state: ChatSessionState, candidate: str) -> bool:
     return False
 
 
+def _seed_variant_index(state: ChatSessionState) -> int:
+    if "reply_variant_idx" in state.phase_notes:
+        return int(state.phase_notes["reply_variant_idx"] or 0)
+    seed_src = f"{state.session_id}:{state.user_id}:{state.turn_count}"
+    return sum(ord(ch) for ch in seed_src) % 97
+
+
 def _pick_variant(state: ChatSessionState, options: List[str]) -> str:
     if not options:
         return ""
-    start = int(state.phase_notes.get("reply_variant_idx") or 0)
+    start = _seed_variant_index(state)
     for offset in range(len(options)):
         index = (start + offset) % len(options)
         candidate = options[index]
@@ -287,6 +294,18 @@ def fallback_reply(
     mood_reply = mood_priority_reply(ctx, state, user_message, decision, assessment_response)
     if mood_reply:
         return mood_reply
+
+    if _workplace_context(state, user_message) or any(
+        kw in user_message for kw in ("직장", "회사", "상사", "업무")
+    ):
+        return _pick_variant(
+            state,
+            [
+                "직장에서의 그 마음, 잘 전해졌어요. 특히 어떤 장면이 가장 오래 남았나요?",
+                "회사 이야기군요. 상사·동료·업무 중 어디가 가장 버거웠는지 들려주실 수 있을까요?",
+                "일하면서 자신감이 흔들리는 느낌, 이해돼요. 하루 중 어느 때가 특히 힘든지 궁금해요.",
+            ],
+        )
 
     if state.counseling_phase == "rapport" and not detect_distress(user_message) and not detect_assessment_request(user_message):
         return _pick_variant(
@@ -444,11 +463,27 @@ def enrich_assistant_reply(
     return result
 
 
-async def _yield_text_with_pacing(text: str, delay: float = 0.028) -> AsyncIterator[str]:
+def _stream_pacing_delay(default: float = 0.028) -> float:
+    import os
+
+    raw = (os.getenv("CHAT_STREAM_PACING") or "").strip().lower()
+    if raw in {"0", "off", "false", "none"}:
+        return 0.0
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return 0.0
+    try:
+        return max(0.0, float(raw)) if raw else default
+    except ValueError:
+        return default
+
+
+async def _yield_text_with_pacing(text: str, delay: float | None = None) -> AsyncIterator[str]:
+    pace = _stream_pacing_delay() if delay is None else delay
     tokens = re.findall(r"\S+\s*|\n", text)
     for token in tokens:
         yield token
-        await asyncio.sleep(delay)
+        if pace:
+            await asyncio.sleep(pace)
 
 
 def build_chat_messages(
