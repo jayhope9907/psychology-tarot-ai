@@ -318,6 +318,15 @@ def apply_fingerprint_bias(
     """명시 선택이 없을 때 지문 prior로 학파를 부드럽게 보정."""
     if user_explicit or not fingerprint:
         return routing
+    # Strong instant keyword hits must win over historical school priors
+    instant = routing.get("instant_reaction") or {}
+    if float(instant.get("score") or 0) >= 1.5 and routing.get("reason") in {
+        "instant_keyword_theory_match",
+        "crisis_keyword_instant",
+    }:
+        out = dict(routing)
+        out["fingerprint_bias"] = False
+        return out
     conf = float(fingerprint.get("confidence") or 0)
     if conf < 0.25:
         return routing
@@ -342,6 +351,7 @@ def apply_fingerprint_bias(
         out["techniques"] = meta.get("techniques")
         out["category"] = meta.get("category")
         out["fingerprint_bias"] = True
+        out["instant_reaction"] = instant
         return out
     return routing
 
