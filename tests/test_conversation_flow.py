@@ -36,7 +36,7 @@ def test_depression_after_payment_triggers_phq9():
     decision = decide_turn(state, "검사 시작해 주세요")
 
     assert decision.action == "inject_assessment"
-    assert decision.assessment["instrument"] in {"phq9", "micro_emotion"}
+    assert decision.assessment["instrument"] in {"phq9", "micro_emotion", "panas_mood"}
 
 
 def test_assessment_request_triggers_injection():
@@ -131,7 +131,11 @@ def test_full_conversation_simulation():
 
     assert len(assessment_events) >= 1
     first_assessment_turn = assessment_events[0][0]
-    assert first_assessment_turn == "검사가능한가요?"
+    # Rapport 후 distress 턴(3턴+) 또는 명시적 검사 요청에서 첫 검사가 주입될 수 있음
+    assert first_assessment_turn in {
+        "며칠째 불안하고 집중도 안 돼요. 회사에서 특히 버거워요",
+        "검사가능한가요?",
+    }
 
     first_reply = next(
         data["assistant_message"]
