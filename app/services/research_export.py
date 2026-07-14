@@ -65,6 +65,36 @@ INVENTION_IDS = [
         ),
         "modules": ["projective_battery", "picture_assessment", "psych_timeline", "clinical_catalog"],
     },
+    {
+        "id": "INV-06",
+        "title_ko": "사용자별 진화형 AI 상담 지문(ALG) 및 학파 사전 편향",
+        "title_en": "Per-user evolving counselor agent fingerprint with school priors",
+        "claim_sketch": (
+            "세션 정량 지표·학파·왜곡·주제 히스토그램을 EMA·패턴으로 누적하고, "
+            "고유 ALG 식별자와 프롬프트 바인딩·라우팅 편향을 생성하는 방법"
+        ),
+        "modules": ["user_agent_algorithm", "prompt_binding", "persona_router", "psych_timeline"],
+    },
+    {
+        "id": "INV-07",
+        "title_ko": "물질·행동 중독 도메인 온톨로지 기반 이론·기법 라우팅",
+        "title_en": "Substance/behavioral-addiction ontology routing of theories and techniques",
+        "claim_sketch": (
+            "중독 웰니스 온톨로지(이론·기법·스크리너·위기핸드오프)에 따라 "
+            "메시지 키워드를 임상 학파·기법 카드로 매핑하고 비의료 제약을 강제하는 시스템"
+        ),
+        "modules": ["addiction_theories", "dsm5_framework", "persona_router", "assessment_selector"],
+    },
+    {
+        "id": "INV-08",
+        "title_ko": "상담 응답 유사도 기반 반반복 오케스트레이션",
+        "title_en": "Similarity-gated anti-repetition counseling response orchestration",
+        "claim_sketch": (
+            "직전 어시스턴트 발화와의 n-gram·종결문 유사도를 검사해 "
+            "중복 시 변형 응답·프롬프트 금지 지시로 교체하는 대화 품질 제어 방법"
+        ),
+        "modules": ["chat_stream", "orchestrator", "counsel_offline"],
+    },
 ]
 
 

@@ -13,6 +13,7 @@ THEORY_CATEGORIES: Dict[str, str] = {
     "brief_emotion": "단기 · 감정 · 트라우마",
     "expressive": "표현 · 예술 · 놀이",
     "integrative": "통합 · 마음챙김 · 맥락",
+    "substance_addiction": "약물·행동 중독 · 회복 지원",
 }
 
 USER_CATEGORY_LABELS: Dict[str, str] = {
@@ -23,6 +24,7 @@ USER_CATEGORY_LABELS: Dict[str, str] = {
     "brief_emotion": "감정·변화",
     "expressive": "표현·예술",
     "integrative": "맞춤·맥락",
+    "substance_addiction": "중독·회복",
 }
 
 USER_THEORY_LABELS: Dict[ClinicalSchool, Dict[str, str]] = {
@@ -252,7 +254,18 @@ THEORY_CATALOG: Dict[ClinicalSchool, Dict[str, Any]] = {
         "category": "brief_emotion",
         "founder": "William Miller",
         "techniques": ["OARS", "변화 대화", "양가 감정", "확신·중요성 척도", "저항 구르기"],
-        "routing_keywords": ("바꾸고 싶", "망설", "모르겠", "해야", "중독", "습관", "변화"),
+        "routing_keywords": (
+            "바꾸고 싶",
+            "망설",
+            "모르겠",
+            "해야",
+            "중독",
+            "습관",
+            "변화",
+            "양가",
+            "끊고 싶",
+            "끊을까",
+        ),
         "counselor_tone": "비강요적 협력",
         "directive": (
             "동기강화상담(MI) 상담자처럼: OARS(개방형 질문·반영·요약·긍정)로 변화 대화를 이끌고, "

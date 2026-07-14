@@ -1791,10 +1791,12 @@ async def expressive_catalog_api():
 
 @app.get("/api/v1/theories/corpus")
 async def theories_corpus_api():
+    from app.services.addiction_theories import addiction_corpus
     from app.services.counseling_theories import corpus_summary, list_all_techniques_for_api, list_theories_for_api
     from app.services.scholars_catalog import scholars_corpus
 
     scholars = scholars_corpus()
+    addiction = addiction_corpus()
     return {
         **corpus_summary(),
         "theories": list_theories_for_api(),
@@ -1803,7 +1805,15 @@ async def theories_corpus_api():
         "art_techniques": scholars["art_techniques"],
         "scholar_count": scholars["scholar_count"],
         "disclaimer": scholars["disclaimer"],
+        "addiction": addiction,
     }
+
+
+@app.get("/api/v1/addiction/corpus")
+async def addiction_corpus_api():
+    from app.services.addiction_theories import addiction_corpus
+
+    return addiction_corpus()
 
 
 @app.get("/api/v1/scholars")

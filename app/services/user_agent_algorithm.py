@@ -153,6 +153,21 @@ def extract_message_themes(text: str) -> List[str]:
         "depression": ("우울", "무기력", "허무", "공허", "우울해"),
         "sleep": ("잠", "불면", "수면", "새벽"),
         "money": ("돈", "빚", "월급", "생활비", "경제"),
+        "substance": (
+            "술",
+            "담배",
+            "마약",
+            "중독",
+            "갈망",
+            "재발",
+            "단주",
+            "단약",
+            "금단",
+            "약물",
+            "대마",
+            "필로폰",
+            "과음",
+        ),
     }
     hits = [name for name, kws in rules.items() if any(k in blob for k in kws)]
     return hits[:6]

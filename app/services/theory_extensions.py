@@ -358,3 +358,8 @@ EXTRA_THEORIES: Dict[ClinicalSchool, Dict[str, Any]] = {
         "weight_profile": {"empathy": 0.8, "interpretation": 0.45, "structure": 0.45, "confrontation": 0.25},
     },
 }
+
+from app.services.addiction_theories import ADDICTION_THEORIES, ADDICTION_USER_LABELS
+
+EXTRA_USER_LABELS.update(ADDICTION_USER_LABELS)
+EXTRA_THEORIES.update(ADDICTION_THEORIES)

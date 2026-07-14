@@ -29,6 +29,9 @@
 | **INV-03** | 라이선스 발급 시 종단 데모 사례 백데이팅 시드 | provision 시 데모 사례·psych timeline 백필로 수련 샌드박스 즉시 구성 |
 | **INV-04** | 상징 모달리티↔구조화 웰니스 대화 브리지 | 타로·픽토·사진검색/비전을 비진단 제약 하에 대화 스트림에 결합 |
 | **INV-05** | 투영 표현 배터리 + 종단 psych timeline 파이프라인 | 그림·이야기 표현과 종단 이벤트 저장을 라이선스 필터와 통합 |
+| **INV-06** | 사용자별 진화형 AI 상담 지문(ALG) | EMA·히스토그램·패턴 → 고유 ALG ID·학파 사전 편향·프롬프트 바인딩 |
+| **INV-07** | 중독 도메인 온톨로지 라우팅 | RP/CRA/CRAFT/CM/Matrix/TSF/해로줄이기 등 이론·기법·스크리너 매핑 + 비의료 핸드오프 |
+| **INV-08** | 유사도 기반 반반복 응답 오케스트레이션 | n-gram·종결문 유사도로 중복 멘트 차단·변형 |
 
 ### 실시예 (요약)
 
@@ -50,6 +53,8 @@
 - `app/services/association_licensing.py`, `association_agent.py`, `license_store.py`, `license_case_seed.py`  
 - `app/services/tarot_bridge.py`, `image_search.py`, `chat_stream.py`  
 - `app/assessments/projective_battery.py`, `app/services/psych_timeline.py`  
+- `app/services/user_agent_algorithm.py` (INV-06)  
+- `app/services/addiction_theories.py`, `dsm5_framework.py` (INV-07)  
 - `app/services/research_export.py` (연구·지원 KPI)
 
 ## 6. 변리사 전달 체크리스트

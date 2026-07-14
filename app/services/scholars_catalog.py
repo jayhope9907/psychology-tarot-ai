@@ -89,6 +89,15 @@ SCHOLARS: List[Dict[str, Any]] = [
     {"id": "sue", "name": "Derald Wing Sue", "name_ko": "더럴드 윙 수", "school": "MULTICULTURAL", "era": "현대", "focus": "다문화 상담", "techniques": ["문화적 겸손", "마이크로어그레션"], "works": ["Counseling the Culturally Diverse"]},
     {"id": "norcross", "name": "John C. Norcross", "name_ko": "존 노크로스", "school": "INTEGRATIVE", "era": "현대", "focus": "통합·공통요인", "techniques": ["치료 관계", "맞춤 매칭"], "works": ["Psychotherapy Relationships That Work"]},
     {"id": "prochaska", "name": "James Prochaska", "name_ko": "제임스 프로차스카", "school": "INTEGRATIVE", "era": "현대", "focus": "변화 단계 모형", "techniques": ["단계별 개입", "과정"], "works": ["Changing for Good"]},
+    {"id": "marlatt", "name": "G. Alan Marlatt", "name_ko": "앨런 말라트", "school": "RELAPSE_PREVENTION", "era": "1941–2011", "focus": "재발예방·해로줄이기", "techniques": ["고위험 상황", "urge surfing", "생활균형"], "works": ["Relapse Prevention"]},
+    {"id": "carroll_sud", "name": "Kathleen M. Carroll", "name_ko": "캐슬린 캐롤", "school": "ADDICTION_CBT", "era": "현대", "focus": "중독 CBT", "techniques": ["기능분석", "대처기술", "거절기술"], "works": ["A Cognitive-Behavioral Approach"]},
+    {"id": "meyers_cra", "name": "Robert J. Meyers", "name_ko": "로버트 마이어스", "school": "CRA_COMMUNITY", "era": "현대", "focus": "CRA·CRAFT", "techniques": ["소베르 강화", "가족 초대"], "works": ["Get Your Loved One Sober"]},
+    {"id": "smith_craft", "name": "Jane Ellen Smith", "name_ko": "제인 엘렌 스미스", "school": "CRAFT_FAMILY", "era": "현대", "focus": "CRAFT", "techniques": ["긍정강화", "의사소통"], "works": ["CRAFT manuals"]},
+    {"id": "higgins_cm", "name": "Stephen T. Higgins", "name_ko": "스티븐 히긴스", "school": "CONTINGENCY_MANAGEMENT", "era": "현대", "focus": "유관관리", "techniques": ["보강", "목표행동"], "works": ["Contingency Management"]},
+    {"id": "petry_cm", "name": "Nancy M. Petry", "name_ko": "낸시 페트리", "school": "CONTINGENCY_MANAGEMENT", "era": "현대", "focus": "CM 임상연구", "techniques": ["상품권 보강", "준수강화"], "works": ["Contingency Management"]},
+    {"id": "rawson_matrix", "name": "Richard A. Rawson", "name_ko": "리처드 로우슨", "school": "MATRIX_MODEL", "era": "현대", "focus": "Matrix 모델", "techniques": ["구조화 외래", "가족교육"], "works": ["Matrix Model"]},
+    {"id": "bowen_mbrp", "name": "Sarah Bowen", "name_ko": "사라 보웬", "school": "CRAVING_MINDFULNESS", "era": "현대", "focus": "MBRP", "techniques": ["urge surfing", "자동조종 알아차림"], "works": ["Mindfulness-Based Relapse Prevention"]},
+    {"id": "nowinski_tsf", "name": "Joseph Nowinski", "name_ko": "조제프 노윈스키", "school": "TWELVE_STEP_FACILITATION", "era": "현대", "focus": "TSF", "techniques": ["12단계 촉진", "모임 연계"], "works": ["Twelve Step Facilitation Handbook"]},
 ]
 
 ART_THERAPY_TECHNIQUES: List[Dict[str, Any]] = [
