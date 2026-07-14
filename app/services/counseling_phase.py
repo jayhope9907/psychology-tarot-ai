@@ -157,10 +157,7 @@ def _advance_phase(state: ChatSessionState, user_message: str) -> None:
         return
 
     if current == PHASE_RAPPORT:
-        from app.services.mood_assistant import rapport_ready_for_assessment, resolve_mood_context
-
-        ctx = resolve_mood_context(state.user_id)
-        if is_rapport_complete(state, user_message) or rapport_ready_for_assessment(state, ctx):
+        if is_rapport_complete(state, user_message):
             state.counseling_phase = PHASE_ASSESSMENT_BRIEFING
         return
 

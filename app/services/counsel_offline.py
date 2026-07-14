@@ -31,6 +31,11 @@ COUNSEL_OFFLINE_RULES: List[Dict[str, Any]] = [
             "많이 지치셨군요. 지금까지 버텨 오신 것만으로도 대단해요. "
             "오늘은 아주 작은 것 하나만 — 물 한 잔, 창문 열기처럼 — 해도 충분해요."
         ),
+        "alternates": [
+            "많이 지치셨군요. 지금은 작은 것 하나만 해도 충분해요.",
+            "버티고 계신 마음, 잘 느껴져요. 오늘 하루 중 가장 버거운 순간이 언제였나요?",
+            "지친 마음이 전해져요. 지금 몸은 어떤 상태인지도 함께 살펴봐도 좋아요.",
+        ],
     },
     {
         "id": "sad",
@@ -47,6 +52,11 @@ COUNSEL_OFFLINE_RULES: List[Dict[str, Any]] = [
             "불안이 올라온 것 같아요. 숨을 천천히 — 들이마시고, 잠깐 멈추고, 내쉬어 볼까요? "
             "지금 이 순간, 당장 안전한 곳에 있다는 것만 느껴도 괜찮아요."
         ),
+        "alternates": [
+            "불안이 올라온 것 같아요. 지금 이 순간 몸을 의자에 기대어 보는 것만으로도 괜찮아요.",
+            "걱정이 크게 느껴지는군요. 어떤 상황에서 특히 불안이 커지나요?",
+            "무서운 마음이 있다면 그 감정부터 인정해 봐도 좋아요. 지금 가장 불안한 포인트는 무엇인가요?",
+        ],
     },
     {
         "id": "angry",
@@ -79,6 +89,11 @@ COUNSEL_OFFLINE_RULES: List[Dict[str, Any]] = [
             "일과 관련된 부담이 크군요. 통제할 수 있는 작은 한 가지와 "
             "통제하기 어려운 것을 나눠 보면 마음이 조금 가벼워질 수 있어요."
         ),
+        "alternates": [
+            "직장 이야기군요. 요즘 특히 버거운 순간은 언제인가요?",
+            "업무 스트레스가 크게 느껴져요. 상사·동료·업무 중 어디가 가장 힘든가요?",
+            "회사에서 마음이 무거울 때, 몸은 어떻게 반응하나요?",
+        ],
     },
     {
         "id": "relationship",
@@ -120,14 +135,16 @@ def counsel_offline_bundle() -> Dict[str, Any]:
     }
 
 
-def match_offline_counsel_reply(message: str) -> Dict[str, Any]:
+def match_offline_counsel_reply(message: str, turn_index: int = 0) -> Dict[str, Any]:
     blob = (message or "").strip().lower()
     if not blob:
         return {"reply_text": DEFAULT_OFFLINE_REPLY, "rule_id": "empty", "offline": True}
     for rule in COUNSEL_OFFLINE_RULES:
         if any(kw in blob for kw in rule["keywords"]):
+            replies = list(rule.get("alternates") or []) or [rule["reply"]]
+            reply_text = replies[turn_index % len(replies)]
             return {
-                "reply_text": rule["reply"],
+                "reply_text": reply_text,
                 "rule_id": rule["id"],
                 "crisis": bool(rule.get("crisis")),
                 "offline": True,

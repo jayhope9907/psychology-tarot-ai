@@ -255,18 +255,6 @@ def mood_priority_reply(
             "그 마음 그대로 받아들이며 들을게요. 지금 가장 신경 쓰이는 건 무엇인가요?"
         )
 
-    if ctx.score <= 2 and state.turn_count <= profile["assessment_turn_threshold"]:
-        if detect_distress(user_message) or any(k in user_message for k in ("힘들", "우울", "답답", "무서")):
-            return (
-                "말씀해 주신 마음, 정말 무겁게 느껴져요. "
-                "혼자 버티지 않으셔도 돼요. "
-                "그 감정이 가장 크게 올라올 때가 언제인지, 천천히 들려주실 수 있을까요?"
-            )
-        return (
-            f"오늘 {ctx.label}한 마음을 기억하고 있어요. "
-            "조급하게 가지 않을게요. 지금 가장 먼저 풀고 싶은 부분이 있다면 무엇인가요?"
-        )
-
     return None
 
 
@@ -310,11 +298,14 @@ def maybe_append_natural_nudge(
         return text
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING:
         return text
+    if state.phase_notes.get("assessment_nudge_appended"):
+        return text
     nudge = build_assessment_soft_nudge(ctx, state)
     if nudge.strip() in text:
         return text
     if ctx.score <= 2 and state.turn_count < _profile(ctx)["assessment_turn_threshold"]:
         return text
+    state.phase_notes["assessment_nudge_appended"] = True
     return (text.rstrip() + nudge).strip()
 
 

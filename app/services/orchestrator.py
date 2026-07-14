@@ -123,7 +123,15 @@ def _should_offer_assessment(state: ChatSessionState, user_message: str) -> bool
 
     if detect_assessment_request(user_message) or session_has_assessment_intent(state, user_message):
 
-        return True
+        return state.turn_count >= 2
+
+    if state.counseling_phase == "assessment":
+
+        return state.turn_count >= 3
+
+    if state.turn_count < 4:
+
+        return False
 
     if detect_distress(user_message) or session_has_distress(state, user_message):
 
@@ -133,15 +141,7 @@ def _should_offer_assessment(state: ChatSessionState, user_message: str) -> bool
 
         return True
 
-    if state.counseling_phase == "rapport" and state.turn_count >= 2:
-
-        return True
-
-    if state.counseling_phase == "assessment":
-
-        return state.turn_count >= 2
-
-    return state.turn_count >= 2
+    return state.turn_count >= 5
 
 
 

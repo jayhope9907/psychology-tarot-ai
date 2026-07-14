@@ -1,8 +1,9 @@
 /** Offline counseling fallback — no assessments, keyword-matched empathy replies. */
 (function (global) {
   const BUNDLE_URL = "/static/counsel-offline.bundle.json";
-  const CACHE_KEY = "counsel_offline_bundle_v1";
+  const CACHE_KEY = "counsel_offline_bundle_v2";
   const QUEUE_KEY = "chat_offline_queue_v1";
+  const TURN_KEY = "chat_offline_turn_v1";
 
   let bundle = null;
 
@@ -49,14 +50,28 @@
     return navigator.onLine === false;
   }
 
+  function nextTurnIndex() {
+    try {
+      const current = parseInt(localStorage.getItem(TURN_KEY) || "0", 10) || 0;
+      const next = current + 1;
+      localStorage.setItem(TURN_KEY, String(next));
+      return next;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   function matchReply(message) {
     const b = bundle || readCache() || {};
     const blob = (message || "").trim().toLowerCase();
+    const turnIndex = nextTurnIndex();
     const rules = b.rules || [];
     for (const rule of rules) {
       if ((rule.keywords || []).some((kw) => blob.includes(kw))) {
+        const replies = (rule.alternates && rule.alternates.length ? rule.alternates : [rule.reply]).filter(Boolean);
+        const reply_text = replies[turnIndex % replies.length] || rule.reply;
         return {
-          reply_text: rule.reply,
+          reply_text,
           rule_id: rule.id,
           crisis: !!rule.crisis,
           offline: true,
@@ -64,7 +79,7 @@
       }
     }
     return {
-      reply_text: b.default_reply || "말씀해 주셔서 고마워요. 천천히 괜찮아질 거예요.",
+      reply_text: b.default_reply || "말씀해 주셔서 고마워요. 연결되면 더 깊은 대화를 이어갈 수 있어요.",
       rule_id: "default",
       offline: true,
     };

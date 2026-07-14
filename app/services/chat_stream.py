@@ -59,11 +59,57 @@ def _instrument_label(instrument_id: str) -> str:
     return user_instrument_title(instrument_id) or INSTRUMENT_LABELS.get(instrument_id, "마음 상태")
 
 
+_REPEAT_BANNED_PHRASES = (
+    "가장 먼저 나누고",
+    "충분히 이해돼",
+    "천천히 들려",
+    "편한 만큼만 더 들려",
+    "한 장면만 짧게",
+    "이야기를 나눠 주셔서",
+    "이야기해 주셔서",
+)
+
+
+def _normalize_compare(text: str) -> str:
+    cleaned = re.sub(r"\s+", " ", (text or "").strip().lower())
+    return re.sub(r"[^\w\s가-힣]", "", cleaned)
+
+
+def _char_ngrams(text: str, n: int = 2) -> set[str]:
+    normalized = _normalize_compare(text)
+    if len(normalized) < n:
+        return {normalized} if normalized else set()
+    return {normalized[i : i + n] for i in range(len(normalized) - n + 1)}
+
+
+def _text_similarity(a: str, b: str) -> float:
+    left, right = _char_ngrams(a), _char_ngrams(b)
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def _closing_sentence(text: str) -> str:
+    parts = [part.strip() for part in re.split(r"[.!?\n]+", (text or "").strip()) if part.strip()]
+    return parts[-1] if parts else ""
+
+
 def _last_assistant_message(state: ChatSessionState) -> str:
+    recent = _recent_assistant_messages(state, 1)
+    return recent[0] if recent else ""
+
+
+def _recent_assistant_messages(state: ChatSessionState, limit: int = 2) -> List[str]:
+    found: List[str] = []
     for entry in reversed(state.messages):
-        if entry.get("role") == "assistant":
-            return (entry.get("content") or "").strip()
-    return ""
+        if entry.get("role") != "assistant":
+            continue
+        content = (entry.get("content") or "").strip()
+        if content:
+            found.append(content)
+        if len(found) >= limit:
+            break
+    return found
 
 
 def _is_near_duplicate(candidate: str, previous: str) -> bool:
@@ -74,7 +120,60 @@ def _is_near_duplicate(candidate: str, previous: str) -> bool:
     shorter, longer = (candidate, previous) if len(candidate) <= len(previous) else (previous, candidate)
     if len(shorter) >= 24 and shorter in longer:
         return True
+    if _text_similarity(candidate, previous) >= 0.62:
+        return True
+    candidate_close = _closing_sentence(candidate)
+    previous_close = _closing_sentence(previous)
+    if candidate_close and previous_close and len(candidate_close) >= 10:
+        if candidate_close == previous_close or _text_similarity(candidate_close, previous_close) >= 0.78:
+            return True
     return False
+
+
+def _repeats_recent_assistant(state: ChatSessionState, candidate: str) -> bool:
+    recent = _recent_assistant_messages(state, 3)
+    for previous in recent[:2]:
+        if _is_near_duplicate(candidate, previous):
+            return True
+    candidate_close = _closing_sentence(candidate)
+    if candidate_close and len(candidate_close) >= 10:
+        for previous in recent:
+            if _is_near_duplicate(candidate_close, _closing_sentence(previous)):
+                return True
+    normalized = _normalize_compare(candidate)
+    recent_blob = " ".join(_normalize_compare(msg) for msg in recent)
+    for phrase in _REPEAT_BANNED_PHRASES:
+        if phrase in normalized and phrase in recent_blob:
+            return True
+    return False
+
+
+def _pick_variant(state: ChatSessionState, options: List[str]) -> str:
+    if not options:
+        return ""
+    start = int(state.phase_notes.get("reply_variant_idx") or 0)
+    for offset in range(len(options)):
+        index = (start + offset) % len(options)
+        candidate = options[index]
+        if not _repeats_recent_assistant(state, candidate):
+            state.phase_notes["reply_variant_idx"] = index + 1
+            return candidate
+    state.phase_notes["reply_variant_idx"] = start + 1
+    return options[start % len(options)]
+
+
+def build_anti_repeat_directive(state: ChatSessionState) -> str:
+    recent = _recent_assistant_messages(state, 2)
+    if not recent:
+        return ""
+    lines = [
+        "## 직전 답변 반복 금지",
+        "아래 문장·질문과 **같은 표현·같은 마무리 질문**을 쓰지 마세요. 새 각도로 반응하세요.",
+    ]
+    for idx, message in enumerate(recent, 1):
+        snippet = message[:220] + ("…" if len(message) > 220 else "")
+        lines.append(f"- 직전 {idx}: {snippet}")
+    return "\n".join(lines)
 
 
 def _is_short_follow_up(user_message: str) -> bool:
@@ -133,28 +232,42 @@ def _anti_repeat_reply(
         return _conceptualization_reply(state, user_message)
 
     if _workplace_context(state, user_message) or "직장" in user_message:
-        return (
-            "직장에서의 그 마음, 충분히 무겁게 느껴져요. "
-            "오늘 있었던 일 중에서 특히 마음이 무거웠던 순간이 있다면 들려주실 수 있을까요?"
+        return _pick_variant(
+            state,
+            [
+                "상사와의 그 순간, 어떤 말이나 표정이 특히 마음에 박혔는지 기억나는 게 있을까요?",
+                "회사에서 버티기 힘든 요즘, 하루 중 어느 시간대가 특히 버거운지 들려주실 수 있을까요?",
+                "자신감이 떨어진다고 하셨는데, 그게 가장 크게 느껴지는 장면은 어떤 상황인가요?",
+            ],
         )
 
     if detect_distress(user_message) or session_has_distress(state, user_message):
-        return (
-            "힘드시다는 말씀, 잘 전해졌어요. "
-            "그 마음이 올라올 때 몸에서는 어떻게 느껴지나요? "
-            "편한 만큼만 더 들려주셔도 괜찮아요."
+        return _pick_variant(
+            state,
+            [
+                "힘드시다는 말, 잘 받았어요. 그때 몸 쪽에서는 어떤 신호가 올라오나요?",
+                "말씀해 주신 마음이 반복될 때, 주변에서 무엇이 특히 버거웠나요?",
+                "지금 이야기를 이어가려면, 가장 먼저 짚고 싶은 장면 하나만 골라 주실 수 있을까요?",
+            ],
         )
 
     if _is_short_follow_up(user_message):
-        return (
-            "네, 이어서 들어볼게요. "
-            "방금 말씀하신 상황에서 가장 먼저 떠오르는 감정이나 생각이 있다면 무엇인가요?"
+        return _pick_variant(
+            state,
+            [
+                "네, 이어서 들을게요. 그때 마음속에 떠오른 생각이 있다면 어떤 쪽에 가깝나요?",
+                "맞아요, 그 흐름 이어서요. 그 상황에서 몸은 어떻게 반응했는지도 궁금해요.",
+                "그렇군요. 그때 특히 남는 감정 하나를 고르면 무엇에 가깝나요?",
+            ],
         )
 
-    return (
-        "말씀해 주셔서 고마워요. "
-        "방금 이야기를 조금만 더 구체적으로 들려주시면, "
-        "지금 마음을 더 잘 이해하는 데 큰 도움이 될 것 같아요."
+    return _pick_variant(
+        state,
+        [
+            "말씀해 주셔서 고마워요. 방금 이야기 중에서 특히 손이 가는 부분이 어디인가요?",
+            "나눠 주신 내용, 차분히 받았어요. 조금 더 구체적인 장면이 떠오르면 들려주세요.",
+            "지금 이야기의 핵심이 어디에 있는지 함께 찾아보면 좋겠어요. 어떤 순간이 가장 선명한가요?",
+        ],
     )
 
 
@@ -176,10 +289,13 @@ def fallback_reply(
         return mood_reply
 
     if state.counseling_phase == "rapport" and not detect_distress(user_message) and not detect_assessment_request(user_message):
-        return (
-            "이야기를 나눠 주셔서 고마워요. "
-            "방금 말씀하신 부분에서 무엇이 가장 마음에 걸리시는지, "
-            "한 장면만 짧게 이어서 들려주실 수 있을까요?"
+        return _pick_variant(
+            state,
+            [
+                "방금 말씀하신 부분에서 특히 마음에 걸리는 장면이 있다면 들려주실 수 있을까요?",
+                "나눠 주신 이야기, 차분히 받았어요. 조금 더 구체적인 순간이 떠오르면 이어 주세요.",
+                "지금 이야기의 중심이 어디에 있는지 함께 찾아보면 좋겠어요. 어떤 장면이 가장 선명한가요?",
+            ],
         )
 
     if state.counseling_phase == "termination":
@@ -204,10 +320,13 @@ def fallback_reply(
     if state.counseling_phase == "rapport" and not is_rapport_complete(state, user_message):
         readiness = rapport_readiness(state, user_message)
         missing = readiness["missing"][0] if readiness["missing"] else "지금 마음"
-        return (
-            "천천히 들려주셔서 고마워요. 아직은 검사보다, "
-            f"{missing.replace('고객의 구체적 이야기를 2회 이상 더 들어주세요', '이야기')}에 "
-            "조금 더 귀 기울이고 싶어요. 편한 만큼만 더 들려주실 수 있을까요?"
+        return _pick_variant(
+            state,
+            [
+                "아직은 검사보다 이야기에 귀 기울이고 싶어요. 편한 만큼만 더 들려주실 수 있을까요?",
+                f"{missing.replace('고객의 구체적 이야기를 2회 이상 더 들어주세요', '이야기')}에 대해 조금만 더 알려주시면 도움이 될 것 같아요.",
+                "지금 마음을 더 잘 이해하려면, 한 가지 장면만 더 구체적으로 들려주실 수 있을까요?",
+            ],
         )
 
     if state.counseling_phase == PHASE_ASSESSMENT_BRIEFING:
@@ -275,9 +394,13 @@ def fallback_reply(
                 "몸에서는 어떻게 느껴지는지도 궁금해요. "
                 "그 답답함이 가장 크게 올라올 때가 있다면 언제인가요?"
             )
-        return (
-            "지금 많이 힘드신 것 같아요. 그 감정을 느끼게 된 계기나 "
-            "하루 중 가장 버거운 순간이 있다면 편하게 말씀해 주세요."
+        return _pick_variant(
+            state,
+            [
+                "지금 많이 힘드신 것 같아요. 그 감정이 특히 크게 느껴지는 순간이 있다면 들려주세요.",
+                "버거운 마음이 전해져요. 하루 중 어느 때가 특히 힘든지도 함께 나눠 주실 수 있을까요?",
+                "힘든 마음, 잘 받았어요. 그때 몸에서는 어떤 신호가 올라오나요?",
+            ],
         )
 
     if "관계" in user_message or "대인" in user_message:
@@ -307,20 +430,11 @@ def enrich_assistant_reply(
         return fallback
 
     if detect_assessment_request(user_message):
-        if "가능" not in cleaned and "검사" not in cleaned and "체크" not in cleaned:
+        if len(cleaned) < 36 and "가능" not in cleaned and "검사" not in cleaned and "체크" not in cleaned:
             return fallback
-
-    if decision and decision.action == "inject_assessment":
-        # Allow natural counselor language; only replace empty/near-echo replies.
-        if len(cleaned) < 18 or user_message.strip() in cleaned:
-            return fallback
-
-    if (detect_distress(user_message) or session_has_distress(state, user_message)) and user_message.strip() in cleaned:
-        return fallback
 
     result = cleaned
-    last = _last_assistant_message(state)
-    if _is_near_duplicate(result, last):
+    if _repeats_recent_assistant(state, result):
         return _anti_repeat_reply(user_message, state, decision, assessment_response, blocked=result)
 
     from app.services.mood_assistant import maybe_append_natural_nudge, resolve_mood_context
@@ -382,6 +496,10 @@ def build_chat_messages(
             "\n\n관계 형성 초반입니다. UI에서 이미 인사했다면 재환영하지 말고, "
             "내담자 이번 말에 구체적으로 반응한 뒤 초점 질문 하나만 이어가세요."
         )
+
+    anti_repeat = build_anti_repeat_directive(state)
+    if anti_repeat:
+        system_prompt += "\n\n" + anti_repeat
 
     system_prompt += "\n\n" + build_phase_prompt(state, user_message)
     system_prompt += build_tarot_system_block(state)
