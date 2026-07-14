@@ -1816,6 +1816,21 @@ async def addiction_corpus_api():
     return addiction_corpus()
 
 
+@app.get("/api/v1/chat/instant-route")
+async def chat_instant_route_api(message: str = ""):
+    from app.services.instant_keyword_router import react_instantly
+
+    reaction = react_instantly(message or "")
+    return {"message": message, "reaction": reaction.to_dict()}
+
+
+@app.get("/api/v1/research/platform-ip-map")
+async def platform_ip_map_api():
+    from app.services.platform_ip_map import build_platform_ip_map
+
+    return build_platform_ip_map()
+
+
 @app.get("/api/v1/scholars")
 async def scholars_api(school: Optional[str] = None, q: Optional[str] = None):
     from app.services.scholars_catalog import list_art_techniques, list_scholars, scholars_corpus

@@ -95,6 +95,37 @@ INVENTION_IDS = [
         ),
         "modules": ["chat_stream", "orchestrator", "counsel_offline"],
     },
+    {
+        "id": "INV-09",
+        "title_ko": "가중 키워드 즉시반응 다층 라우팅 엔진",
+        "title_en": "Weighted multi-layer instant keyword reaction router",
+        "claim_sketch": (
+            "메시지 키워드를 학파·기법·앱기능에 가중 매핑하고 일반어보다 "
+            "도메인 특화어를 우선해 즉시 지시문을 주입하는 방법"
+        ),
+        "modules": ["instant_keyword_router", "persona_router", "chat_stream"],
+    },
+    {
+        "id": "INV-10",
+        "title_ko": "입체 기분(5축) 맞춤 상담·검사 게이팅",
+        "title_en": "Five-axis mood-conditioned counseling and assessment gating",
+        "claim_sketch": "입체 체크인 좌표에 따라 톤·검사 제안 시점을 조건 분기하는 웰니스 방법",
+        "modules": ["mood_assistant", "mood_dimensions", "daily_routine"],
+    },
+    {
+        "id": "INV-11",
+        "title_ko": "오프라인 키워드 번들 상담·타로 캐시 동기화",
+        "title_en": "Offline keyword-counsel and tarot cache synchronization",
+        "claim_sketch": "네트워크 단절 시 키워드 룰·덱 번들로 폴백하고 온라인 복귀 시 큐를 동기화",
+        "modules": ["counsel_offline", "sw.js", "tarot_bundle"],
+    },
+    {
+        "id": "INV-12",
+        "title_ko": "소비자 개방·기관 라이선스 이중 표면 분리",
+        "title_en": "Consumer-open vs association-license dual-surface architecture",
+        "claim_sketch": "동일 코어에서 소비자 개방 라우트와 라이선스 게이트를 권한으로 분리",
+        "modules": ["product_surfaces", "consumer_access", "association_licensing"],
+    },
 ]
 
 

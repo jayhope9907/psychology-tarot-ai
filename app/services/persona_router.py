@@ -8,6 +8,7 @@ from app.services.counseling_theories import (
     build_theory_directive,
     get_theory_meta,
 )
+from app.services.instant_keyword_router import react_instantly
 
 VULNERABLE_KEYWORDS = ("힘들", "울", "상처", "외로", "무너", "버텨", "지쳐", "슬프", "아프")
 DEFENSIVE_KEYWORDS = ("항상", "어쩔 수", "괜찮", "부정", "억누", "숨기", "모르겠", "회피", "피하")
@@ -56,20 +57,6 @@ def detect_mood_state(user_message: str, recent_messages: Optional[List[Dict[str
     return MoodState.NEUTRAL
 
 
-def _match_theory_by_keywords(corpus: str) -> Optional[ClinicalSchool]:
-    best_school: Optional[ClinicalSchool] = None
-    best_score = 0
-    for school, meta in THEORY_CATALOG.items():
-        if school == ClinicalSchool.INTEGRATIVE:
-            continue
-        keywords = meta.get("routing_keywords") or ()
-        score = sum(1 for keyword in keywords if keyword in corpus)
-        if score > best_score:
-            best_score = score
-            best_school = school
-    return best_school if best_score > 0 else None
-
-
 def route_clinical_persona(
     user_message: str,
     preferred_school: Optional[ClinicalSchool] = None,
@@ -78,36 +65,38 @@ def route_clinical_persona(
 ) -> Dict[str, Any]:
     mood = detect_mood_state(user_message, recent_messages)
     distortions = detect_cognitive_distortions(user_message)
-    corpus = " ".join([user_message] + [entry.get("content", "") for entry in (recent_messages or [])[-4:]]).lower()
+    reaction = react_instantly(user_message, recent_messages, preferred_school=preferred_school)
 
     if preferred_school:
         school = preferred_school
         reason = "user_selected"
+    elif reaction.reason == "crisis_keyword_instant":
+        school = reaction.school
+        reason = reaction.reason
+    elif reaction.score > 0 and reaction.reason in {"instant_weighted_keyword", "user_selected"}:
+        school = reaction.school
+        reason = "instant_keyword_theory_match"
+    elif distortions and mood in {MoodState.ANALYTICAL, MoodState.DEFENSIVE}:
+        school = ClinicalSchool.BECK_CBT
+        reason = "cognitive_distortion_signal"
+    elif mood == MoodState.DEFENSIVE:
+        school = ClinicalSchool.FREUDIAN
+        reason = "defensive_pattern_signal"
+    elif mood == MoodState.VULNERABLE:
+        school = ClinicalSchool.ROGERIAN
+        reason = "vulnerable_affect_signal"
+    elif mood == MoodState.ANALYTICAL:
+        school = ClinicalSchool.BECK_CBT
+        reason = "analytical_processing_signal"
+    elif counselor_default_school:
+        school = counselor_default_school
+        reason = "counselor_specialty_default"
     else:
-        keyword_match = _match_theory_by_keywords(corpus)
-        if keyword_match:
-            school = keyword_match
-            reason = "keyword_theory_match"
-        elif distortions and mood in {MoodState.ANALYTICAL, MoodState.DEFENSIVE}:
-            school = ClinicalSchool.BECK_CBT
-            reason = "cognitive_distortion_signal"
-        elif mood == MoodState.DEFENSIVE:
-            school = ClinicalSchool.FREUDIAN
-            reason = "defensive_pattern_signal"
-        elif mood == MoodState.VULNERABLE:
-            school = ClinicalSchool.ROGERIAN
-            reason = "vulnerable_affect_signal"
-        elif mood == MoodState.ANALYTICAL:
-            school = ClinicalSchool.BECK_CBT
-            reason = "analytical_processing_signal"
-        elif counselor_default_school:
-            school = counselor_default_school
-            reason = "counselor_specialty_default"
-        else:
-            school = ClinicalSchool.INTEGRATIVE
-            reason = "integrative_default"
+        school = ClinicalSchool.INTEGRATIVE
+        reason = "integrative_default"
 
     meta = get_theory_meta(school)
+    techniques = list(reaction.techniques) if reaction.techniques else list(meta["techniques"])
     return {
         "school": school,
         "mood_state": mood,
@@ -116,8 +105,9 @@ def route_clinical_persona(
         "persona_label": meta["label"],
         "persona_subtitle": meta["subtitle"],
         "counselor_tone": meta["counselor_tone"],
-        "techniques": meta["techniques"],
+        "techniques": techniques[:8],
         "category": meta["category"],
+        "instant_reaction": reaction.to_dict(),
     }
 
 

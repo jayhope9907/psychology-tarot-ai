@@ -33,6 +33,7 @@ from app.services.orchestrator import (
 from app.services.homework import build_homework_chat_context, maybe_assign_homework, record_homework_submission
 from app.services.tarot_bridge import build_tarot_system_block, should_suggest_tarot
 from app.services.persona_router import build_persona_directive, route_clinical_persona
+from app.services.instant_keyword_router import build_instant_reaction_prompt, react_instantly
 from app.services.prompt_binding import PromptContextWeightBindingFactory, extract_chat_quant_features
 
 from app.assessments.user_voice import user_instrument_title
@@ -526,6 +527,31 @@ def build_chat_messages(
         + binding["context_block"]
     )
 
+    raw_instant = (state.persona_routing or {}).get("instant_reaction")
+    if raw_instant:
+        try:
+            from app.services.instant_keyword_router import InstantReaction
+
+            instant = InstantReaction(
+                school=school,
+                score=float(raw_instant.get("score") or 0),
+                reason=str(raw_instant.get("reason") or ""),
+                matched_keywords=list(raw_instant.get("matched_keywords") or []),
+                school_scores=list(raw_instant.get("school_scores") or []),
+                techniques=list(raw_instant.get("techniques") or []),
+                features=list(raw_instant.get("features") or []),
+                technique_hits=list(raw_instant.get("technique_hits") or []),
+            )
+            system_prompt += "\n\n" + build_instant_reaction_prompt(instant)
+        except Exception:
+            system_prompt += "\n\n" + build_instant_reaction_prompt(
+                react_instantly(user_message, state.messages)
+            )
+    else:
+        system_prompt += "\n\n" + build_instant_reaction_prompt(
+            react_instantly(user_message, state.messages)
+        )
+
     if state.counseling_phase == "rapport" and state.turn_count <= 2:
         system_prompt += (
             "\n\n관계 형성 초반입니다. UI에서 이미 인사했다면 재환영하지 말고, "
@@ -777,6 +803,8 @@ async def run_chat_turn(
         "detected_distortions": routing["detected_distortions"],
         "fingerprint_bias": bool(routing.get("fingerprint_bias")),
         "algo_id": fingerprint.get("algo_id"),
+        "techniques": routing.get("techniques") or [],
+        "instant_reaction": routing.get("instant_reaction") or {},
     }
     state.preferred_school = routing["school"].value
     state.quant_features = seed_quant_from_fingerprint(
