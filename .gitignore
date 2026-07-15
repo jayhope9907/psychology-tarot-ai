@@ -18,3 +18,7 @@ logs/
 .cache/
 
 public-url.json
+.vercel
+.env*
+
+.env.local
