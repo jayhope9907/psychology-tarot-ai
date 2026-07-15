@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.vercel]
-entrypoint = "app.main:app"
+entrypoint = "server:app"
 
 [dependency-groups]
 dev = ["pytest>=8.0.0"]
