@@ -308,6 +308,20 @@ def fallback_reply(
             ],
         )
 
+    substance_blob = user_message.lower()
+    if any(
+        kw in substance_blob
+        for kw in ("술", "담배", "마약", "중독", "갈망", "재발", "단주", "단약", "금단", "과음")
+    ):
+        return _pick_variant(
+            state,
+            [
+                "술·습관 이야기를 꺼내 주셔서 고마워요. 최근에 가장 강하게 올라온 갈망은 어떤 순간에 있었나요?",
+                "끊으려다 다시 이어진 흐름, 충분히 버거운 일이에요. 그 직전에 어떤 상황·감정이 있었는지 들려주실 수 있을까요?",
+                "지금은 비난보다 패턴을 함께 보는 게 좋아요. 평소 트리거(사람·장소·감정) 중 하나만 짚어볼까요?",
+            ],
+        )
+
     if state.counseling_phase == "rapport" and not detect_distress(user_message) and not detect_assessment_request(user_message):
         return _pick_variant(
             state,
@@ -337,7 +351,12 @@ def fallback_reply(
             "예를 들어 5분 산책, 감정을 한 줄 적기처럼 부담 없는 것도 좋아요."
         )
 
-    if state.counseling_phase == "rapport" and not is_rapport_complete(state, user_message):
+    if (
+        state.counseling_phase == "rapport"
+        and not is_rapport_complete(state, user_message)
+        and not detect_distress(user_message)
+        and not detect_assessment_request(user_message)
+    ):
         readiness = rapport_readiness(state, user_message)
         missing = readiness["missing"][0] if readiness["missing"] else "지금 마음"
         return _pick_variant(

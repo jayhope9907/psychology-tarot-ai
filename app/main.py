@@ -1165,6 +1165,12 @@ async def tarot_deck_catalog():
     return list_deck_catalog()
 
 
+@app.get("/api/v1/tarot/deck/catalog")
+async def tarot_deck_catalog_alias():
+    """Alias for clients that request /deck/catalog."""
+    return list_deck_catalog()
+
+
 @app.get("/api/v1/tarot/card-image/{card_id}")
 async def tarot_card_image(card_id: str):
     """Serve cached public-domain Rider–Waite (etc.) art same-origin for the 3D scene."""
@@ -2110,6 +2116,13 @@ async def assessments_catalog():
         "total_instruments": len(instruments),
         "total_domains": len(ASSESSMENT_DOMAINS),
     }
+
+
+@app.get("/api/v1/assessments")
+@app.get("/api/v1/assessments/list")
+async def assessments_catalog_alias():
+    """Compatibility aliases → assessments catalog."""
+    return await assessments_catalog()
 
 
 @app.get("/api/v1/assessments/battery/{session_id}")
