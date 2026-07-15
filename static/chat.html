@@ -1904,8 +1904,8 @@
           </svg>
           <div class="avatar" id="counselorAvatar" aria-hidden="true">서연</div>
         </div>
-        <h2 id="counselorName">이서연 AI 가이드</h2>
-        <p class="role" id="counselorRole">AI 웰니스 가이드<br/>대화 속 마음 돌봄 (비의료)</p>
+        <h2 id="counselorName">이서연</h2>
+        <p class="role" id="counselorRole">상담 · 마음 대화<br/><span style="opacity:.75;font-size:.85em">자기성찰 지원 (비의료)</span></p>
         <span class="session-chip" id="sessionChip">대화 준비 중</span>
         <span class="mood-chip" id="moodChip" hidden>오늘 기분</span>
         <span class="license-chip" id="licenseChip" hidden></span>
@@ -2461,7 +2461,7 @@
     document.getElementById("btnVoicePreview").addEventListener("click", () => {
       if (!window.VoiceEngine || !counselingStyle) return;
       VoiceEngine.speak(
-        `안녕하세요, ${counselingStyle.counselor_name} AI 가이드예요. 오늘 마음, 편한 속도로 함께 이야기해요.`,
+        `안녕하세요, ${counselingStyle.counselor_name}입니다. 오늘 마음, 편한 속도로 이야기해요.`,
         counselingStyle.voice,
       );
     });
@@ -2846,7 +2846,7 @@
       typingEl.className = "typing";
       typingEl.innerHTML = `
         <div class="mini-avatar" aria-hidden="true">서</div>
-        <span>${COUNSELOR_NAME} AI 가이드가 답을 준비하고 있어요</span>
+        <span>${COUNSELOR_NAME}이 듣고 있어요…</span>
         <span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
       `;
       messagesEl.appendChild(typingEl);
@@ -3004,7 +3004,7 @@
       const agentLabel = (agent || mood.agent)?.label;
       const summary = mood.dimension_summary || `${mood.label} (${mood.score}/5)`;
       moodChip.textContent = agentLabel
-        ? `맞춤 AI · ${agentLabel} · ${summary}`
+        ? `상담 맞춤 · ${agentLabel} · ${summary}`
         : `오늘 기분 · ${summary}`;
     }
 
@@ -3244,7 +3244,7 @@
           <div class="assessment-head">
             <div class="mini-avatar" aria-hidden="true">서</div>
             <div>
-              <strong>${COUNSELOR_NAME} AI 가이드</strong>
+              <strong>${COUNSELOR_NAME}</strong>
               ${titleTag}
             </div>
           </div>
@@ -3670,7 +3670,7 @@
         bubble.textContent = data.welcome_message || "";
         const agentLabel = data.agent?.label;
         sessionChip.textContent = agentLabel
-          ? `맞춤 AI · ${agentLabel}`
+          ? `상담 맞춤 · ${agentLabel}`
           : (data.mood?.has_checkin ? "입체 기분 맞춤 대화" : "새 대화 시작");
         updateCounselingPhase({
           phase_index: 0,

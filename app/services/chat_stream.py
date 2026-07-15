@@ -6,7 +6,7 @@ import re
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
 from app.models.clinical import ClinicalSchool
-from app.prompt_config import COUNSELOR_NAME, build_chat_system_prompt
+from app.prompt_config import COUNSELOR_NAME, build_chat_system_prompt, build_human_presence_directive
 from app.services.chat_session import ChatSessionState
 from app.services.assessment_package import build_assessment_package, mark_package_presented
 from app.services.counseling_phase import (
@@ -176,12 +176,53 @@ def build_anti_repeat_directive(state: ChatSessionState) -> str:
         return ""
     lines = [
         "## 직전 답변 반복 금지",
-        "아래 문장·질문과 **같은 표현·같은 마무리 질문**을 쓰지 마세요. 새 각도로 반응하세요.",
+        "아래 문장·질문과 **같은 표현·같은 마무리 질문**을 쓰지 마세요. "
+        "새 장면·감각·관계 한 조각만 짚고 사람답게 이어가세요. "
+        "표현만 바꿔 같은 말을 반복하는 챗봇식 재진술은 금지입니다.",
     ]
     for idx, message in enumerate(recent, 1):
         snippet = message[:220] + ("…" if len(message) > 220 else "")
         lines.append(f"- 직전 {idx}: {snippet}")
     return "\n".join(lines)
+
+
+_CHATBOT_LEAK_PATTERNS = (
+    "ai로서",
+    "인공지능",
+    "챗봇",
+    "도와드릴게요",
+    "무엇을 도와드릴까요",
+    "질문해 주셔서",
+    "요약하면",
+    "정리해 드리면",
+    "다음과 같습니다",
+    "세 가지",
+    "1.",
+    "2.",
+    "3.",
+)
+
+
+def _looks_like_chatbot_output(text: str) -> bool:
+    lowered = (text or "").strip().lower()
+    if not lowered:
+        return False
+    if lowered.count("\n-") >= 2 or lowered.count("\n•") >= 2:
+        return True
+    hits = sum(1 for p in _CHATBOT_LEAK_PATTERNS if p in lowered)
+    if "1." in text and "2." in text:
+        return True
+    return hits >= 2
+
+
+def _dechatbot_reply(user_message: str, state: ChatSessionState) -> str:
+    snippet = (user_message or "").strip()
+    focus = snippet[:42] if snippet else "지금 마음"
+    return (
+        f"‘{focus}’ 이야기, 여기서 잠깐 머물러 볼게요. "
+        "방금 말씀하신 것 중에 가장 묵직한 한 조각만 먼저 들어보고 싶어요. "
+        "어떤 장면이 제일 선명한가요?"
+    )
 
 
 def _is_short_follow_up(user_message: str) -> bool:
@@ -475,6 +516,8 @@ def enrich_assistant_reply(
     result = cleaned
     if _repeats_recent_assistant(state, result):
         return _anti_repeat_reply(user_message, state, decision, assessment_response, blocked=result)
+    if _looks_like_chatbot_output(result):
+        return _dechatbot_reply(user_message, state)
 
     from app.services.mood_assistant import maybe_append_natural_nudge, resolve_mood_context
 
@@ -538,6 +581,8 @@ def build_chat_messages(
 
     system_prompt = (
         build_chat_system_prompt(name)
+        + "\n\n"
+        + build_human_presence_directive(name)
         + "\n\n"
         + build_persona_directive(school, distortions)
         + "\n\n"
