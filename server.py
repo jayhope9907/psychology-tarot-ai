@@ -1,9 +1,9 @@
-"""Vercel ASGI entrypoint with import-error diagnostics."""
+"""Vercel ASGI entrypoint — re-exports FastAPI `app` with import-failure diagnostics."""
 from __future__ import annotations
 
 try:
     from app.main import app as app
-except Exception as exc:  # pragma: no cover - production boot diagnostics only
+except Exception as exc:  # pragma: no cover
     import traceback
 
     from fastapi import FastAPI
