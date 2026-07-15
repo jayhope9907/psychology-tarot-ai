@@ -43,9 +43,24 @@ from app.services.vault import get_fernet, seal_payload, unseal_payload, write_a
 
 # 환경 변수 로드 및 AI 클라이언트 초기화
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def _build_openai_client() -> Optional[OpenAI]:
+    """Create OpenAI client only when a key exists (Vercel boot must not crash without env)."""
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        return None
+    try:
+        return OpenAI(api_key=api_key)
+    except Exception:
+        return None
+
+
+client = _build_openai_client()
 
 app = FastAPI(title="Psychology Tarot AI System")
+# Vercel Python runtime looks for ASGI `app` (and some templates also check `handler`).
+handler = app
 
 
 @app.on_event("startup")
