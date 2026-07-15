@@ -14,7 +14,7 @@ htmlcov/
 coverage.xml
 tools/
 logs/
-data/
+/data/
 .cache/
 
 public-url.json
