@@ -7,6 +7,11 @@ from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
 from app.models.clinical import ClinicalSchool
 from app.prompt_config import COUNSELOR_NAME, build_chat_system_prompt, build_human_presence_directive
+from app.services.counseling_core_triad import (
+    build_core_triad_directive,
+    empathic_silence_ms,
+    multimodal_tone_hint,
+)
 from app.services.chat_session import ChatSessionState
 from app.services.assessment_package import build_assessment_package, mark_package_presented
 from app.services.counseling_phase import (
@@ -526,7 +531,7 @@ def enrich_assistant_reply(
     return result
 
 
-def _stream_pacing_delay(default: float = 0.028) -> float:
+def _stream_pacing_delay(default: float = 0.028, *, empathic_boost: float = 1.0) -> float:
     import os
 
     raw = (os.getenv("CHAT_STREAM_PACING") or "").strip().lower()
@@ -535,13 +540,19 @@ def _stream_pacing_delay(default: float = 0.028) -> float:
     if os.getenv("PYTEST_CURRENT_TEST"):
         return 0.0
     try:
-        return max(0.0, float(raw)) if raw else default
+        base = max(0.0, float(raw)) if raw else default
     except ValueError:
-        return default
+        base = default
+    return max(0.0, base * max(0.6, min(2.2, empathic_boost)))
 
 
-async def _yield_text_with_pacing(text: str, delay: float | None = None) -> AsyncIterator[str]:
-    pace = _stream_pacing_delay() if delay is None else delay
+async def _yield_text_with_pacing(
+    text: str,
+    delay: float | None = None,
+    *,
+    empathic_boost: float = 1.0,
+) -> AsyncIterator[str]:
+    pace = _stream_pacing_delay(empathic_boost=empathic_boost) if delay is None else delay
     tokens = re.findall(r"\S+\s*|\n", text)
     for token in tokens:
         yield token
@@ -560,6 +571,7 @@ def build_chat_messages(
     style_block: str = "",
     image_data_url: Optional[str] = None,
     image_search_payload: Optional[Dict[str, Any]] = None,
+    multimodal_meta: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     name = counselor_name or COUNSELOR_NAME
     try:
@@ -584,12 +596,17 @@ def build_chat_messages(
         + "\n\n"
         + build_human_presence_directive(name)
         + "\n\n"
+        + build_core_triad_directive(tarot_active=bool(getattr(state, "tarot_handoff", None)))
+        + "\n\n"
         + build_persona_directive(school, distortions)
         + "\n\n"
         + binding["system_prompt"]
         + "\n\n"
         + binding["context_block"]
     )
+    tone_extra = multimodal_tone_hint(multimodal_meta or state.phase_notes.get("multimodal_meta"))
+    if tone_extra:
+        system_prompt += "\n\n" + tone_extra
 
     raw_instant = (state.persona_routing or {}).get("instant_reaction")
     if raw_instant:
@@ -795,6 +812,7 @@ async def run_chat_turn(
     preferred_school: Optional[ClinicalSchool] = None,
     image_data_url: Optional[str] = None,
     image_search: bool = False,
+    multimodal_meta: Optional[Dict[str, Any]] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     from app.services.image_search import (
         extract_search_query,
@@ -802,6 +820,25 @@ async def run_chat_turn(
         validate_image_data_url,
         wants_image_search,
     )
+
+    if multimodal_meta:
+        state.phase_notes["multimodal_meta"] = {
+            k: multimodal_meta.get(k)
+            for k in ("mood_color", "mood_weather", "voice_cue", "color", "weather")
+            if multimodal_meta.get(k)
+        }
+
+    distress_early = detect_distress(user_message) or session_has_distress(state, user_message)
+    silence_ms = empathic_silence_ms(user_message, distress=distress_early)
+    # Client honors ms for empathic silence UX; avoid blocking serverless workers.
+    yield {
+        "event": "presence_wait",
+        "data": {
+            "ms": silence_ms,
+            "label_ko": "마음쉼터가 조심스럽게 생각을 정리하고 있습니다…",
+            "distress": bool(distress_early),
+        },
+    }
 
     safe_image = validate_image_data_url(image_data_url)
     image_search_payload: Optional[Dict[str, Any]] = None
@@ -1016,9 +1053,11 @@ async def run_chat_turn(
         style_block=style_block,
         image_data_url=safe_image,
         image_search_payload=image_search_payload,
+        multimodal_meta=multimodal_meta,
     )
     streamer = stream_fn or stream_chat_completion
     assistant_chunks: List[str] = []
+    empathic_boost = 1.0 + min(1.0, silence_ms / 2400.0)
 
     skip_llm_briefing = (
         state.counseling_phase == PHASE_ASSESSMENT_BRIEFING
@@ -1029,19 +1068,25 @@ async def run_chat_turn(
     if skip_llm_briefing:
         briefing = build_assessment_briefing_reply(ctx, state.assessment_package)
         state.phase_notes["assessment_briefing_spoken"] = True
-        async for token in _yield_text_with_pacing(briefing):
+        async for token in _yield_text_with_pacing(briefing, empathic_boost=empathic_boost):
             assistant_chunks.append(token)
             yield {"event": "token", "data": {"content": token}}
     elif stream_fn:
         async for token in streamer(messages, max_tokens, client, assessment_response):
             assistant_chunks.append(token)
             yield {"event": "token", "data": {"content": token}}
+            pace = _stream_pacing_delay(empathic_boost=empathic_boost)
+            if pace:
+                await asyncio.sleep(pace)
     else:
         async for token in streamer(
             messages, max_tokens, client, state, decision, assessment_response
         ):
             assistant_chunks.append(token)
             yield {"event": "token", "data": {"content": token}}
+            pace = _stream_pacing_delay(default=0.012, empathic_boost=empathic_boost)
+            if pace:
+                await asyncio.sleep(pace)
 
     assistant_text = enrich_assistant_reply(
         "".join(assistant_chunks).strip(),

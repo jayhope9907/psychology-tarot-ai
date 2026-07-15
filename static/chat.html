@@ -1524,6 +1524,36 @@
     .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
 
+    .mood-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 0 2px;
+    }
+    .mood-strip-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+    .mood-chip {
+      appearance: none;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.65);
+      color: var(--text-soft, #334);
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+    .mood-chip[aria-pressed="true"] {
+      border-color: var(--accent, #3d6b5a);
+      background: rgba(61, 107, 90, 0.14);
+      color: var(--accent, #2f5548);
+    }
+
     /* ── Composer ── */
     .composer-wrap {
       padding: 16px 20px 18px;
@@ -2055,6 +2085,20 @@
             <span>AI가 사진을 함께 보고 이야기해요</span>
           </div>
           <button type="button" id="attachClear">제거</button>
+        </div>
+        <div class="mood-strip" id="moodStrip" aria-label="오늘의 기분 단서">
+          <span class="mood-strip-label">오늘 기분</span>
+          <button type="button" class="mood-chip" data-mood-color="blue" aria-pressed="false">파랑</button>
+          <button type="button" class="mood-chip" data-mood-color="gray" aria-pressed="false">회색</button>
+          <button type="button" class="mood-chip" data-mood-color="green" aria-pressed="false">초록</button>
+          <button type="button" class="mood-chip" data-mood-color="yellow" aria-pressed="false">노랑</button>
+          <button type="button" class="mood-chip" data-mood-color="red" aria-pressed="false">빨강</button>
+          <span class="mood-strip-label" style="margin-left:0.35rem">날씨</span>
+          <button type="button" class="mood-chip" data-mood-weather="rain" aria-pressed="false">비</button>
+          <button type="button" class="mood-chip" data-mood-weather="cloud" aria-pressed="false">흐림</button>
+          <button type="button" class="mood-chip" data-mood-weather="fog" aria-pressed="false">안개</button>
+          <button type="button" class="mood-chip" data-mood-weather="sun" aria-pressed="false">맑음</button>
+          <button type="button" class="mood-chip" data-mood-weather="storm" aria-pressed="false">폭풍</button>
         </div>
         <form class="composer" id="chatForm">
           <div class="composer-tools">
@@ -2839,18 +2883,64 @@
       }
     }
 
-    function showTyping() {
+    function showTyping(label) {
       hideTyping();
       hideEmptyState();
+      const text = label || `${COUNSELOR_NAME}이 듣고 있어요…`;
       typingEl = document.createElement("div");
       typingEl.className = "typing";
       typingEl.innerHTML = `
         <div class="mini-avatar" aria-hidden="true">서</div>
-        <span>${COUNSELOR_NAME}이 듣고 있어요…</span>
+        <span class="typing-label">${text}</span>
         <span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
       `;
       messagesEl.appendChild(typingEl);
       scrollToBottom();
+    }
+
+    function setTypingLabel(label) {
+      if (!typingEl) {
+        showTyping(label);
+        return;
+      }
+      const span = typingEl.querySelector(".typing-label");
+      if (span) span.textContent = label;
+    }
+
+    function sleepMs(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    let moodColor = localStorage.getItem("psychology_ai_mood_color") || "";
+    let moodWeather = localStorage.getItem("psychology_ai_mood_weather") || "";
+
+    function syncMoodChips() {
+      document.querySelectorAll("[data-mood-color]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", btn.getAttribute("data-mood-color") === moodColor ? "true" : "false");
+      });
+      document.querySelectorAll("[data-mood-weather]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", btn.getAttribute("data-mood-weather") === moodWeather ? "true" : "false");
+      });
+    }
+
+    const moodStrip = document.getElementById("moodStrip");
+    if (moodStrip) {
+      moodStrip.addEventListener("click", (event) => {
+        const btn = event.target.closest(".mood-chip");
+        if (!btn) return;
+        const color = btn.getAttribute("data-mood-color");
+        const weather = btn.getAttribute("data-mood-weather");
+        if (color) {
+          moodColor = moodColor === color ? "" : color;
+          localStorage.setItem("psychology_ai_mood_color", moodColor);
+        }
+        if (weather) {
+          moodWeather = moodWeather === weather ? "" : weather;
+          localStorage.setItem("psychology_ai_mood_weather", moodWeather);
+        }
+        syncMoodChips();
+      });
+      syncMoodChips();
     }
 
     function hideTyping() {
@@ -3471,7 +3561,14 @@
           const parsed = parseSseChunk(buffer);
           buffer = parsed.remainder;
 
-          parsed.events.forEach(({ event, data }) => {
+          for (const { event, data } of parsed.events) {
+            if (event === "presence_wait") {
+              const label = data.label_ko || "마음쉼터가 조심스럽게 생각을 정리하고 있습니다…";
+              setTypingLabel(label);
+              const ms = Math.min(2400, Math.max(0, Number(data.ms) || 0));
+              if (ms > 0) await sleepMs(ms);
+              continue;
+            }
             if (event === "orchestrator") {
               updatePace(data.fatigue);
               updateCounselingPhase(data.counseling_phase);
@@ -3549,7 +3646,7 @@
               bubble.textContent = data.message || "잠시 연결이 불안정해요. 다시 말씀해 주실 수 있을까요?";
               gotToken = true;
             }
-          });
+          }
         }
 
         // 스트림이 잘려도 남은 버퍼 처리
@@ -3623,6 +3720,8 @@
         association_license: associationLicense || null,
         image_data_url: imageDataUrl,
         image_search: imageSearch,
+        mood_color: moodColor || null,
+        mood_weather: moodWeather || null,
       });
     }
 

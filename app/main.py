@@ -229,6 +229,9 @@ class ChatStreamRequest(BaseModel):
     association_license: Optional[str] = None
     image_data_url: Optional[str] = None
     image_search: bool = False
+    mood_color: Optional[str] = None
+    mood_weather: Optional[str] = None
+    voice_cue: Optional[str] = None
 
 
 class ImageSearchRequest(BaseModel):
@@ -2393,6 +2396,11 @@ async def chat_stream(request: ChatStreamRequest):
                 preferred_school=request.preferred_school,
                 image_data_url=request.image_data_url,
                 image_search=bool(request.image_search),
+                multimodal_meta={
+                    "mood_color": request.mood_color,
+                    "mood_weather": request.mood_weather,
+                    "voice_cue": request.voice_cue,
+                },
             ):
                 if event["event"] == "done":
                     profile_delta = event["data"].get("profile_delta") or {}

@@ -24,10 +24,11 @@
 1. **INV-01** 피로·단계 게이트 오케스트레이터  
 2. **INV-02** 학회/수련 entitlements → 에이전트·도구 라우팅  
 3. **INV-03** 라이선스 발급 시 데모 사례 타임라인 시드  
-4. **INV-04** 타로·픽토·사진 검색/비전 브리지 (비진단)  
+4. **INV-04** 상징 투사·픽토·사진 검색/비전 브리지 (비진단)  
 5. **INV-05** 투영 표현 + psych timeline  
+6. **이론 바인딩** Rogers(공감·UPR) · Jung(원형·동시성) · CBT(인지적 재구성) + 공감적 침묵 UX  
 
-데모 키: `MSHT-CLINICAL-DEMO-2026`, `MSHT-MHSW-DEMO-2026` 등 (`/associations`)
+상세 대외 용어: `docs/grant/positioning-lexicon.md`
 
 ## 4. 성과지표 (Non-efficacy KPI)
 
