@@ -1,0 +1,20 @@
+[project]
+name = "psychology-tarot-ai"
+version = "1.0.0"
+description = "마음쉼터 — AI wellness / self-reflection platform"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.100.0",
+  "uvicorn>=0.22.0",
+  "openai>=1.0.0",
+  "python-dotenv>=1.0.0",
+  "cryptography>=42.0.0",
+  "sse-starlette>=2.1.0",
+  "python-multipart>=0.0.9",
+]
+
+[tool.vercel]
+entrypoint = "app.main:app"
+
+[dependency-groups]
+dev = ["pytest>=8.0.0"]

@@ -99,7 +99,12 @@ def unseal_payload(user_id: str, token: str) -> Dict[str, Any]:
 
 
 def audit_log_path() -> str:
-    return os.getenv("SECURITY_AUDIT_LOG_PATH", os.getenv("PURGE_AUDIT_LOG_PATH", "security_audit.jsonl"))
+    configured = os.getenv("SECURITY_AUDIT_LOG_PATH") or os.getenv("PURGE_AUDIT_LOG_PATH")
+    if configured:
+        return configured
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+        return "/tmp/security_audit.jsonl"
+    return "security_audit.jsonl"
 
 
 def write_audit_event(

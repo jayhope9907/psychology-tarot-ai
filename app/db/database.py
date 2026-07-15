@@ -5,7 +5,14 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
-DEFAULT_DB = str(Path(__file__).resolve().parent.parent.parent / "data" / "app.db")
+def _default_db_path() -> str:
+    # Vercel serverless filesystem is read-only except /tmp.
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+        return "/tmp/psychology-tarot-ai.db"
+    return str(Path(__file__).resolve().parent.parent.parent / "data" / "app.db")
+
+
+DEFAULT_DB = _default_db_path()
 _db_path = os.getenv("DATABASE_PATH", DEFAULT_DB)
 _initialized = False
 
