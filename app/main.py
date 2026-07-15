@@ -40,6 +40,7 @@ from app.services.orchestrator import record_assessment_answer
 from app.services.persona_router import PERSONA_CATALOG, detect_cognitive_distortions
 from app.services.prompt_binding import PromptContextWeightBindingFactory
 from app.services.vault import get_fernet, seal_payload, unseal_payload, write_audit_event
+from app.db.database import init_db
 
 # 환경 변수 로드 및 AI 클라이언트 초기화
 load_dotenv()
@@ -65,7 +66,12 @@ handler = app
 
 @app.on_event("startup")
 async def startup_init_db():
-    init_db()
+    try:
+        init_db()
+    except Exception as exc:
+        # Never crash the whole serverless function on startup storage issues.
+        print(f"[startup] init_db failed: {exc}")
+
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -137,7 +143,6 @@ from app.services.tarot import (
 )
 from app.services.tarot_bridge import apply_tarot_handoff, build_tarot_handoff
 from app.services.homework import homework_snapshot, record_homework_submission
-from app.db.database import init_db
 from app.services.daily_routine import build_dashboard, record_checkin
 from app.services.persistence import list_tarot_draws, record_tarot_draw, save_session, save_user_settings, get_user_settings
 

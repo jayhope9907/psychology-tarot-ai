@@ -12,8 +12,21 @@ def _default_db_path() -> str:
     return str(Path(__file__).resolve().parent.parent.parent / "data" / "app.db")
 
 
+def _resolve_db_path() -> str:
+    configured = (os.getenv("DATABASE_PATH") or "").strip()
+    on_vercel = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+    if on_vercel:
+        # Ignore host paths like data/app.db or /app/data/... that are not writable.
+        if not configured or configured.startswith("/app/") or configured.startswith("data/") or ":" in configured:
+            return _default_db_path()
+        if not configured.startswith("/tmp/"):
+            return _default_db_path()
+        return configured
+    return configured or _default_db_path()
+
+
 DEFAULT_DB = _default_db_path()
-_db_path = os.getenv("DATABASE_PATH", DEFAULT_DB)
+_db_path = _resolve_db_path()
 _initialized = False
 
 
