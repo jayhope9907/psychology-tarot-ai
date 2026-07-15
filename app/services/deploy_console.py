@@ -13,6 +13,14 @@ PUBLIC_URL_PATH = ROOT / "public-url.json"
 RENDER_REPO = "https://github.com/jayhope9907/psychology-tarot-ai"
 RENDER_DEPLOY = f"https://render.com/deploy?repo={RENDER_REPO}"
 RENDER_LIVE = os.getenv("PUBLIC_BASE_URL", "https://psychology-tarot-ai.onrender.com").rstrip("/")
+VERCEL_LIVE = (
+    os.getenv("VERCEL_PROJECT_PRODUCTION_URL")
+    or os.getenv("VERCEL_URL")
+    or "psychology-tarot-ai.vercel.app"
+)
+if VERCEL_LIVE and not VERCEL_LIVE.startswith("http"):
+    VERCEL_LIVE = f"https://{VERCEL_LIVE}"
+VERCEL_DASHBOARD = "https://vercel.com/jayhope9907s-projects/psychology-tarot-ai"
 
 SHARE_PATHS = [
     ("앱", "/"),
@@ -97,6 +105,20 @@ def deploy_status(request_base: Optional[str] = None) -> Dict[str, Any]:
                 "command": "powershell -ExecutionPolicy Bypass -File scripts/start-public.ps1",
             },
             "stop_command": "powershell -ExecutionPolicy Bypass -File scripts/stop-public.ps1",
+        },
+        {
+            "id": "vercel",
+            "title_ko": "상시 호스팅 (Vercel)",
+            "kind": "hosted",
+            "permanent": True,
+            "ready": True,
+            "url": VERCEL_LIVE.rstrip("/"),
+            "note_ko": "GitHub main 푸시 시 자동 배포. FastAPI는 Python Fluid Function으로 동작합니다.",
+            "action": {
+                "type": "link",
+                "label_ko": "Vercel 대시보드",
+                "href": VERCEL_DASHBOARD,
+            },
         },
         {
             "id": "render",

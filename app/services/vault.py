@@ -16,9 +16,21 @@ VAULT_VERSION_DUAL = 2
 def _master_fernet() -> Fernet:
     key = os.getenv("FERNET_KEY")
     if not key:
-        key = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8")
-        os.environ["FERNET_KEY"] = key
-    return Fernet(key.encode("utf-8"))
+        if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+            # Prefer an explicit FERNET_KEY; if missing, derive a cold-start-stable key
+            # so sealed payloads do not break across instances (unlike os.urandom).
+            material = (
+                os.getenv("VERCEL_PROJECT_ID")
+                or os.getenv("VERCEL_URL")
+                or "psychology-tarot-ai-vercel"
+            )
+            digest = hashlib.sha256(f"maum-fernet-v1:{material}".encode("utf-8")).digest()
+            key = base64.urlsafe_b64encode(digest).decode("utf-8")
+        else:
+            key = Fernet.generate_key().decode("utf-8")
+            os.environ["FERNET_KEY"] = key
+    key_bytes = key.encode("utf-8") if isinstance(key, str) else key
+    return Fernet(key_bytes)
 
 
 def _vault_master_secret() -> str:

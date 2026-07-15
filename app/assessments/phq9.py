@@ -76,19 +76,29 @@ class PHQ9Instrument(AssessmentInstrument):
         total_score = sum(max(0, min(3, int(value))) for value in valid.values())
         completed = len(valid)
         total_items = len(self.items())
-        severity = "minimal"
-        if completed >= 3:
-            if total_score >= 15:
+        # PHQ-9 bands (0–27): 0–4 minimal, 5–9 mild, 10–14 moderate,
+        # 15–19 moderately severe, 20–27 severe. Project partial sums.
+        if completed <= 0:
+            severity = "insufficient_data"
+        else:
+            projected = (total_score / max(1, completed * 3)) * 27
+            if projected >= 20:
+                severity = "severe"
+            elif projected >= 15:
+                severity = "moderately_severe"
+            elif projected >= 10:
                 severity = "moderate"
-            elif total_score >= 10:
+            elif projected >= 5:
                 severity = "mild"
-            elif total_score >= 5:
-                severity = "minimal_elevated"
+            else:
+                severity = "minimal"
+            if completed < 2:
+                severity = "insufficient_data"
         return {
             "instrument": self.instrument_id,
             "completed_items": completed,
             "total_items": total_items,
             "partial_score": total_score,
             "completion_rate": round(completed / total_items, 2) if total_items else 0.0,
-            "severity_hint": severity if completed >= 2 else "insufficient_data",
+            "severity_hint": severity,
         }

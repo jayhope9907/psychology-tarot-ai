@@ -1,7 +1,7 @@
 """이상심리학 교육용 짧은 탐색 문항 — 진단이 아닌 자기성찰·대화 가이드."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Set
 
 from app.assessments.base import AssessmentInstrument, AssessmentItem, LIKERT_0_3_OPTIONS, ResponseType
 
@@ -16,17 +16,46 @@ SOFT = [
 DISCLAIMER = "교육·자기성찰용 짧은 탐색이며 정신과 진단을 대체하지 않습니다."
 
 
-def _score(instrument_id: str, prefix: str, answers: Dict[str, int], total_items: int) -> Dict[str, Any]:
+def _score(
+    instrument_id: str,
+    prefix: str,
+    answers: Dict[str, int],
+    total_items: int,
+    *,
+    polarity: str = "distress",
+    reverse_ids: Optional[Set[str]] = None,
+) -> Dict[str, Any]:
+    """Score likert screens.
+
+    polarity=\"distress\": higher answers → more severity (default).
+    polarity=\"strength\": higher answers → healthier (hope, gratitude, etc.).
+    reverse_ids: item ids whose Likert values are flipped (3 - v) before summing.
+    """
     valid = {k: v for k, v in answers.items() if k.startswith(prefix)}
-    total = sum(max(0, min(3, int(v))) for v in valid.values())
+    rev = reverse_ids or set()
+    total = 0
+    for key, value in valid.items():
+        vv = max(0, min(3, int(value)))
+        if key in rev:
+            vv = 3 - vv
+        total += vv
     max_score = max(1, total_items * 3)
     ratio = round(total / max_score, 3) if valid else 0.0
-    hint = "low"
-    if len(valid) >= max(1, total_items // 2):
-        if ratio >= 0.55:
-            hint = "elevated"
-        elif ratio >= 0.35:
-            hint = "mild"
+    polarity = (polarity or "distress").lower()
+    if polarity == "strength":
+        hint = "healthy"
+        if len(valid) >= max(1, total_items // 2):
+            if ratio <= 0.35:
+                hint = "low_strength"
+            elif ratio <= 0.55:
+                hint = "partial"
+    else:
+        hint = "low"
+        if len(valid) >= max(1, total_items // 2):
+            if ratio >= 0.55:
+                hint = "elevated"
+            elif ratio >= 0.35:
+                hint = "mild"
     return {
         "instrument": instrument_id,
         "completed_items": len(valid),
@@ -35,6 +64,7 @@ def _score(instrument_id: str, prefix: str, answers: Dict[str, int], total_items
         "signal_ratio": ratio,
         "completion_rate": round(len(valid) / total_items, 2) if total_items else 0.0,
         "severity_hint": hint if valid else "insufficient_data",
+        "polarity": polarity,
         "non_diagnostic": True,
         "disclaimer_ko": DISCLAIMER,
     }

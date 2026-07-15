@@ -23,8 +23,9 @@ except Exception as exc:  # pragma: no cover
             "traceback": _tb_lines,
             "path": full_path,
         }
-        text = f"BOOT_ERROR={_error_type}: {_error}\n" + "\n".join(_tb_lines)
-        if full_path in {"", "health", "boot-error"} or full_path.endswith(".txt"):
+        # Always JSON for /health so monitors can parse; plaintext only for explicit .txt
+        if full_path.endswith(".txt"):
+            text = f"BOOT_ERROR={_error_type}: {_error}\n" + "\n".join(_tb_lines)
             return PlainTextResponse(text, status_code=500)
         return JSONResponse(payload, status_code=500)
 

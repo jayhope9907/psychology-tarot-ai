@@ -1,4 +1,4 @@
-const CACHE = "maum-cache-v24";
+const CACHE = "maum-cache-v25";
 const ASSETS = [
   "/static/manifest.json",
   "/static/icons/icon.svg",
@@ -80,6 +80,28 @@ self.addEventListener("fetch", (event) => {
             return response;
           })
       )
+    );
+    return;
+  }
+
+  // JS/CSS: stale-while-revalidate so deploys ship without waiting for purge
+  if (
+    url.pathname.startsWith("/static/js/")
+    || url.pathname.startsWith("/static/css/")
+    || url.pathname.endsWith(".js")
+    || url.pathname.endsWith(".css")
+  ) {
+    event.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        const network = fetch(event.request)
+          .then((response) => {
+            cache.put(event.request, response.clone()).catch(() => {});
+            return response;
+          })
+          .catch(() => cached);
+        return cached || network;
+      })
     );
     return;
   }

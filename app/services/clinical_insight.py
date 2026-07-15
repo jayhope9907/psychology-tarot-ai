@@ -13,8 +13,10 @@ SEVERITY_RISK = {
     "low": 0.12,
     "healthy": 0.08,
     "secure": 0.1,
+    "minimal_elevated": 0.22,
     "mild": 0.32,
     "moderate": 0.58,
+    "moderately_severe": 0.7,
     "elevated": 0.48,
     "severe": 0.78,
     "screen_positive": 0.72,
@@ -24,7 +26,8 @@ SEVERITY_RISK = {
     "insufficient_data": 0.0,
     "check_in": 0.15,
     "symbolic": 0.1,
-    "partial": 0.15,
+    "partial": 0.18,
+    "low_strength": 0.36,
     "projective_complete": 0.12,
 }
 

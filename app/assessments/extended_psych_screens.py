@@ -37,7 +37,14 @@ def _likert_class(spec: ScreenSpec) -> Type[AssessmentInstrument]:
             ]
 
         def score_partial(self, answers: Dict[str, int]) -> Dict[str, Any]:
-            return _score(iid, prefix, answers, len(item_specs))
+            return _score(
+                iid,
+                prefix,
+                answers,
+                len(item_specs),
+                polarity=str(spec.get("polarity") or "distress"),
+                reverse_ids=set(spec.get("reverse_ids") or ()),
+            )
 
     _Instrument.__name__ = f"{iid.title().replace('_', '')}Instrument"
     return _Instrument
@@ -129,6 +136,7 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("who5_q4", "하루가 차분하고 평온하게 흘러간 느낌이 있었나요?", "평온함의 빈도만요."),
             ("who5_q5", "깨어 있는 시간 동안 기분이 괜찮다고 느낀 때가 있었나요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
     ),
     _spec(
         "swls", "SWLS 삶의 만족", "wellbeing_positive", "긍정 웰빙", "긍정심리",
@@ -142,6 +150,7 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("swls_q2", "삶의 중요한 부분들이 원하는 대로라고 느껴지시나요?", "완벽하지 않아도 괜찮아요."),
             ("swls_q3", "다시 태어나도 비슷한 삶을 살고 싶을 정도로 괜찮다고 느끼시나요?", "부담 되면 ‘보통’을 골라 주세요."),
         ],
+        polarity="strength",
     ),
     _spec(
         "panas_mood", "PANAS 정서", "wellbeing_affect", "정서 변화", "정서심리",
@@ -156,6 +165,8 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("panas_neg1", "불안·걱정·긴장 같은 기분이 자주 있었나요?", "부정 기분 쪽이에요."),
             ("panas_neg2", "짜증·거슬림·기분 나쁨을 자주 느끼셨나요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
+        reverse_ids=("panas_neg1", "panas_neg2"),
     ),
     _spec(
         "tipi", "TIPI 성격(5요인)", "personality_traits", "성격 특성", "성격심리·Big Five",
@@ -363,6 +374,7 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("cdri_q2", "스트레스를 겪어도 결국 극복할 방법을 찾을 수 있다고 믿으시나요?", "믿음 쪽이에요."),
             ("cdri_q3", "힘든 경험이 있어도, 앞으로 나아갈 희망을 느낄 때가 있나요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
     ),
     _spec(
         "ffmq_brief", "FFMQ 마음챙김", "mindfulness_wellness", "마음챙김", "마음챙김·ACT",
@@ -376,6 +388,7 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("ffmq_q2", "힘든 감정이 와도, ‘지금 이런구나’ 하고 잠깐 바라본 적이 있나요?", "수용 쪽이에요."),
             ("ffmq_q3", "생각·감정에 휩쓸리지 않고, 한 걸음 물러서 본 적이 있나요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
     ),
     _spec(
         "self_compassion", "자기자비", "resilience_positive", "회복·긍정", "긍정·자기자비",
@@ -388,6 +401,8 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("scmp_q1", "실수할 때 자신을 너무 harsh하게 비판하는 편인가요?", "누구나 그럴 수 있어요."),
             ("scmp_q2", "힘들 때 스스로에게 위로·이해를 해 주려는 편인가요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
+        reverse_ids=("scmp_q1",),
     ),
     _spec(
         "hope_scale", "희망 척도", "resilience_positive", "회복·긍정", "긍정심리",
@@ -400,6 +415,7 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("hope_q1", "원하는 목표를 이룰 방법이 있다고 느끼시나요?", "작은 목표도 괜찮아요."),
             ("hope_q2", "지금 힘들어도, 앞으로는 나아질 수 있다고 믿는 편인가요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
     ),
     _spec(
         "meaning_life", "삶의 의미", "wellbeing_positive", "긍정 웰빙", "실존·로고테라피",
@@ -412,6 +428,8 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("mean_q1", "지금 내 삶에 의미나 목적이 있다고 느끼시나요?", "크지 않아도 괜찮아요."),
             ("mean_q2", "하루하루가 공허하거나, ‘왜 사는지’ 막막한 때가 있으신가요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
+        reverse_ids=("mean_q2",),
     ),
     _spec(
         "gratitude", "감사·긍정", "wellbeing_positive", "긍정 웰빙", "긍정심리",
@@ -424,6 +442,7 @@ SCREEN_SPECS: List[ScreenSpec] = [
             ("grat_q1", "하루 중 감사하거나 고마운 마음이 드는 순간이 있었나요?", "작은 것도 괜찮아요."),
             ("grat_q2", "주변 사람·환경에서 긍정적인 면을 떠올릴 수 있었나요?", "마지막 문항이에요."),
         ],
+        polarity="strength",
     ),
     _spec(
         "rumination", "반추·걱정 반복", "cognitive_process", "인지·사고", "인지·CBT",

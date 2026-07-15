@@ -22,6 +22,7 @@ def test_deploy_status_api():
     assert len(data["modes"]) >= 3
     assert any(m["id"] == "tunnel" for m in data["modes"])
     assert any(m["id"] == "render" for m in data["modes"])
+    assert any(m["id"] == "vercel" for m in data["modes"])
     assert data["render_deploy"].startswith("https://render.com/deploy")
 
 

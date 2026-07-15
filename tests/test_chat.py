@@ -36,7 +36,8 @@ def test_phq9_progressive_items_and_partial_score():
     assert score["completed_items"] == 2
     assert score["total_items"] == 9
     assert score["completion_rate"] == pytest.approx(2 / 9, abs=0.01)
-    assert score["severity_hint"] == "minimal"
+    # 2 answers totaling 3 → projected ≈ 13.5 → moderate on full PHQ-9 scale
+    assert score["severity_hint"] == "moderate"
 
 
 def test_fatigue_blocks_assessments_after_warmup_and_pending():
