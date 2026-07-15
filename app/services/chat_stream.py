@@ -608,6 +608,25 @@ def build_chat_messages(
     if tone_extra:
         system_prompt += "\n\n" + tone_extra
 
+    try:
+        from app.services.emotional_pattern import (
+            analyze_personal_pattern,
+            personal_pattern_prompt_block,
+        )
+
+        pattern_analysis = analyze_personal_pattern(state.user_id)
+        state.phase_notes["personal_emotional_pattern"] = {
+            "inEmotionalCrisisVsBaseline": pattern_analysis.get("inEmotionalCrisisVsBaseline"),
+            "trend": pattern_analysis.get("trend"),
+            "sampleSize": pattern_analysis.get("sampleSize"),
+            "topDistortions": pattern_analysis.get("topDistortions"),
+        }
+        pattern_block = personal_pattern_prompt_block(pattern_analysis)
+        if pattern_block:
+            system_prompt += "\n\n" + pattern_block
+    except Exception:
+        pass
+
     raw_instant = (state.persona_routing or {}).get("instant_reaction")
     if raw_instant:
         try:
@@ -813,6 +832,9 @@ async def run_chat_turn(
     image_data_url: Optional[str] = None,
     image_search: bool = False,
     multimodal_meta: Optional[Dict[str, Any]] = None,
+    pre_sud: Optional[float] = None,
+    post_sud: Optional[float] = None,
+    intervention_effectiveness: Optional[float] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     from app.services.image_search import (
         extract_search_query,
@@ -827,6 +849,16 @@ async def run_chat_turn(
             for k in ("mood_color", "mood_weather", "voice_cue", "color", "weather")
             if multimodal_meta.get(k)
         }
+
+    if pre_sud is not None or post_sud is not None or intervention_effectiveness is not None:
+        ep = dict(state.phase_notes.get("emotional_pattern") or {})
+        if pre_sud is not None:
+            ep["pre_sud"] = pre_sud
+        if post_sud is not None:
+            ep["post_sud"] = post_sud
+        if intervention_effectiveness is not None:
+            ep["intervention_effectiveness"] = intervention_effectiveness
+        state.phase_notes["emotional_pattern"] = ep
 
     distress_early = detect_distress(user_message) or session_has_distress(state, user_message)
     silence_ms = empathic_silence_ms(user_message, distress=distress_early)
@@ -922,6 +954,20 @@ async def run_chat_turn(
         ],
     }
     agent_prompt_extra = fingerprint_prompt_block(fingerprint, fingerprint_patterns)
+    pattern_analysis = None
+    try:
+        from app.services.emotional_pattern import analyze_personal_pattern
+
+        # Cached for done payload; prompt injection lives in build_chat_messages.
+        pattern_analysis = analyze_personal_pattern(state.user_id)
+        state.phase_notes["personal_emotional_pattern"] = {
+            "inEmotionalCrisisVsBaseline": pattern_analysis.get("inEmotionalCrisisVsBaseline"),
+            "trend": pattern_analysis.get("trend"),
+            "sampleSize": pattern_analysis.get("sampleSize"),
+            "topDistortions": pattern_analysis.get("topDistortions"),
+        }
+    except Exception:
+        pattern_analysis = None
     try:
         from app.services.gentle_reflection import build_dimensional_profile_snippet, gentle_reflection_system_block
 
@@ -1120,6 +1166,33 @@ async def run_chat_turn(
         done_data["image_results"] = image_search_payload
     if safe_image:
         done_data["had_image"] = True
+
+    try:
+        from app.services.emotional_pattern import record_pattern_from_chat_session
+
+        pattern_doc = record_pattern_from_chat_session(
+            state.user_id,
+            state,
+            pre_sud=pre_sud,
+            post_sud=post_sud,
+            intervention_effectiveness=intervention_effectiveness,
+        )
+        done_data["emotional_pattern"] = {
+            "sessionId": pattern_doc.get("sessionId"),
+            "sudScores": pattern_doc.get("sudScores"),
+            "cognitiveMetrics": pattern_doc.get("cognitiveMetrics"),
+            "aiInterventionEffectiveness": pattern_doc.get("aiInterventionEffectiveness"),
+        }
+        if pattern_analysis:
+            done_data["personal_pattern_analysis"] = {
+                "inEmotionalCrisisVsBaseline": pattern_analysis.get("inEmotionalCrisisVsBaseline"),
+                "trend": pattern_analysis.get("trend"),
+                "patternReportKo": pattern_analysis.get("patternReportKo"),
+                "topDistortions": pattern_analysis.get("topDistortions"),
+            }
+    except Exception:
+        pass
+
     yield {"event": "done", "data": done_data}
 
 

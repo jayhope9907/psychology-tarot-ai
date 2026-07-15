@@ -232,6 +232,19 @@ class ChatStreamRequest(BaseModel):
     mood_color: Optional[str] = None
     mood_weather: Optional[str] = None
     voice_cue: Optional[str] = None
+    pre_sud: Optional[float] = None
+    post_sud: Optional[float] = None
+    intervention_effectiveness: Optional[float] = None
+
+
+class EmotionalPatternRecordRequest(BaseModel):
+    user_id: str
+    session_id: str = ""
+    session_date: Optional[str] = None
+    physical_metrics: Optional[Dict[str, Any]] = None
+    cognitive_metrics: Optional[Dict[str, Any]] = None
+    sud_scores: Optional[Dict[str, Any]] = None
+    ai_intervention_effectiveness: Optional[float] = None
 
 
 class ImageSearchRequest(BaseModel):
@@ -300,6 +313,10 @@ class TarotPickRequest(BaseModel):
     card_ids: List[str]
     reversed_flags: Optional[List[bool]] = None
     user_id: str = "anonymous"
+    session_id: Optional[str] = None
+    card_selection_delay_ms: Optional[float] = None
+    gyro_instability: Optional[float] = None
+    physical_metrics: Optional[Dict[str, Any]] = None
 
 
 class CheckinRequest(BaseModel):
@@ -1251,8 +1268,25 @@ async def tarot_pick(request: TarotPickRequest):
     )
     draw_id = record_tarot_draw(request.user_id, result)
     from app.services.maum_organism import sync_after_tarot_draw
+    from app.services.emotional_pattern import record_tarot_physical_metrics
 
     sync_after_tarot_draw(request.user_id, result, draw_id=draw_id or None)
+
+    delay = request.card_selection_delay_ms
+    gyro = request.gyro_instability
+    if request.physical_metrics:
+        delay = delay if delay is not None else request.physical_metrics.get("cardSelectionDelay")
+        gyro = gyro if gyro is not None else request.physical_metrics.get("gyroInstability")
+    if delay is not None or gyro is not None:
+        pattern = record_tarot_physical_metrics(
+            request.user_id,
+            session_id=request.session_id or "",
+            card_selection_delay_ms=delay,
+            gyro_instability=gyro,
+            source_id=f"tarot-draw:{draw_id or 'x'}",
+        )
+        result["emotional_pattern_physical"] = pattern.get("physicalMetrics")
+
     return result
 
 
@@ -1753,6 +1787,39 @@ async def user_agent_simulate(user_id: str, request: AgentSimulateRequest):
         "잠도 잘 안 오고 무기력해요",
     ]
     return simulate_learning_pass(user_id, msgs[:12])
+
+
+@app.get("/api/v1/users/{user_id}/emotional-pattern")
+async def user_emotional_pattern_analysis(user_id: str, window: int = 8):
+    """개인 고유 정서 패턴 시계열 분석 (비진단)."""
+    from app.services.emotional_pattern import analyze_personal_pattern, list_emotional_patterns
+
+    analysis = analyze_personal_pattern(user_id, window=window)
+    return {
+        "user_id": user_id,
+        "analysis": analysis,
+        "recent_sessions": list_emotional_patterns(user_id, limit=min(10, max(5, window))),
+        "non_diagnostic": True,
+    }
+
+
+@app.post("/api/v1/users/{user_id}/emotional-pattern")
+async def record_user_emotional_pattern(user_id: str, request: EmotionalPatternRecordRequest):
+    from app.services.emotional_pattern import build_user_emotional_pattern, save_emotional_pattern
+
+    if request.user_id and request.user_id != user_id:
+        raise HTTPException(status_code=400, detail="user_id mismatch")
+    doc = build_user_emotional_pattern(
+        user_id=user_id,
+        session_id=request.session_id or "",
+        session_date=request.session_date,
+        physical_metrics=request.physical_metrics,
+        cognitive_metrics=request.cognitive_metrics,
+        sud_scores=request.sud_scores,
+        ai_intervention_effectiveness=request.ai_intervention_effectiveness,
+    )
+    saved = save_emotional_pattern(doc)
+    return {"ok": True, "pattern": saved, "non_diagnostic": True}
 
 
 @app.post("/api/v1/case-notes/transcribe")
@@ -2401,6 +2468,9 @@ async def chat_stream(request: ChatStreamRequest):
                     "mood_weather": request.mood_weather,
                     "voice_cue": request.voice_cue,
                 },
+                pre_sud=request.pre_sud,
+                post_sud=request.post_sud,
+                intervention_effectiveness=request.intervention_effectiveness,
             ):
                 if event["event"] == "done":
                     profile_delta = event["data"].get("profile_delta") or {}

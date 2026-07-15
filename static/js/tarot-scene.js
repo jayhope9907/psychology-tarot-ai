@@ -232,6 +232,12 @@
         targetLookX: 0,
         targetLookZ: 0,
       };
+      this._pickMetrics = {
+        startedAt: 0,
+        gyroDeltas: [],
+        lastBeta: null,
+        lastGamma: null,
+      };
 
       this.raycaster = new THREE.Raycaster();
       this.pointer = new THREE.Vector2();
@@ -391,6 +397,17 @@
       if (event.beta == null || event.gamma == null) return;
       const beta = Number(event.beta) || 0;
       const gamma = Number(event.gamma) || 0;
+      if (this.pickMode && this._pickMetrics) {
+        if (this._pickMetrics.lastBeta != null && this._pickMetrics.lastGamma != null) {
+          const d = Math.hypot(beta - this._pickMetrics.lastBeta, gamma - this._pickMetrics.lastGamma);
+          if (Number.isFinite(d) && d > 0) {
+            this._pickMetrics.gyroDeltas.push(Math.min(40, d));
+            if (this._pickMetrics.gyroDeltas.length > 240) this._pickMetrics.gyroDeltas.shift();
+          }
+        }
+        this._pickMetrics.lastBeta = beta;
+        this._pickMetrics.lastGamma = gamma;
+      }
       if (!this._tilt.calibrated) {
         this._tilt.baseBeta = beta;
         this._tilt.baseGamma = gamma;
@@ -904,10 +921,34 @@
       this.selectedMeshes = [];
       this.pickedCardIds = [];
       this.phase = "picking";
+      this._pickMetrics = {
+        startedAt: typeof performance !== "undefined" ? performance.now() : Date.now(),
+        gyroDeltas: [],
+        lastBeta: null,
+        lastGamma: null,
+      };
       this._emitPhase();
       this.meshes.forEach((m) => {
         m.userData.selectable = !m.userData.selected;
       });
+    }
+
+    getPickPhysicalMetrics() {
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const started = (this._pickMetrics && this._pickMetrics.startedAt) || now;
+      const delay = Math.max(0, Math.round(now - started));
+      const samples = (this._pickMetrics && this._pickMetrics.gyroDeltas) || [];
+      let instability = 0;
+      if (samples.length) {
+        const sum = samples.reduce((a, b) => a + b, 0);
+        // Normalize ~0–1-ish: mean angle delta / 12
+        instability = Math.round(Math.min(1, (sum / samples.length) / 12) * 1000) / 1000;
+      }
+      return {
+        cardSelectionDelay: delay,
+        gyroInstability: instability,
+        gyroSampleCount: samples.length,
+      };
     }
 
     _setHover(mesh) {
@@ -1027,7 +1068,8 @@
         if (this.selectedMeshes.length >= this.maxPicks) {
           this.pickMode = false;
           this._setHover(null);
-          if (this.onPickComplete) this.onPickComplete(this.pickedCardIds.slice());
+          const metrics = this.getPickPhysicalMetrics();
+          if (this.onPickComplete) this.onPickComplete(this.pickedCardIds.slice(), metrics);
         }
       });
     }

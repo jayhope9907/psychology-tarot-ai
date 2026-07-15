@@ -160,6 +160,24 @@ def init_db(force: bool = False) -> None:
                 UNIQUE(org_id, user_id),
                 FOREIGN KEY (org_id) REFERENCES organizations(org_id)
             );
+
+            CREATE TABLE IF NOT EXISTS user_emotional_patterns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                session_id TEXT NOT NULL DEFAULT '',
+                session_date TEXT NOT NULL,
+                physical_metrics_json TEXT NOT NULL DEFAULT '{}',
+                cognitive_metrics_json TEXT NOT NULL DEFAULT '{}',
+                sud_scores_json TEXT NOT NULL DEFAULT '{}',
+                ai_intervention_effectiveness REAL,
+                pattern_json TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, session_id),
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_uep_user_date
+                ON user_emotional_patterns(user_id, session_date DESC);
             """
         )
         conn.commit()
@@ -194,6 +212,7 @@ def reset_db() -> None:
             "organization_members",
             "organization_licenses",
             "organizations",
+            "user_emotional_patterns",
             "psych_timeline_events",
             "user_psych_profiles",
             "journal_entries",

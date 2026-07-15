@@ -2100,6 +2100,21 @@
           <button type="button" class="mood-chip" data-mood-weather="sun" aria-pressed="false">맑음</button>
           <button type="button" class="mood-chip" data-mood-weather="storm" aria-pressed="false">폭풍</button>
         </div>
+        <div class="mood-strip" id="sudStrip" aria-label="지금 마음 힘듦 정도 SUD">
+          <span class="mood-strip-label">지금 힘듦</span>
+          <button type="button" class="mood-chip" data-pre-sud="0" aria-pressed="false">0</button>
+          <button type="button" class="mood-chip" data-pre-sud="2" aria-pressed="false">2</button>
+          <button type="button" class="mood-chip" data-pre-sud="4" aria-pressed="false">4</button>
+          <button type="button" class="mood-chip" data-pre-sud="6" aria-pressed="false">6</button>
+          <button type="button" class="mood-chip" data-pre-sud="8" aria-pressed="false">8</button>
+          <button type="button" class="mood-chip" data-pre-sud="10" aria-pressed="false">10</button>
+          <span class="mood-strip-label" style="margin-left:0.35rem">도움됨</span>
+          <button type="button" class="mood-chip" data-intervention-eff="1" aria-pressed="false">1</button>
+          <button type="button" class="mood-chip" data-intervention-eff="2" aria-pressed="false">2</button>
+          <button type="button" class="mood-chip" data-intervention-eff="3" aria-pressed="false">3</button>
+          <button type="button" class="mood-chip" data-intervention-eff="4" aria-pressed="false">4</button>
+          <button type="button" class="mood-chip" data-intervention-eff="5" aria-pressed="false">5</button>
+        </div>
         <form class="composer" id="chatForm">
           <div class="composer-tools">
             <button type="button" class="composer-tool" id="btnAttachPhoto" title="사진 첨부" aria-label="사진 첨부">🖼</button>
@@ -2913,6 +2928,8 @@
 
     let moodColor = localStorage.getItem("psychology_ai_mood_color") || "";
     let moodWeather = localStorage.getItem("psychology_ai_mood_weather") || "";
+    let preSud = localStorage.getItem("psychology_ai_pre_sud") || "";
+    let interventionEff = localStorage.getItem("psychology_ai_intervention_eff") || "";
 
     function syncMoodChips() {
       document.querySelectorAll("[data-mood-color]").forEach((btn) => {
@@ -2920,6 +2937,12 @@
       });
       document.querySelectorAll("[data-mood-weather]").forEach((btn) => {
         btn.setAttribute("aria-pressed", btn.getAttribute("data-mood-weather") === moodWeather ? "true" : "false");
+      });
+      document.querySelectorAll("[data-pre-sud]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", btn.getAttribute("data-pre-sud") === String(preSud) ? "true" : "false");
+      });
+      document.querySelectorAll("[data-intervention-eff]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", btn.getAttribute("data-intervention-eff") === String(interventionEff) ? "true" : "false");
       });
     }
 
@@ -2940,8 +2963,26 @@
         }
         syncMoodChips();
       });
-      syncMoodChips();
     }
+    const sudStrip = document.getElementById("sudStrip");
+    if (sudStrip) {
+      sudStrip.addEventListener("click", (event) => {
+        const btn = event.target.closest(".mood-chip");
+        if (!btn) return;
+        const sud = btn.getAttribute("data-pre-sud");
+        const eff = btn.getAttribute("data-intervention-eff");
+        if (sud != null) {
+          preSud = preSud === sud ? "" : sud;
+          localStorage.setItem("psychology_ai_pre_sud", preSud);
+        }
+        if (eff != null) {
+          interventionEff = interventionEff === eff ? "" : eff;
+          localStorage.setItem("psychology_ai_intervention_eff", interventionEff);
+        }
+        syncMoodChips();
+      });
+    }
+    syncMoodChips();
 
     function hideTyping() {
       if (typingEl) {
@@ -3722,6 +3763,8 @@
         image_search: imageSearch,
         mood_color: moodColor || null,
         mood_weather: moodWeather || null,
+        pre_sud: preSud === "" ? null : Number(preSud),
+        intervention_effectiveness: interventionEff === "" ? null : Number(interventionEff),
       });
     }
 

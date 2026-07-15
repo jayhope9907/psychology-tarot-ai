@@ -18,6 +18,10 @@ DISTORTION_KEYWORDS = {
     "overgeneralization": ("늘", "매번", "역시", "또", "모두"),
     "catastrophizing": ("끝", "망했", "최악", "불행", "큰일"),
     "rumination": ("반복", "계속", "머릿속", "떠올"),
+    "emotional_reasoning": ("느끼니까", "기분상", "감정적으로", "느낌이"),
+    "should_statements": ("해야 해", "해야만", "하면 안", "당연히"),
+    "mind_reading": ("분명 생각", "나를 욕", "무시할 게"),
+    "personalization": ("내 탓", "내 때문", "내가 망"),
 }
 
 PERSONA_CATALOG = {

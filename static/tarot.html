@@ -704,6 +704,7 @@
         </button>`;
       }).join("");
       els.pickDeck.classList.add("visible");
+      flatPickStartedAt = performance.now();
       els.pickDeck.querySelectorAll(".pick-card").forEach((btn) => {
         btn.addEventListener("click", () => togglePickId(btn.dataset.id));
       });
@@ -733,6 +734,9 @@
       if (pickedIds.length === selectedCount) finalizePicks();
     }
 
+    let lastPickPhysical = null;
+    let flatPickStartedAt = 0;
+
     async function finalizePicks() {
       if (pickFinalizing || pickedIds.length !== selectedCount) return;
       pickFinalizing = true;
@@ -741,12 +745,29 @@
       setStatus("선택한 카드를 배치하는 중…");
       try {
         let pickOk = false;
+        if (!lastPickPhysical && flatPickStartedAt) {
+          lastPickPhysical = {
+            cardSelectionDelay: Math.max(0, Math.round(performance.now() - flatPickStartedAt)),
+            gyroInstability: 0,
+          };
+        }
         if (navigator.onLine !== false) {
           try {
+            const pickBody = {
+              spread: selectedSpread,
+              card_ids: pickedIds,
+              user_id: userId,
+              session_id: localStorage.getItem("psychology_ai_session_id") || "",
+            };
+            if (lastPickPhysical) {
+              pickBody.card_selection_delay_ms = lastPickPhysical.cardSelectionDelay;
+              pickBody.gyro_instability = lastPickPhysical.gyroInstability;
+              pickBody.physical_metrics = lastPickPhysical;
+            }
             const pickRes = await fetch("/api/v1/tarot/pick", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ spread: selectedSpread, card_ids: pickedIds, user_id: userId }),
+              body: JSON.stringify(pickBody),
             });
             if (pickRes.ok) {
               currentDraw = await pickRes.json();
@@ -995,8 +1016,9 @@
           scene.buildDeck(activeDeckCatalog());
           await scene.shuffle();
           scene.onPick = (count, max) => setStatus(`${count}/${max}장 뽑음 — 원 안에서 카드를 눌러 주세요`);
-          scene.onPickComplete = (ids) => {
+          scene.onPickComplete = (ids, metrics) => {
             pickedIds = ids.slice();
+            lastPickPhysical = metrics || (scene.getPickPhysicalMetrics ? scene.getPickPhysicalMetrics() : null);
             updatePickUI();
             finalizePicks();
           };
