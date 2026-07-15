@@ -10,9 +10,16 @@
   const TABLE_CENTER_Z = 0;
   const RING_RADII = [5.05, 3.85, 2.65];
   const CAMERA_DEFAULTS = { height: 12.2, fov: 38, zoom: 1, orbit: 0 };
+  const ZOOM_MIN = 0.55;
+  const ZOOM_MAX = 1.85;
   const CAMERA_LOOK = { x: 0, y: TABLE_TOP_Y, z: TABLE_CENTER_Z };
   const STORAGE_KEY = "psychology_ai_tarot_camera";
+  const TILT_STORAGE_KEY = "psychology_ai_tarot_tilt";
   const textureCache = new Map();
+
+  function clampZoom(z) {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(z) || 1));
+  }
 
   function loadCameraPrefs() {
     try {
@@ -20,12 +27,26 @@
       return {
         height: Math.min(18, Math.max(7, Number(raw.height) || CAMERA_DEFAULTS.height)),
         fov: Math.min(60, Math.max(24, Number(raw.fov) || CAMERA_DEFAULTS.fov)),
-        zoom: Math.min(1.45, Math.max(0.7, Number(raw.zoom) || CAMERA_DEFAULTS.zoom)),
+        zoom: clampZoom(raw.zoom ?? CAMERA_DEFAULTS.zoom),
         orbit: Number.isFinite(Number(raw.orbit)) ? Number(raw.orbit) : 0,
       };
     } catch (e) {
       return { ...CAMERA_DEFAULTS };
     }
+  }
+
+  function loadTiltEnabled() {
+    try {
+      return localStorage.getItem(TILT_STORAGE_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function saveTiltEnabled(on) {
+    try {
+      localStorage.setItem(TILT_STORAGE_KEY, on ? "1" : "0");
+    } catch (_) {}
   }
 
   function saveCameraPrefs(prefs) {
@@ -190,8 +211,26 @@
         moved: false,
         pendingPick: null,
         orbitStart: 0,
+        heightStart: 0,
         pinchDist: 0,
         pinchZoom: 1,
+        pinchAngle: 0,
+        pinchOrbit: 0,
+      };
+      this._tilt = {
+        enabled: false,
+        supported: typeof window !== "undefined" && "DeviceOrientationEvent" in window,
+        calibrated: false,
+        baseBeta: 0,
+        baseGamma: 0,
+        orbitOff: 0,
+        heightOff: 0,
+        lookX: 0,
+        lookZ: 0,
+        targetOrbit: 0,
+        targetHeight: 0,
+        targetLookX: 0,
+        targetLookZ: 0,
       };
 
       this.raycaster = new THREE.Raycaster();
@@ -208,6 +247,9 @@
       container.appendChild(this.renderer.domElement);
       this.renderer.domElement.style.touchAction = "none";
       this.renderer.domElement.style.cursor = "grab";
+      this.renderer.domElement.style.userSelect = "none";
+      this.renderer.domElement.style.webkitUserSelect = "none";
+      this.renderer.domElement.style.webkitTouchCallout = "none";
 
       this.scene.add(new THREE.AmbientLight(0xf4f1eb, 0.72));
       const key = new THREE.DirectionalLight(0xffffff, 0.85);
@@ -231,6 +273,7 @@
       this._onPointerMove = (e) => this._gesturePointerMove(e);
       this._onPointerUp = (e) => this._gesturePointerUp(e);
       this._onWheel = (e) => this._gestureWheel(e);
+      this._onDeviceOrientation = (e) => this._handleDeviceOrientation(e);
       window.addEventListener("resize", this._onResize);
       const el = this.renderer.domElement;
       this._onPointerLeave = (e) => {
@@ -245,17 +288,20 @@
       el.addEventListener("wheel", this._onWheel, { passive: false });
       this._animate = this._animate.bind(this);
       requestAnimationFrame(this._animate);
+      if (loadTiltEnabled() && this._tilt.supported) {
+        this.setTiltEnabled(true).catch(() => {});
+      }
     }
 
     getCameraPrefs() {
-      return { ...this.cameraPrefs };
+      return { ...this.cameraPrefs, tiltEnabled: !!this._tilt.enabled, tiltSupported: !!this._tilt.supported };
     }
 
     setCameraPrefs(partial = {}) {
       this.cameraPrefs = {
         height: Math.min(18, Math.max(7, Number(partial.height ?? this.cameraPrefs.height))),
         fov: Math.min(60, Math.max(24, Number(partial.fov ?? this.cameraPrefs.fov))),
-        zoom: Math.min(1.45, Math.max(0.7, Number(partial.zoom ?? this.cameraPrefs.zoom))),
+        zoom: clampZoom(partial.zoom ?? this.cameraPrefs.zoom),
         orbit: Number(partial.orbit ?? this.cameraPrefs.orbit) || 0,
       };
       saveCameraPrefs(this.cameraPrefs);
@@ -265,16 +311,102 @@
     }
 
     resetCameraPrefs() {
+      this._tilt.orbitOff = 0;
+      this._tilt.heightOff = 0;
+      this._tilt.lookX = 0;
+      this._tilt.lookZ = 0;
+      this._tilt.targetOrbit = 0;
+      this._tilt.targetHeight = 0;
+      this._tilt.targetLookX = 0;
+      this._tilt.targetLookZ = 0;
+      this._tilt.calibrated = false;
       return this.setCameraPrefs({ ...CAMERA_DEFAULTS });
     }
 
     nudgeZoom(factor) {
-      const next = Math.min(1.45, Math.max(0.7, this.cameraPrefs.zoom * factor));
-      return this.setCameraPrefs({ zoom: next });
+      return this.setCameraPrefs({ zoom: clampZoom(this.cameraPrefs.zoom * factor) });
     }
 
     nudgeOrbit(deltaRad) {
       return this.setCameraPrefs({ orbit: (this.cameraPrefs.orbit || 0) + deltaRad });
+    }
+
+    isTiltSupported() {
+      return !!this._tilt.supported;
+    }
+
+    isTiltEnabled() {
+      return !!this._tilt.enabled;
+    }
+
+    async setTiltEnabled(on) {
+      const want = !!on;
+      if (!this._tilt.supported) {
+        this._tilt.enabled = false;
+        saveTiltEnabled(false);
+        if (this.onCameraChange) this.onCameraChange(this.getCameraPrefs());
+        return { enabled: false, supported: false, reason: "unsupported" };
+      }
+      if (!want) {
+        window.removeEventListener("deviceorientation", this._onDeviceOrientation);
+        this._tilt.enabled = false;
+        this._tilt.calibrated = false;
+        this._tilt.orbitOff = 0;
+        this._tilt.heightOff = 0;
+        this._tilt.lookX = 0;
+        this._tilt.lookZ = 0;
+        this._tilt.targetOrbit = 0;
+        this._tilt.targetHeight = 0;
+        this._tilt.targetLookX = 0;
+        this._tilt.targetLookZ = 0;
+        saveTiltEnabled(false);
+        this._updateCamera();
+        if (this.onCameraChange) this.onCameraChange(this.getCameraPrefs());
+        return { enabled: false, supported: true };
+      }
+      if (typeof DeviceOrientationEvent !== "undefined"
+          && typeof DeviceOrientationEvent.requestPermission === "function") {
+        try {
+          const perm = await DeviceOrientationEvent.requestPermission();
+          if (perm !== "granted") {
+            saveTiltEnabled(false);
+            return { enabled: false, supported: true, reason: "denied" };
+          }
+        } catch (_) {
+          saveTiltEnabled(false);
+          return { enabled: false, supported: true, reason: "denied" };
+        }
+      }
+      window.removeEventListener("deviceorientation", this._onDeviceOrientation);
+      window.addEventListener("deviceorientation", this._onDeviceOrientation, true);
+      this._tilt.enabled = true;
+      this._tilt.calibrated = false;
+      saveTiltEnabled(true);
+      if (this.onCameraChange) this.onCameraChange(this.getCameraPrefs());
+      return { enabled: true, supported: true };
+    }
+
+    _handleDeviceOrientation(event) {
+      if (!this._tilt.enabled) return;
+      if (event.beta == null || event.gamma == null) return;
+      const beta = Number(event.beta) || 0;
+      const gamma = Number(event.gamma) || 0;
+      if (!this._tilt.calibrated) {
+        this._tilt.baseBeta = beta;
+        this._tilt.baseGamma = gamma;
+        this._tilt.calibrated = true;
+      }
+      const dBeta = Math.max(-35, Math.min(35, beta - this._tilt.baseBeta));
+      const dGamma = Math.max(-35, Math.min(35, gamma - this._tilt.baseGamma));
+      // tilt phone left/right → orbit, forward/back → height + look shift
+      this._tilt.targetOrbit = (-dGamma / 35) * 0.55;
+      this._tilt.targetHeight = (dBeta / 35) * 1.8;
+      this._tilt.targetLookX = (dGamma / 35) * 0.55;
+      this._tilt.targetLookZ = (-dBeta / 35) * 0.35;
+    }
+
+    _pointerAngle(a, b) {
+      return Math.atan2(b.y - a.y, b.x - a.x);
     }
 
     _eventToNDC(event) {
@@ -316,6 +448,8 @@
         this._gesture.pendingPick = null;
         this._gesture.pinchDist = this._pointerDistance(pts[0], pts[1]);
         this._gesture.pinchZoom = this.cameraPrefs.zoom;
+        this._gesture.pinchAngle = this._pointerAngle(pts[0], pts[1]);
+        this._gesture.pinchOrbit = this.cameraPrefs.orbit || 0;
         this.renderer.domElement.style.cursor = "grabbing";
         return;
       }
@@ -325,6 +459,7 @@
       this._gesture.startX = event.clientX;
       this._gesture.startY = event.clientY;
       this._gesture.orbitStart = this.cameraPrefs.orbit || 0;
+      this._gesture.heightStart = this.cameraPrefs.height || CAMERA_DEFAULTS.height;
 
       if (this.pickMode) {
         const mesh = this._hitMeshes((m) => m.userData.selectable && !m.userData.selected);
@@ -344,9 +479,14 @@
       if (this._pointers.size >= 2 && this._gesture.mode === "pinch") {
         const pts = [...this._pointers.values()];
         const dist = this._pointerDistance(pts[0], pts[1]);
+        const angle = this._pointerAngle(pts[0], pts[1]);
         if (this._gesture.pinchDist > 0) {
           const ratio = dist / this._gesture.pinchDist;
-          this.setCameraPrefs({ zoom: Math.min(1.45, Math.max(0.7, this._gesture.pinchZoom * ratio)) });
+          const twist = angle - this._gesture.pinchAngle;
+          this.setCameraPrefs({
+            zoom: clampZoom(this._gesture.pinchZoom * ratio),
+            orbit: this._gesture.pinchOrbit - twist,
+          });
         }
         this._setHover(null);
         return;
@@ -374,7 +514,7 @@
       if (this._gesture.mode === "orbit") {
         // horizontal drag rotates table view; vertical nudges height slightly
         const orbit = this._gesture.orbitStart - (dx / 180) * Math.PI;
-        const height = Math.min(18, Math.max(7, this.cameraPrefs.height + dy * -0.01));
+        const height = Math.min(18, Math.max(7, this._gesture.heightStart + dy * -0.012));
         this.setCameraPrefs({ orbit, height });
         this._setHover(null);
         return;
@@ -488,16 +628,21 @@
 
     _updateCamera() {
       const prefs = this.cameraPrefs;
+      const tilt = this._tilt;
       this.camera.fov = prefs.fov;
-      const orbit = prefs.orbit || 0;
-      const height = prefs.height / prefs.zoom;
+      const orbit = (prefs.orbit || 0) + (tilt.orbitOff || 0);
+      const height = Math.min(18, Math.max(6.5, (prefs.height + (tilt.heightOff || 0)) / prefs.zoom));
       const bias = 0.35 / prefs.zoom;
       this.camera.position.set(
         Math.sin(orbit) * bias,
         height,
         Math.cos(orbit) * bias + TABLE_CENTER_Z
       );
-      this.camera.lookAt(CAMERA_LOOK.x, CAMERA_LOOK.y, CAMERA_LOOK.z);
+      this.camera.lookAt(
+        CAMERA_LOOK.x + (tilt.lookX || 0),
+        CAMERA_LOOK.y,
+        CAMERA_LOOK.z + (tilt.lookZ || 0)
+      );
       this.camera.up.set(0, 0, -1);
       this.camera.updateProjectionMatrix();
     }
@@ -1019,6 +1164,16 @@
       const now = performance.now();
       if (this.particles) this.particles.rotation.y += 0.00035;
 
+      if (this._tilt.enabled) {
+        const t = this._tilt;
+        const ease = 0.12;
+        t.orbitOff += (t.targetOrbit - t.orbitOff) * ease;
+        t.heightOff += (t.targetHeight - t.heightOff) * ease;
+        t.lookX += (t.targetLookX - t.lookX) * ease;
+        t.lookZ += (t.targetLookZ - t.lookZ) * ease;
+        this._updateCamera();
+      }
+
       if (this.phase === "picking" && this.pickMode) {
         this.meshes.forEach((mesh) => {
           if (!mesh.userData.selected && !mesh.userData.drawPose) {
@@ -1033,6 +1188,7 @@
 
     dispose() {
       window.removeEventListener("resize", this._onResize);
+      window.removeEventListener("deviceorientation", this._onDeviceOrientation);
       const el = this.renderer.domElement;
       el.removeEventListener("pointerdown", this._onPointerDown);
       el.removeEventListener("pointermove", this._onPointerMove);

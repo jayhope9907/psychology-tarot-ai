@@ -284,6 +284,26 @@
       margin: 6px 0 0; font-size: 0.72rem; color: var(--text-soft);
       line-height: 1.45;
     }
+    .touch-camera-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin: 10px 0 4px;
+    }
+    .touch-camera-bar .zoom-btns { display: flex; gap: 6px; }
+    .touch-camera-bar button {
+      min-width: 44px; min-height: 40px; border-radius: 12px;
+      border: 1px solid var(--line, rgba(196,165,116,0.35));
+      background: rgba(255,252,247,0.06); color: inherit;
+      font: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      padding: 8px 12px; touch-action: manipulation;
+    }
+    .touch-camera-bar button:active { background: rgba(196,165,116,0.22); }
+    .tilt-toggle {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.78rem; color: var(--text-soft); cursor: pointer;
+      user-select: none; min-height: 40px;
+    }
+    .tilt-toggle input { width: 18px; height: 18px; accent-color: #c4a574; }
+    .tilt-status { font-size: 0.7rem; color: var(--text-soft); opacity: 0.85; }
     .archetype-hint {
       position: absolute; left: 12px; right: 12px; bottom: 52px;
       z-index: 3; pointer-events: none;
@@ -357,8 +377,19 @@
             <button type="button" data-deck="major" class="active">메이저만 · 22장</button>
             <button type="button" data-deck="full">전체 78장</button>
           </div>
-          <p class="gesture-hint">핀치·휠로 줌, 빈 곳을 드래그해 회전할 수 있어요. 카드에 올리면 아키타입 힌트가 보여요.</p>
-          <div class="camera-panel" id="cameraPanel" hidden>
+          <p class="gesture-hint">터치: 핀치 확대/축소 · 두 손가락 비틀기 회전 · 한 손가락 드래그로 돌리기. 지원 기기에서는 기울기로도 시점을 조절할 수 있어요.</p>
+          <div class="touch-camera-bar" id="touchCameraBar">
+            <div class="zoom-btns">
+              <button type="button" id="btnZoomOut" aria-label="축소">−</button>
+              <button type="button" id="btnZoomIn" aria-label="확대">+</button>
+            </div>
+            <label class="tilt-toggle" id="tiltToggleWrap" hidden>
+              <input type="checkbox" id="tiltToggle" />
+              <span>기기 기울기</span>
+            </label>
+            <span class="tilt-status" id="tiltStatus"></span>
+          </div>
+          <div class="camera-panel" id="cameraPanel">
             <details>
               <summary>보기 설정 (카메라)</summary>
               <div class="camera-grid">
@@ -372,7 +403,7 @@
                 </div>
                 <div class="camera-row">
                   <label>줌 <span id="camZoomVal">1.00</span></label>
-                  <input type="range" id="camZoom" min="0.7" max="1.45" step="0.01" value="1" />
+                  <input type="range" id="camZoom" min="0.55" max="1.85" step="0.01" value="1" />
                 </div>
                 <div class="camera-row">
                   <label>테이블 회전 <span id="camOrbitVal">0°</span></label>
@@ -453,7 +484,7 @@
   <script src="/static/js/tarot-image-settings.js"></script>
   <script src="/static/js/tarot-offline.js"></script>
   <script src="/static/js/vendor/three.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js'"></script>
-  <script src="/static/js/tarot-scene.js"></script>
+  <script src="/static/js/tarot-scene.js?v=24"></script>
   <script>
     const PHASE_LABELS = {
       idle: "준비",
@@ -770,11 +801,22 @@
       height.value = p.height ?? 12.2;
       fov.value = p.fov ?? 38;
       zoom.value = p.zoom ?? 1;
-      orbit.value = Math.round(((p.orbit || 0) * 180) / Math.PI) % 360;
+      orbit.value = Math.round((((p.orbit || 0) * 180) / Math.PI) % 360 + 360) % 360;
       document.getElementById("camHeightVal").textContent = Number(height.value).toFixed(1);
       document.getElementById("camFovVal").textContent = String(Math.round(Number(fov.value)));
       document.getElementById("camZoomVal").textContent = Number(zoom.value).toFixed(2);
       document.getElementById("camOrbitVal").textContent = `${orbit.value}°`;
+      const tiltToggle = document.getElementById("tiltToggle");
+      const tiltWrap = document.getElementById("tiltToggleWrap");
+      const tiltStatus = document.getElementById("tiltStatus");
+      if (tiltWrap && scene?.isTiltSupported?.()) {
+        tiltWrap.hidden = false;
+        if (tiltToggle) tiltToggle.checked = !!p.tiltEnabled;
+        if (tiltStatus) tiltStatus.textContent = p.tiltEnabled ? "기울기 ON · 기기를 살짝 기울여 보세요" : "";
+      } else if (tiltWrap) {
+        tiltWrap.hidden = true;
+        if (tiltStatus) tiltStatus.textContent = "";
+      }
     }
 
     function applyCameraFromUI() {
@@ -800,6 +842,27 @@
     document.getElementById("btnCamReset")?.addEventListener("click", () => {
       if (scene?.resetCameraPrefs) syncCameraUI(scene.resetCameraPrefs());
       else syncCameraUI(window.TarotCameraDefaults);
+    });
+    document.getElementById("btnZoomIn")?.addEventListener("click", () => {
+      if (scene?.nudgeZoom) syncCameraUI(scene.nudgeZoom(1.12));
+    });
+    document.getElementById("btnZoomOut")?.addEventListener("click", () => {
+      if (scene?.nudgeZoom) syncCameraUI(scene.nudgeZoom(1 / 1.12));
+    });
+    document.getElementById("tiltToggle")?.addEventListener("change", async (e) => {
+      if (!scene?.setTiltEnabled) return;
+      const want = !!e.target.checked;
+      const res = await scene.setTiltEnabled(want);
+      if (!res.enabled && want) {
+        e.target.checked = false;
+        const tiltStatus = document.getElementById("tiltStatus");
+        if (tiltStatus) {
+          tiltStatus.textContent = res.reason === "denied"
+            ? "기울기 권한이 필요해요 (설정에서 모션 허용)"
+            : "이 기기에서는 기울기를 쓸 수 없어요";
+        }
+      }
+      syncCameraUI(scene.getCameraPrefs());
     });
 
     async function loadDeck() {
@@ -850,7 +913,7 @@
         const offlineNote = navigator.onLine === false ? " (오프라인)" : "";
         setStatus(
           (deckMode === "major" ? `메이저 ${n}장` : `전체 ${n}장`) +
-            ` 준비. 핀치·드래그로 보고, 직감으로 3장을 골라 주세요.${offlineNote}`
+            ` 준비. 핀치·기울기·+/-로 보고, 직감으로 3장을 골라 주세요.${offlineNote}`
         );
       } catch (err) {
         setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
