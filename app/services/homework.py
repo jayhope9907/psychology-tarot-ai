@@ -7,6 +7,7 @@ from uuid import uuid4
 from app.services.chat_session import ChatSessionState
 from app.services.counseling_phase import PHASE_INTERVENTION, PHASE_TERMINATION
 
+
 HOMEWORK_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "emotion_journal": {
         "type": "emotion_journal",
@@ -124,29 +125,34 @@ HOMEWORK_TEMPLATES: Dict[str, Dict[str, Any]] = {
             },
         ],
     },
+    # Stress management is delivered through the existing grounding homework.
     "grounding_log": {
         "type": "grounding_log",
-        "title_ko": "지금 여기 돌아오기",
-        "subtitle_ko": "불안할 때 몸과 감각에 집중하기",
-        "instruction_ko": "숨을 고르고, 지금 느껴지는 것을 짧게 적어 보세요.",
-        "duration_min": 4,
+        "title_ko": "스트레스 3분 리셋",
+        "subtitle_ko": "호흡·감각으로 지금 순간 정리",
+        "instruction_ko": (
+            "3분 동안 ‘정리’에 집중해요. 호흡 3번으로 몸을 한 번 느슨하게 하고, "
+            "감각 5초로 지금 여기로 돌아온 뒤, 마지막에 1~2분 안에 할 수 있는 "
+            "가장 작은 행동 1가지만 정해봐요."
+        ),
+        "duration_min": 3,
         "fields": [
             {
                 "id": "body_sensation",
-                "label": "몸에서 느껴지는 것",
-                "placeholder": "예: 어깨가 뻐근함, 가슴이 답답함",
+                "label": "호흡 3번 후 몸에서 느껴지는 변화",
+                "placeholder": "예: 어깨가 조금 풀린 느낌, 숨이 조금 깊어짐 등",
                 "input": "text",
             },
             {
                 "id": "five_senses",
-                "label": "지금 보이거나 들리는 것 3가지",
-                "placeholder": "예: 창밖 빛, 키보드 소리, 따뜻한 컵",
+                "label": "감각 5초(보이는 것/들리는 것/몸감각 중 1가지)",
+                "placeholder": "예: 창밖 빛, 키보드 소리, 가슴의 답답함 위치 등",
                 "input": "textarea",
             },
             {
                 "id": "after_grounding",
-                "label": "적고 나서 달라진 느낌",
-                "placeholder": "조금이라도 괜찮아진 점",
+                "label": "적고 나서 달라진 느낌(0~10)",
+                "placeholder": "예: 0~10 중 지금 더 괜찮아진 정도",
                 "input": "text",
             },
         ],
@@ -207,7 +213,14 @@ def select_homework_types(state: ChatSessionState) -> List[str]:
         selected.extend(["thought_record", "emotion_journal"])
     elif school == "FREUDIAN":
         selected.extend(["day_review", "emotion_journal"])
-    elif school in ("GESTALT", "PSYCHODRAMA", "DRAMA_THERAPY", "ART_THERAPY", "PLAY_THERAPY", "SANDPLAY"):
+    elif school in (
+        "GESTALT",
+        "PSYCHODRAMA",
+        "DRAMA_THERAPY",
+        "ART_THERAPY",
+        "PLAY_THERAPY",
+        "SANDPLAY",
+    ):
         selected.extend(["emotion_journal", "grounding_log"])
     else:
         selected.extend(["emotion_journal", "day_review"])
@@ -228,7 +241,9 @@ def select_homework_types(state: ChatSessionState) -> List[str]:
         if intensity == "light":
             return deduped[:1]
         if intensity == "gentle":
-            return [k for k in deduped if k in ("emotion_journal", "grounding_log", "tarot_reflection")][:1] or deduped[:1]
+            return [k for k in deduped if k in ("emotion_journal", "grounding_log", "tarot_reflection")][
+                :1
+            ] or deduped[:1]
     except Exception:
         pass
     return deduped[:2]
@@ -264,9 +279,7 @@ def _personalize_homework(template_key: str, state: ChatSessionState) -> Dict[st
             )
 
     if _has_workplace_context(state) and template_key == "emotion_journal":
-        assignment["fields"] = [
-            dict(field) for field in template["fields"]
-        ]
+        assignment["fields"] = [dict(field) for field in template["fields"]]
         assignment["fields"][0]["placeholder"] = (
             "예: 회의·업무·동료와 있었던 일 중 가장 마음에 남는 순간"
         )
@@ -378,7 +391,11 @@ def record_homework_submission(
 def _summarize_submission(responses: Dict[str, Any], skipped: bool) -> str:
     if skipped:
         return "과제는 나중으로 미뤘어요."
-    emotion = responses.get("current_emotion") or responses.get("feeling_now") or responses.get("feeling_then")
+    emotion = (
+        responses.get("current_emotion")
+        or responses.get("feeling_now")
+        or responses.get("feeling_then")
+    )
     event = responses.get("today_event") or responses.get("highlight") or responses.get("situation")
     parts = []
     if emotion:
@@ -407,3 +424,4 @@ def build_homework_chat_context(state: ChatSessionState) -> str:
         "- 과제 내용을 짧게 반영하고, 감정을 먼저 수용한 뒤 한 가지 더 깊이 탐색하세요.\n"
         "- 과제를 평가·채점하지 말고, 스스로 돌본 노력을 인정해 주세요."
     )
+
