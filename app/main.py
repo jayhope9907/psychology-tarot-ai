@@ -672,13 +672,16 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
     }
 
 
-def _compose_tarot_reading(user_story: str, draw_result: Dict[str, Any]) -> str:
-    """Light projection-style tarot reading (not deep Jungian / clinical)."""
+def _compose_tarot_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[str, Any]:
+    """Light projection-style tarot reading + psychodynamic metrics sidecar."""
+    from app.services.freud_jung_tracker import ensure_psychodynamic_metrics
+
     local = build_local_reading(user_story, draw_result)
     fallback = local["summary"]
     cards_block = format_draw_for_prompt(draw_result)
     system_prompt = build_tarot_reading_system_prompt()
     user_prompt = build_tarot_reading_user_prompt(user_story, cards_block)
+    raw = fallback
     if client and getattr(client, "api_key", None):
         try:
             response = client.chat.completions.create(
@@ -688,13 +691,13 @@ def _compose_tarot_reading(user_story: str, draw_result: Dict[str, Any]) -> str:
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.65,
-                max_tokens=420,
+                max_tokens=520,
             )
-            return response.choices[0].message.content or fallback
+            raw = response.choices[0].message.content or fallback
         except Exception:
-            return fallback
-    return fallback
-
+            raw = fallback
+    display, metrics = ensure_psychodynamic_metrics(raw, user_text=user_story)
+    return {"ai_analysis": display, "psychodynamic_metrics": metrics}
 
 def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, output: Dict[str, Any], preferred_school: Optional[ClinicalSchool] = None) -> None:
     existing_record = PSYCHOLOGY_DATABASE.get(user_id)
@@ -1665,10 +1668,13 @@ async def tarot_reading(request: TarotReadingRequest):
     primary_card = local.get("primary_card") or "The Fool"
 
     try:
-        ai_analysis = _compose_tarot_reading(request.user_story, draw_result)
+        composed = _compose_tarot_reading(request.user_story, draw_result)
+        ai_analysis = composed["ai_analysis"]
+        psychodynamic_metrics = composed["psychodynamic_metrics"]
         reading = {
             **local,
             "ai_analysis": ai_analysis,
+            "psychodynamic_metrics": psychodynamic_metrics,
             "recommended_actions": local.get("cbt_actions") or [],
         }
         _store_record(
@@ -1676,14 +1682,36 @@ async def tarot_reading(request: TarotReadingRequest):
             request.user_story,
             primary_card,
             request.plan,
-            {"summary": ai_analysis, "reading_tone": "light_projection"},
+            {
+                "summary": ai_analysis,
+                "reading_tone": "light_projection",
+                "psychodynamic_metrics": psychodynamic_metrics,
+            },
             request.preferred_school,
         )
         _invalidate_user_caches(request.user_id)
+        try:
+            from app.services.psych_timeline import record_event
+
+            record_event(
+                request.user_id,
+                "psychodynamic_metrics_tick",
+                {
+                    **psychodynamic_metrics,
+                    "source": "tarot_reading",
+                    "non_diagnostic": True,
+                },
+                source_id=f"tarot-pd:{request.session_id or 'anon'}:{primary_card}",
+            )
+        except Exception:
+            pass
     except Exception:
+        from app.services.freud_jung_tracker import estimate_psychodynamic_metrics
+
         reading = {
             **local,
             "ai_analysis": local["summary"],
+            "psychodynamic_metrics": estimate_psychodynamic_metrics(request.user_story),
             "recommended_actions": local["cbt_actions"],
         }
 
@@ -1691,6 +1719,7 @@ async def tarot_reading(request: TarotReadingRequest):
         "plan": request.plan.upper(),
         "draw": draw_result,
         "reading": reading,
+        "psychodynamic_metrics": reading.get("psychodynamic_metrics"),
         "stored": True,
         "handoff": _maybe_bridge_tarot(request, draw_result, reading),
     }

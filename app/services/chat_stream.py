@@ -1222,12 +1222,20 @@ async def run_chat_turn(
         decision,
         assessment_response,
     )
+    from app.services.freud_jung_tracker import ensure_psychodynamic_metrics
+
+    assistant_text, psychodynamic_metrics = ensure_psychodynamic_metrics(
+        assistant_text,
+        user_text=user_message,
+    )
+    state.phase_notes["psychodynamic_metrics"] = psychodynamic_metrics
     state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
 
     profile_delta = build_profile_delta(state)
     profile_delta["persona_routing"] = state.persona_routing
     profile_delta["quant_features"] = state.quant_features
+    profile_delta["psychodynamic_metrics"] = psychodynamic_metrics
     done_data: Dict[str, Any] = {
         "session_id": state.session_id,
         "assistant_message": assistant_text,
@@ -1245,6 +1253,7 @@ async def run_chat_turn(
         "consultationMode": getattr(state, "consultation_mode", None) or "psychology",
         "licenseType": getattr(state, "license_type", None) or "B2C_personal",
         "organizationId": getattr(state, "organization_id", None) or state.org_id,
+        "psychodynamic_metrics": psychodynamic_metrics,
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload

@@ -72,8 +72,15 @@ def build_chat_system_prompt(counselor_name: str = COUNSELOR_NAME) -> str:
         "- 위기 시 1393·119·129·1577-0199\n\n"
         "## 단계 감각\n"
         "관계 → 탐색 → 이해 정리 → 작은 변화 → 마무리. "
-        "초반에 검사·해석·솔루션을 밀지 마세요."
+        "초반에 검사·해석·솔루션을 밀지 마세요.\n\n"
+        + _psychodynamic_rule_lazy()
     )
+
+
+def _psychodynamic_rule_lazy() -> str:
+    from app.services.freud_jung_tracker import build_psychodynamic_output_directive
+
+    return build_psychodynamic_output_directive()
 
 
 def build_user_prompt(user_story: str, drawn_card: str) -> str:
@@ -86,6 +93,7 @@ def build_user_prompt(user_story: str, drawn_card: str) -> str:
 
 
 def build_tarot_reading_system_prompt() -> str:
+    from app.services.freud_jung_tracker import build_psychodynamic_output_directive
     from app.services.tarot_rules import narrative_rules_block
 
     return (
@@ -94,7 +102,8 @@ def build_tarot_reading_system_prompt() -> str:
         "카드 앞에서 사람과 나란히 앉은 상담사의 목소리로요.\n"
         "카드는 사용자가 투영하는 **은유적 거울**입니다. "
         "길흉·점술이 아니라 **원형(상징)에 대한 투사**로 다루되, "
-        "그림자·무의식을 학술 강의처럼 깊게 파고들지는 마세요.\n\n"
+        "프로이트(이드·에고·슈퍼에고)·융(그림자·페르소나·원형) 관점을 "
+        "**은유적으로만** 반영하세요. 학술 강의·진단명 금지.\n\n"
         f"{narrative_rules_block()}\n\n"
         "## 수트·원소·아르카나\n"
         "- 메이저: 큰 테마 / 마이너: 일상의 결\n"
@@ -105,10 +114,11 @@ def build_tarot_reading_system_prompt() -> str:
         "## 톤·깊이 (필수)\n"
         "- ‘혹시 ~한 마음이 스쳤을 수도’ · ‘지금을 **살짝** 비춰 보면’ 수준\n"
         "- 운명·점·확정적 미래 단정 금지\n"
-        "- 그림자 통합·무의식 심층·진단명 금지 또는 한 줄 이하\n\n"
+        "- 병명·의료 진단 금지. 그림자는 한 호흡만.\n\n"
         "## 형식\n"
         "- 5~8문장, 사람 말. 번호·불릿·보고서 헤더 금지\n"
-        "- 공감 → 과거/현재/미래 한 숨씩 → 부담 없는 질문 1개"
+        "- 공감 → 과거/현재/미래 한 숨씩 → 부담 없는 질문 1개\n\n"
+        + build_psychodynamic_output_directive()
     )
 
 
@@ -118,5 +128,6 @@ def build_tarot_reading_user_prompt(user_story: str, cards_block: str) -> str:
         f"질문·상황: {story}\n\n"
         f"뽑힌 카드 (3카드 규칙):\n{cards_block}\n\n"
         "위 카드를 **과거 → 현재 → 미래**로, **가벼운 거울**로만 이야기해 주세요. "
-        "확정적 예언·깊은 무의식 분석·챗봇식 요약 목록은 피해 주세요."
+        "확정적 예언·챗봇식 요약 목록은 피해 주세요. "
+        "마지막 줄에는 OUTPUT FORMAT RULE의 JSON만 정확히 한 줄로 붙이세요."
     )
