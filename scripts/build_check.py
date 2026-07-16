@@ -41,6 +41,8 @@ def main() -> int:
             "users",
             "session_snapshots",
             "sanitized_input_history",
+            "stress_management_history",
+            "clinical_adaptive_history",
             "user_emotional_patterns",
             "psych_timeline_events",
         }
@@ -49,7 +51,7 @@ def main() -> int:
             print("FAIL missing tables:", missing)
             return 1
         user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
-        for col in ("last_sanitized_json", "consultation_mode"):
+        for col in ("last_sanitized_json", "consultation_mode", "last_stress_json", "last_clinical_adaptive_json"):
             if col not in user_cols:
                 print("FAIL users missing", col)
                 return 1
@@ -74,6 +76,9 @@ def main() -> int:
     importlib.import_module("app.services.sanitized_input_store")
     importlib.import_module("app.services.input_sanitizer")
     importlib.import_module("app.services.clinical_adaptor")
+    importlib.import_module("app.services.stress_management")
+    importlib.import_module("app.services.stress_management_store")
+    importlib.import_module("app.services.clinical_adaptive_store")
     main_mod = importlib.import_module("app.main")
     assert getattr(main_mod, "app", None) is not None
     routes = {getattr(r, "path", None) for r in main_mod.app.routes}
@@ -81,6 +86,12 @@ def main() -> int:
         "/api/v1/users/{user_id}/sanitized-input",
         "/api/v1/users/{user_id}/sanitized-input/history",
         "/api/v1/orgs/{org_id}/sanitized-input/history",
+        "/api/v1/users/{user_id}/stress-management",
+        "/api/v1/users/{user_id}/stress-management/history",
+        "/api/v1/orgs/{org_id}/stress-management/history",
+        "/api/v1/users/{user_id}/clinical-adaptive",
+        "/api/v1/users/{user_id}/clinical-adaptive/history",
+        "/api/v1/orgs/{org_id}/clinical-adaptive/history",
     ):
         if path not in routes:
             print("FAIL missing route", path)
@@ -105,6 +116,29 @@ def main() -> int:
         print("FAIL tracking", summary)
         return 1
     print("OK sanitized persist + tracking")
+
+    from app.services.stress_management_store import persist_stress_management_tick, session_stress_summary
+    from app.services.clinical_adaptive_store import persist_clinical_adaptive_tick
+
+    persist_stress_management_tick(
+        user_id="build-check-user",
+        session_id="build-check-sess",
+        user_message="스트레스 받아요",
+        turn_index=2,
+    )
+    sm_summary = session_stress_summary("build-check-sess")
+    if sm_summary.get("tickCount") != 1:
+        print("FAIL stress tracking", sm_summary)
+        return 1
+
+    persist_clinical_adaptive_tick(
+        user_id="build-check-user",
+        session_id="build-check-sess",
+        turn_index=2,
+        resistance_level="HIGH",
+        cognitive_level="SIMPLE_EASY",
+    )
+    print("OK stress + clinical adaptive persist")
     print("BUILD CHECK PASSED")
     try:
         db_path.unlink(missing_ok=True)

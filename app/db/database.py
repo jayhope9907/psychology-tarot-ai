@@ -261,6 +261,14 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE users ADD COLUMN consultation_mode TEXT NOT NULL DEFAULT 'psychology'"
         )
+    if "last_stress_json" not in user_cols:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN last_stress_json TEXT NOT NULL DEFAULT '{}'"
+        )
+    if "last_clinical_adaptive_json" not in user_cols:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN last_clinical_adaptive_json TEXT NOT NULL DEFAULT '{}'"
+        )
 
     session_cols = {row[1] for row in conn.execute("PRAGMA table_info(session_snapshots)")}
     if "consultation_mode" not in session_cols:
@@ -315,6 +323,55 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             ON sanitized_input_history(session_id, turn_index, id);
         CREATE INDEX IF NOT EXISTS idx_sih_org_created
             ON sanitized_input_history(organization_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS stress_management_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            session_id TEXT NOT NULL DEFAULT '',
+            turn_index INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'chat',
+            protocol_id TEXT NOT NULL DEFAULT 'stress_3min_reset',
+            protocol_version TEXT NOT NULL DEFAULT '1.0',
+            user_message_cue TEXT NOT NULL DEFAULT '',
+            plan_json TEXT NOT NULL DEFAULT '{}',
+            pre_sud REAL,
+            post_sud REAL,
+            intervention_effectiveness REAL,
+            clinical_setup_json TEXT NOT NULL DEFAULT '{}',
+            license_type TEXT NOT NULL DEFAULT 'B2C_personal',
+            organization_id TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_smh_user_created
+            ON stress_management_history(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_smh_session_turn
+            ON stress_management_history(session_id, turn_index, id);
+        CREATE INDEX IF NOT EXISTS idx_smh_org_created
+            ON stress_management_history(organization_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS clinical_adaptive_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            session_id TEXT NOT NULL DEFAULT '',
+            turn_index INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'chat',
+            resistance_level TEXT NOT NULL DEFAULT 'LOW',
+            sensory_impairment_deaf INTEGER NOT NULL DEFAULT 0,
+            cognitive_level TEXT NOT NULL DEFAULT 'STANDARD',
+            adaptive_enabled INTEGER NOT NULL DEFAULT 0,
+            setup_json TEXT NOT NULL DEFAULT '{}',
+            license_type TEXT NOT NULL DEFAULT 'B2C_personal',
+            organization_id TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_cah_user_created
+            ON clinical_adaptive_history(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_cah_session_turn
+            ON clinical_adaptive_history(session_id, turn_index, id);
+        CREATE INDEX IF NOT EXISTS idx_cah_org_created
+            ON clinical_adaptive_history(organization_id, created_at DESC);
         """
     )
 
@@ -325,6 +382,8 @@ def reset_db() -> None:
     conn = get_connection()
     try:
         for table in (
+            "clinical_adaptive_history",
+            "stress_management_history",
             "sanitized_input_history",
             "org_sos_alerts",
             "organization_members",

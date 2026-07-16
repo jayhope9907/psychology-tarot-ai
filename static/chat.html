@@ -2091,6 +2091,15 @@
           <button type="button" class="mood-chip" data-consultation-mode="psychology" aria-pressed="true">심리</button>
           <button type="button" class="mood-chip" data-consultation-mode="faith" aria-pressed="false">신앙·묵상</button>
         </div>
+        <div class="mood-strip" id="clinicalSetupStrip" aria-label="임상 맞춤 설정">
+          <span class="mood-strip-label">맞춤 설정</span>
+          <button type="button" class="mood-chip" data-resistance-level="LOW" aria-pressed="false">저항 낮음</button>
+          <button type="button" class="mood-chip" data-resistance-level="MEDIUM" aria-pressed="false">보통</button>
+          <button type="button" class="mood-chip" data-resistance-level="HIGH" aria-pressed="false">저항 높음</button>
+          <button type="button" class="mood-chip" data-sensory-deaf="true" aria-pressed="false">청각·시각중심</button>
+          <button type="button" class="mood-chip" data-cognitive-level="STANDARD" aria-pressed="false">일반 어휘</button>
+          <button type="button" class="mood-chip" data-cognitive-level="SIMPLE_EASY" aria-pressed="false">쉬운 말</button>
+        </div>
         <div class="mood-strip" id="moodStrip" aria-label="오늘의 기분 단서">
           <span class="mood-strip-label">오늘 기분</span>
           <button type="button" class="mood-chip" data-mood-color="blue" aria-pressed="false">파랑</button>
@@ -2947,6 +2956,7 @@
       localStorage.setItem("psychology_ai_resistance_level", resistanceLevel);
       localStorage.setItem("psychology_ai_sensory_impairment_deaf", sensoryImpairmentDeaf ? "true" : "false");
       localStorage.setItem("psychology_ai_cognitive_level", cognitiveLevel);
+      syncMoodChips();
       return {
         resistance_level: resistanceLevel,
         sensory_impairment_deaf: sensoryImpairmentDeaf,
@@ -2971,6 +2981,21 @@
         btn.setAttribute(
           "aria-pressed",
           btn.getAttribute("data-consultation-mode") === consultationMode ? "true" : "false"
+        );
+      });
+      document.querySelectorAll("[data-resistance-level]").forEach((btn) => {
+        btn.setAttribute(
+          "aria-pressed",
+          btn.getAttribute("data-resistance-level") === resistanceLevel ? "true" : "false"
+        );
+      });
+      document.querySelectorAll("[data-sensory-deaf]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", sensoryImpairmentDeaf ? "true" : "false");
+      });
+      document.querySelectorAll("[data-cognitive-level]").forEach((btn) => {
+        btn.setAttribute(
+          "aria-pressed",
+          btn.getAttribute("data-cognitive-level") === cognitiveLevel ? "true" : "false"
         );
       });
     }
@@ -3028,6 +3053,30 @@
             body: JSON.stringify({ user_id: userId, consultation_mode: consultationMode }),
           });
         } catch (_) {}
+      });
+    }
+    const clinicalSetupStrip = document.getElementById("clinicalSetupStrip");
+    if (clinicalSetupStrip) {
+      clinicalSetupStrip.addEventListener("click", (event) => {
+        const btn = event.target.closest(".mood-chip");
+        if (!btn) return;
+        const resistance = btn.getAttribute("data-resistance-level");
+        const deaf = btn.getAttribute("data-sensory-deaf");
+        const cognitive = btn.getAttribute("data-cognitive-level");
+        if (resistance) {
+          resistanceLevel = resistance;
+        }
+        if (deaf != null) {
+          sensoryImpairmentDeaf = !sensoryImpairmentDeaf;
+        }
+        if (cognitive) {
+          cognitiveLevel = cognitiveLevel === cognitive ? "STANDARD" : cognitive;
+        }
+        window.setClinicalAdaptiveSetup({
+          resistance_level: resistanceLevel,
+          sensory_impairment_deaf: sensoryImpairmentDeaf,
+          cognitive_level: cognitiveLevel,
+        });
       });
     }
     syncMoodChips();

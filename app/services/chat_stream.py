@@ -466,6 +466,26 @@ def fallback_reply(
             "지금 가장 불편한 마음부터 조금만 더 들려주실 수 있을까요?"
         )
 
+    from app.services.stress_management import (
+        build_stress_management_reply,
+        should_trigger_stress_management,
+    )
+
+    if should_trigger_stress_management(user_message):
+        clinical_setup = (state.phase_notes or {}).get("clinical_adaptive_setup") or {
+            "resistance_level": getattr(state, "resistance_level", "LOW"),
+            "sensory_impairment_deaf": bool(getattr(state, "sensory_impairment_deaf", False)),
+            "cognitive_level": getattr(state, "cognitive_level", "STANDARD"),
+        }
+        ep = (state.phase_notes or {}).get("emotional_pattern") or {}
+        pre_sud = ep.get("pre_sud")
+        return build_stress_management_reply(
+            state,
+            user_message,
+            clinical_setup=clinical_setup,
+            pre_sud=pre_sud,
+        )
+
     if detect_distress(user_message):
         if "우울" in user_message:
             return (
@@ -811,6 +831,18 @@ def build_chat_messages(
             "\n\n내담자가 우울·답답함 등 고통 신호를 보였습니다. "
             "감정을 먼저 반영하고, 필요하면 마음 체크·전문 기관 안내도 자연스럽게 언급하세요."
         )
+
+    try:
+        from app.services.stress_management import should_trigger_stress_management
+
+        if should_trigger_stress_management(user_message):
+            system_prompt += (
+                "\n\n내담자가 스트레스·긴장 신호를 보였습니다. "
+                "3분 리셋(호흡 3번 → 감각 5초 → 작은 행동 1가지)을 짧고 따뜻하게 안내하세요. "
+                "진단·치료 단정은 금지하고, 선택권을 먼저 제시하세요."
+            )
+    except Exception:
+        pass
 
     from app.services.dream_seed import build_dream_seed
 
@@ -1308,6 +1340,44 @@ async def run_chat_turn(
     except Exception:
         pass
 
+    stress_tick: Optional[Dict[str, Any]] = None
+    try:
+        from app.services.clinical_adaptive_store import persist_clinical_adaptive_tick
+        from app.services.stress_management import should_trigger_stress_management
+        from app.services.stress_management_store import persist_stress_management_tick
+
+        persist_clinical_adaptive_tick(
+            user_id=state.user_id,
+            session_id=state.session_id,
+            turn_index=int(getattr(state, "turn_count", 0) or 0),
+            source="chat",
+            resistance_level=getattr(state, "resistance_level", None),
+            sensory_impairment_deaf=getattr(state, "sensory_impairment_deaf", False),
+            cognitive_level=getattr(state, "cognitive_level", None),
+            license_type=getattr(state, "license_type", None) or "B2C_personal",
+            organization_id=getattr(state, "organization_id", None) or state.org_id,
+            state=state,
+        )
+        if should_trigger_stress_management(user_message):
+            ep = dict((state.phase_notes or {}).get("emotional_pattern") or {})
+            stress_tick = persist_stress_management_tick(
+                user_id=state.user_id,
+                session_id=state.session_id,
+                user_message=user_message,
+                turn_index=int(getattr(state, "turn_count", 0) or 0),
+                source="chat",
+                clinical_setup=(state.phase_notes or {}).get("clinical_adaptive_setup"),
+                pre_sud=ep.get("pre_sud") or pre_sud,
+                post_sud=ep.get("post_sud") or post_sud,
+                intervention_effectiveness=ep.get("intervention_effectiveness")
+                or intervention_effectiveness,
+                license_type=getattr(state, "license_type", None) or "B2C_personal",
+                organization_id=getattr(state, "organization_id", None) or state.org_id,
+                state=state,
+            )
+    except Exception:
+        pass
+
     state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
 
@@ -1338,6 +1408,13 @@ async def run_chat_turn(
             ((state.phase_notes or {}).get("sanitized_input_history") or [])
         ),
         "clinical_adaptive_setup": (state.phase_notes or {}).get("clinical_adaptive_setup"),
+        "clinical_adaptive_history_len": len(
+            ((state.phase_notes or {}).get("clinical_adaptive_history") or [])
+        ),
+        "stress_management": stress_tick or (state.phase_notes or {}).get("stress_management"),
+        "stress_management_history_len": len(
+            ((state.phase_notes or {}).get("stress_management_history") or [])
+        ),
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload

@@ -2040,6 +2040,103 @@ async def org_sanitized_input_history(org_id: str, limit: int = 100):
     }
 
 
+@app.get("/api/v1/users/{user_id}/stress-management")
+async def user_stress_management_latest(user_id: str):
+    """Latest stress management intervention snapshot."""
+    from app.services.stress_management_store import get_user_last_stress
+
+    latest = get_user_last_stress(user_id)
+    return {
+        "user_id": user_id,
+        "latest": latest,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/stress-management/history")
+async def user_stress_management_history(
+    user_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+):
+    """Turn-precise stress management tracking (patent / B2B audit)."""
+    from app.services.stress_management_store import list_stress_history, session_stress_summary
+
+    history = list_stress_history(user_id, session_id=session_id, limit=limit)
+    summary = session_stress_summary(session_id) if session_id else None
+    return {
+        "user_id": user_id,
+        "session_id": session_id,
+        "count": len(history),
+        "history": history,
+        "session_tracking": summary,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/orgs/{org_id}/stress-management/history")
+async def org_stress_management_history(org_id: str, limit: int = 100):
+    from app.services.stress_management_store import list_org_stress_history
+
+    history = list_org_stress_history(org_id, limit=limit)
+    return {
+        "organizationId": org_id,
+        "count": len(history),
+        "history": history,
+        "pii_policy": "user_id_hashed",
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/clinical-adaptive")
+async def user_clinical_adaptive_latest(user_id: str):
+    from app.services.clinical_adaptive_store import get_user_last_clinical_adaptive
+
+    latest = get_user_last_clinical_adaptive(user_id)
+    return {
+        "user_id": user_id,
+        "latest": latest,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/clinical-adaptive/history")
+async def user_clinical_adaptive_history(
+    user_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+):
+    from app.services.clinical_adaptive_store import (
+        list_clinical_adaptive_history,
+        session_clinical_adaptive_summary,
+    )
+
+    history = list_clinical_adaptive_history(user_id, session_id=session_id, limit=limit)
+    summary = session_clinical_adaptive_summary(session_id) if session_id else None
+    return {
+        "user_id": user_id,
+        "session_id": session_id,
+        "count": len(history),
+        "history": history,
+        "session_tracking": summary,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/orgs/{org_id}/clinical-adaptive/history")
+async def org_clinical_adaptive_history(org_id: str, limit: int = 100):
+    from app.services.clinical_adaptive_store import list_org_clinical_adaptive_history
+
+    history = list_org_clinical_adaptive_history(org_id, limit=limit)
+    return {
+        "organizationId": org_id,
+        "count": len(history),
+        "history": history,
+        "pii_policy": "user_id_hashed",
+        "non_diagnostic": True,
+    }
+
+
 @app.post("/api/v1/users/{user_id}/emotional-pattern")
 async def record_user_emotional_pattern(user_id: str, request: EmotionalPatternRecordRequest):
     from app.services.emotional_pattern import build_user_emotional_pattern, save_emotional_pattern
