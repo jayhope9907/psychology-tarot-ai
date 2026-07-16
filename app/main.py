@@ -1668,14 +1668,33 @@ async def tarot_reading(request: TarotReadingRequest):
     local = build_local_reading(request.user_story, draw_result)
     primary_card = local.get("primary_card") or "The Fool"
 
+    from app.services.consultation_mode import resolve_consultation_mode
+    from app.services.input_sanitizer import apply_mode_isolation_to_psychodynamics, sanitize_and_compensate
+
+    consultation_mode = resolve_consultation_mode(request.user_id)
+    sanitized = sanitize_and_compensate(
+        {
+            "consultationMode": consultation_mode,
+            "step": 3 if draw_result.get("cards") else 1,
+            "selectedCard": primary_card if draw_result.get("cards") else None,
+            "checkInMetrics": None,
+        }
+    )
+
     try:
         composed = _compose_tarot_reading(request.user_story, draw_result)
         ai_analysis = composed["ai_analysis"]
-        psychodynamic_metrics = composed["psychodynamic_metrics"]
+        psychodynamic_metrics = apply_mode_isolation_to_psychodynamics(
+            composed["psychodynamic_metrics"],
+            consultation_mode=consultation_mode,
+        )
+        if sanitized.get("dominantArchetype") and sanitized["dominantArchetype"] != "None":
+            psychodynamic_metrics["dominant_archetype"] = sanitized["dominantArchetype"]
         reading = {
             **local,
             "ai_analysis": ai_analysis,
             "psychodynamic_metrics": psychodynamic_metrics,
+            "sanitized_input": sanitized,
             "recommended_actions": local.get("cbt_actions") or [],
         }
         _store_record(
@@ -1709,10 +1728,15 @@ async def tarot_reading(request: TarotReadingRequest):
     except Exception:
         from app.services.freud_jung_tracker import estimate_psychodynamic_metrics
 
+        psychodynamic_metrics = apply_mode_isolation_to_psychodynamics(
+            estimate_psychodynamic_metrics(request.user_story),
+            consultation_mode=consultation_mode,
+        )
         reading = {
             **local,
             "ai_analysis": local["summary"],
-            "psychodynamic_metrics": estimate_psychodynamic_metrics(request.user_story),
+            "psychodynamic_metrics": psychodynamic_metrics,
+            "sanitized_input": sanitized,
             "recommended_actions": local["cbt_actions"],
         }
 
@@ -1721,6 +1745,8 @@ async def tarot_reading(request: TarotReadingRequest):
         "draw": draw_result,
         "reading": reading,
         "psychodynamic_metrics": reading.get("psychodynamic_metrics"),
+        "sanitized_input": sanitized,
+        "consultationMode": consultation_mode,
         "stored": True,
         "handoff": _maybe_bridge_tarot(request, draw_result, reading),
     }

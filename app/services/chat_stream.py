@@ -753,9 +753,17 @@ def build_chat_messages(
     system_prompt += build_homework_chat_context(state)
 
     from app.services.daily_routine import build_daily_context_block
+    from app.services.input_sanitizer import (
+        build_raw_input_from_session,
+        prompt_block_for_sanitized,
+        sanitize_and_compensate,
+    )
     from app.services.mood_assistant import build_mood_mandatory_system_block, resolve_mood_context
 
     ctx = resolve_mood_context(state.user_id)
+    sanitized = sanitize_and_compensate(build_raw_input_from_session(state, mood_ctx=ctx))
+    state.phase_notes["sanitized_input"] = sanitized
+    system_prompt += "\n\n" + prompt_block_for_sanitized(sanitized)
     system_prompt += "\n\n" + build_mood_mandatory_system_block(ctx, state)
     if style_block:
         system_prompt += "\n\n" + style_block
@@ -1233,6 +1241,7 @@ async def run_chat_turn(
         ensure_psychodynamic_metrics,
         extract_psychodynamic_metrics,
     )
+    from app.services.input_sanitizer import apply_mode_isolation_to_psychodynamics
 
     # Parse trailing metrics BEFORE chatbot/anti-repeat filters so we don't lose them.
     display_candidate, psychodynamic_metrics = ensure_psychodynamic_metrics(
@@ -1257,6 +1266,15 @@ async def run_chat_turn(
             "지금 가장 묵직한 한 조각만 먼저 들어보고 싶어요."
         )
 
+    psychodynamic_metrics = apply_mode_isolation_to_psychodynamics(
+        psychodynamic_metrics,
+        consultation_mode=getattr(state, "consultation_mode", None) or "psychology",
+    )
+    # Prefer compensated card archetype when step/card gate says None was missing.
+    sanitized_snap = (state.phase_notes or {}).get("sanitized_input") or {}
+    if sanitized_snap.get("dominantArchetype") and sanitized_snap["dominantArchetype"] != "None":
+        if not psychodynamic_metrics.get("dominant_archetype"):
+            psychodynamic_metrics["dominant_archetype"] = sanitized_snap["dominantArchetype"]
     state.phase_notes["psychodynamic_metrics"] = psychodynamic_metrics
     state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
@@ -1283,6 +1301,7 @@ async def run_chat_turn(
         "licenseType": getattr(state, "license_type", None) or "B2C_personal",
         "organizationId": getattr(state, "organization_id", None) or state.org_id,
         "psychodynamic_metrics": psychodynamic_metrics,
+        "sanitized_input": (state.phase_notes or {}).get("sanitized_input"),
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload
