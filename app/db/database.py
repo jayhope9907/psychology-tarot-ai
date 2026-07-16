@@ -196,6 +196,32 @@ def init_db(force: bool = False) -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_sos_org_status
                 ON org_sos_alerts(org_id, status, created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS sanitized_input_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                session_id TEXT NOT NULL DEFAULT '',
+                turn_index INTEGER NOT NULL DEFAULT 0,
+                source TEXT NOT NULL DEFAULT 'chat',
+                consultation_mode TEXT NOT NULL DEFAULT 'psychology',
+                current_step INTEGER NOT NULL DEFAULT 1,
+                dominant_archetype TEXT NOT NULL DEFAULT 'None',
+                initial_weights_json TEXT NOT NULL DEFAULT '{}',
+                defense_mechanism_enabled INTEGER NOT NULL DEFAULT 1,
+                is_faith_mode INTEGER NOT NULL DEFAULT 0,
+                sanitized_json TEXT NOT NULL DEFAULT '{}',
+                psychodynamic_json TEXT NOT NULL DEFAULT '{}',
+                license_type TEXT NOT NULL DEFAULT 'B2C_personal',
+                organization_id TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_sih_user_created
+                ON sanitized_input_history(user_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_sih_session_turn
+                ON sanitized_input_history(session_id, turn_index, id);
+            CREATE INDEX IF NOT EXISTS idx_sih_org_created
+                ON sanitized_input_history(organization_id, created_at DESC);
             """
         )
         conn.commit()
@@ -220,6 +246,60 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             "ALTER TABLE mood_checkins ADD COLUMN dimensions_json TEXT NOT NULL DEFAULT '{}'"
         )
 
+    user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+    if "last_sanitized_json" not in user_cols:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN last_sanitized_json TEXT NOT NULL DEFAULT '{}'"
+        )
+    if "consultation_mode" not in user_cols:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN consultation_mode TEXT NOT NULL DEFAULT 'psychology'"
+        )
+
+    session_cols = {row[1] for row in conn.execute("PRAGMA table_info(session_snapshots)")}
+    if "consultation_mode" not in session_cols:
+        conn.execute(
+            "ALTER TABLE session_snapshots ADD COLUMN consultation_mode TEXT NOT NULL DEFAULT 'psychology'"
+        )
+    if "current_step" not in session_cols:
+        conn.execute(
+            "ALTER TABLE session_snapshots ADD COLUMN current_step INTEGER NOT NULL DEFAULT 1"
+        )
+    if "last_sanitized_json" not in session_cols:
+        conn.execute(
+            "ALTER TABLE session_snapshots ADD COLUMN last_sanitized_json TEXT NOT NULL DEFAULT '{}'"
+        )
+
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS sanitized_input_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            session_id TEXT NOT NULL DEFAULT '',
+            turn_index INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'chat',
+            consultation_mode TEXT NOT NULL DEFAULT 'psychology',
+            current_step INTEGER NOT NULL DEFAULT 1,
+            dominant_archetype TEXT NOT NULL DEFAULT 'None',
+            initial_weights_json TEXT NOT NULL DEFAULT '{}',
+            defense_mechanism_enabled INTEGER NOT NULL DEFAULT 1,
+            is_faith_mode INTEGER NOT NULL DEFAULT 0,
+            sanitized_json TEXT NOT NULL DEFAULT '{}',
+            psychodynamic_json TEXT NOT NULL DEFAULT '{}',
+            license_type TEXT NOT NULL DEFAULT 'B2C_personal',
+            organization_id TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_sih_user_created
+            ON sanitized_input_history(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_sih_session_turn
+            ON sanitized_input_history(session_id, turn_index, id);
+        CREATE INDEX IF NOT EXISTS idx_sih_org_created
+            ON sanitized_input_history(organization_id, created_at DESC);
+        """
+    )
+
 
 def reset_db() -> None:
     """Test helper — wipe all rows."""
@@ -227,6 +307,7 @@ def reset_db() -> None:
     conn = get_connection()
     try:
         for table in (
+            "sanitized_input_history",
             "org_sos_alerts",
             "organization_members",
             "organization_licenses",

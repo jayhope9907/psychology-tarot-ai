@@ -1276,6 +1276,24 @@ async def run_chat_turn(
         if not psychodynamic_metrics.get("dominant_archetype"):
             psychodynamic_metrics["dominant_archetype"] = sanitized_snap["dominantArchetype"]
     state.phase_notes["psychodynamic_metrics"] = psychodynamic_metrics
+
+    try:
+        from app.services.sanitized_input_store import persist_sanitized_input
+
+        persist_sanitized_input(
+            user_id=state.user_id,
+            session_id=state.session_id,
+            sanitized=sanitized_snap or (state.phase_notes or {}).get("sanitized_input") or {},
+            turn_index=int(getattr(state, "turn_count", 0) or 0),
+            source="chat",
+            psychodynamic_metrics=psychodynamic_metrics,
+            license_type=getattr(state, "license_type", None) or "B2C_personal",
+            organization_id=getattr(state, "organization_id", None) or state.org_id,
+            state=state,
+        )
+    except Exception:
+        pass
+
     state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
 
@@ -1302,6 +1320,9 @@ async def run_chat_turn(
         "organizationId": getattr(state, "organization_id", None) or state.org_id,
         "psychodynamic_metrics": psychodynamic_metrics,
         "sanitized_input": (state.phase_notes or {}).get("sanitized_input"),
+        "sanitized_input_history_len": len(
+            ((state.phase_notes or {}).get("sanitized_input_history") or [])
+        ),
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload

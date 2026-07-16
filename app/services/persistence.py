@@ -130,18 +130,42 @@ def save_session(state: ChatSessionState) -> None:
     init_db()
     ensure_user(state.user_id)
     payload = json.dumps(session_to_storage(state), ensure_ascii=False)
+    sanitized = {}
+    notes = getattr(state, "phase_notes", None) or {}
+    if isinstance(notes.get("sanitized_input"), dict):
+        sanitized = notes["sanitized_input"]
+    mode = (
+        sanitized.get("consultationMode")
+        or getattr(state, "consultation_mode", None)
+        or "psychology"
+    )
+    step = int(sanitized.get("currentStep") or sanitized.get("step") or 1)
     conn = get_connection()
     try:
         conn.execute(
             """
-            INSERT INTO session_snapshots (session_id, user_id, state_json, updated_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO session_snapshots (
+                session_id, user_id, state_json, updated_at,
+                consultation_mode, current_step, last_sanitized_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(session_id) DO UPDATE SET
                 user_id = excluded.user_id,
                 state_json = excluded.state_json,
-                updated_at = excluded.updated_at
+                updated_at = excluded.updated_at,
+                consultation_mode = excluded.consultation_mode,
+                current_step = excluded.current_step,
+                last_sanitized_json = excluded.last_sanitized_json
             """,
-            (state.session_id, state.user_id, payload, _utc_now()),
+            (
+                state.session_id,
+                state.user_id,
+                payload,
+                _utc_now(),
+                mode,
+                step,
+                json.dumps(sanitized or {}, ensure_ascii=False),
+            ),
         )
         conn.commit()
     finally:
@@ -220,6 +244,10 @@ def list_user_sessions(user_id: str, limit: int = 12) -> List[Dict[str, Any]]:
                     "turn_count": data.get("turn_count", 0),
                     "message_count": len(messages),
                     "counseling_phase": data.get("counseling_phase", "rapport"),
+                    "consultationMode": data.get("consultationMode")
+                    or data.get("consultation_mode")
+                    or "psychology",
+                    "sanitized_input": (data.get("phase_notes") or {}).get("sanitized_input"),
                     "preview": preview,
                 }
             )

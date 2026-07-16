@@ -1697,6 +1697,23 @@ async def tarot_reading(request: TarotReadingRequest):
             "sanitized_input": sanitized,
             "recommended_actions": local.get("cbt_actions") or [],
         }
+        try:
+            from app.services.commercial_license_context import resolve_license_context
+            from app.services.sanitized_input_store import persist_sanitized_input
+
+            lic = resolve_license_context(request.user_id)
+            persist_sanitized_input(
+                user_id=request.user_id,
+                session_id=request.session_id or "",
+                sanitized=sanitized,
+                turn_index=0,
+                source="tarot",
+                psychodynamic_metrics=psychodynamic_metrics,
+                license_type=lic.get("licenseType") or "B2C_personal",
+                organization_id=lic.get("organizationId"),
+            )
+        except Exception:
+            pass
         _store_record(
             request.user_id,
             request.user_story,
@@ -1739,6 +1756,23 @@ async def tarot_reading(request: TarotReadingRequest):
             "sanitized_input": sanitized,
             "recommended_actions": local["cbt_actions"],
         }
+        try:
+            from app.services.commercial_license_context import resolve_license_context
+            from app.services.sanitized_input_store import persist_sanitized_input
+
+            lic = resolve_license_context(request.user_id)
+            persist_sanitized_input(
+                user_id=request.user_id,
+                session_id=request.session_id or "",
+                sanitized=sanitized,
+                turn_index=0,
+                source="tarot",
+                psychodynamic_metrics=psychodynamic_metrics,
+                license_type=lic.get("licenseType") or "B2C_personal",
+                organization_id=lic.get("organizationId"),
+            )
+        except Exception:
+            pass
 
     return {
         "plan": request.plan.upper(),
@@ -1950,6 +1984,55 @@ async def user_emotional_pattern_analysis(user_id: str, window: int = 8):
         "user_id": user_id,
         "analysis": analysis,
         "recent_sessions": list_emotional_patterns(user_id, limit=min(10, max(5, window))),
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/sanitized-input")
+async def user_sanitized_input_latest(user_id: str):
+    """Latest compensated input snapshot on the user row + settings mirror."""
+    from app.services.sanitized_input_store import get_user_last_sanitized
+
+    latest = get_user_last_sanitized(user_id)
+    return {
+        "user_id": user_id,
+        "latest": latest,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/sanitized-input/history")
+async def user_sanitized_input_history(
+    user_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+):
+    """Turn-precise sanitizeAndCompensate tracking history (patent / B2B audit)."""
+    from app.services.sanitized_input_store import list_sanitized_history, session_tracking_summary
+
+    history = list_sanitized_history(user_id, session_id=session_id, limit=limit)
+    summary = session_tracking_summary(session_id) if session_id else None
+    return {
+        "user_id": user_id,
+        "session_id": session_id,
+        "count": len(history),
+        "history": history,
+        "session_tracking": summary,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/orgs/{org_id}/sanitized-input/history")
+async def org_sanitized_input_history(org_id: str, limit: int = 100):
+    """B2B society view: hashed user ids, compensated metrics only."""
+    from app.services.sanitized_input_store import list_org_sanitized_history
+
+    history = list_org_sanitized_history(org_id, limit=limit)
+    return {
+        "organizationId": org_id,
+        "count": len(history),
+        "history": history,
+        "pii_policy": "user_id_hashed",
         "non_diagnostic": True,
     }
 

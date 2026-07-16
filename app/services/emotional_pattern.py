@@ -687,6 +687,7 @@ def record_pattern_from_chat_session(
             "licenseType": lic.get("licenseType"),
             "organizationId": lic.get("organizationId"),
             "modeAnalyzerId": analyzer.get("analyzerId"),
+            "sanitizedInput": (notes.get("sanitized_input") if isinstance(notes, dict) else None),
         },
     )
     saved = save_emotional_pattern(doc)
