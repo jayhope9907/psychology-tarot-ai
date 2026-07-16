@@ -80,11 +80,11 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 PLAN_RULES = {
-    "FREE": {"scope": "brief", "max_actions": 2, "max_tokens": 180, "detail_level": "low"},
-    "LIGHT": {"scope": "focused", "max_actions": 3, "max_tokens": 260, "detail_level": "medium"},
-    "BASIC": {"scope": "balanced", "max_actions": 4, "max_tokens": 360, "detail_level": "medium"},
-    "PLUS": {"scope": "expanded", "max_actions": 5, "max_tokens": 480, "detail_level": "high"},
-    "PREMIUM": {"scope": "full", "max_actions": 6, "max_tokens": 640, "detail_level": "high"},
+    "FREE": {"scope": "brief", "max_actions": 2, "max_tokens": 320, "detail_level": "low"},
+    "LIGHT": {"scope": "focused", "max_actions": 3, "max_tokens": 380, "detail_level": "medium"},
+    "BASIC": {"scope": "balanced", "max_actions": 4, "max_tokens": 420, "detail_level": "medium"},
+    "PLUS": {"scope": "expanded", "max_actions": 5, "max_tokens": 520, "detail_level": "high"},
+    "PREMIUM": {"scope": "full", "max_actions": 6, "max_tokens": 680, "detail_level": "high"},
 }
 
 PSYCHOLOGY_DATABASE: Dict[str, Dict[str, Any]] = {}
@@ -984,6 +984,7 @@ async def health_check(request: Request):
         "version": os.getenv("APP_VERSION", "main"),
         "public": bool(public_base),
         "public_base": public_base or None,
+        "openai_configured": bool(client and getattr(client, "api_key", None)),
         "urls": urls,
         "product_lines": product_surfaces(),
         "share_links": {

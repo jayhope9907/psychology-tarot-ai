@@ -479,6 +479,19 @@ def fallback_reply(
                 "몸에서는 어떻게 느껴지는지도 궁금해요. "
                 "그 답답함이 가장 크게 올라올 때가 있다면 언제인가요?"
             )
+        if any(k in user_message for k in ("괜찮은 척", "괜찮은척", "가면", "숨기")):
+            focus = (user_message or "").strip()[:40]
+            return (
+                f"‘{focus}’처럼 겉으로 버티는 마음이 느껴져요. "
+                "사람들 앞에서 괜찮아야 한다는 압력과, 정작 안에서 숨기고 싶은 마음 사이에 "
+                "지금 어디가 가장 묵직하신가요?"
+            )
+        if any(k in user_message for k in ("지치", "지침", "버거", "힘들", "힘드")):
+            focus = (user_message or "").strip()[:40]
+            return (
+                f"‘{focus}’ 이야기, 지친 결이 선명하게 닿아요. "
+                "그중에서도 가장 먼저 내려놓고 싶은 조각이 있다면 하나만 들려주실 수 있을까요?"
+            )
         return _pick_variant(
             state,
             [
@@ -897,7 +910,7 @@ async def run_chat_turn(
     state: ChatSessionState,
     user_message: str,
     client: Any,
-    max_tokens: int = 380,
+    max_tokens: int = 420,
     assessment_response: Optional[Dict[str, Any]] = None,
     homework_response: Optional[Dict[str, Any]] = None,
     stream_fn: Optional[Callable[..., AsyncIterator[str]]] = None,
@@ -1215,19 +1228,35 @@ async def run_chat_turn(
             if pace:
                 await asyncio.sleep(pace)
 
+    assistant_raw = "".join(assistant_chunks).strip()
+    from app.services.freud_jung_tracker import (
+        ensure_psychodynamic_metrics,
+        extract_psychodynamic_metrics,
+    )
+
+    # Parse trailing metrics BEFORE chatbot/anti-repeat filters so we don't lose them.
+    display_candidate, psychodynamic_metrics = ensure_psychodynamic_metrics(
+        assistant_raw,
+        user_text=user_message,
+    )
+    if not (display_candidate or "").strip():
+        display_candidate = assistant_raw
+
     assistant_text = enrich_assistant_reply(
-        "".join(assistant_chunks).strip(),
+        display_candidate,
         user_message,
         state,
         decision,
         assessment_response,
     )
-    from app.services.freud_jung_tracker import ensure_psychodynamic_metrics
+    # Re-strip display only; keep metrics from the raw model output (not heuristic after enrich).
+    assistant_text, _ = extract_psychodynamic_metrics(assistant_text)
+    if not (assistant_text or "").strip():
+        assistant_text = (
+            f"‘{(user_message or '')[:36]}’ 이야기, 여기서 잠깐 머물러 볼게요. "
+            "지금 가장 묵직한 한 조각만 먼저 들어보고 싶어요."
+        )
 
-    assistant_text, psychodynamic_metrics = ensure_psychodynamic_metrics(
-        assistant_text,
-        user_text=user_message,
-    )
     state.phase_notes["psychodynamic_metrics"] = psychodynamic_metrics
     state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
