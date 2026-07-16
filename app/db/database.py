@@ -64,6 +64,12 @@ def init_db(force: bool = False) -> None:
                 user_id TEXT NOT NULL,
                 state_json TEXT NOT NULL,
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                consultation_mode TEXT NOT NULL DEFAULT 'psychology',
+                current_step INTEGER NOT NULL DEFAULT 1,
+                last_sanitized_json TEXT NOT NULL DEFAULT '{}',
+                resistance_level TEXT NOT NULL DEFAULT 'LOW',
+                sensory_impairment_deaf INTEGER NOT NULL DEFAULT 0,
+                cognitive_level TEXT NOT NULL DEFAULT 'STANDARD',
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             );
 
@@ -268,6 +274,18 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
     if "last_sanitized_json" not in session_cols:
         conn.execute(
             "ALTER TABLE session_snapshots ADD COLUMN last_sanitized_json TEXT NOT NULL DEFAULT '{}'"
+        )
+    if "resistance_level" not in session_cols:
+        conn.execute(
+            "ALTER TABLE session_snapshots ADD COLUMN resistance_level TEXT NOT NULL DEFAULT 'LOW'"
+        )
+    if "sensory_impairment_deaf" not in session_cols:
+        conn.execute(
+            "ALTER TABLE session_snapshots ADD COLUMN sensory_impairment_deaf INTEGER NOT NULL DEFAULT 0"
+        )
+    if "cognitive_level" not in session_cols:
+        conn.execute(
+            "ALTER TABLE session_snapshots ADD COLUMN cognitive_level TEXT NOT NULL DEFAULT 'STANDARD'"
         )
 
     conn.executescript(

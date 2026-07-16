@@ -73,6 +73,9 @@ def session_to_storage(state: ChatSessionState) -> Dict[str, Any]:
         "licenseType": getattr(state, "license_type", None) or "B2C_personal",
         "organization_id": getattr(state, "organization_id", None) or state.org_id,
         "organizationId": getattr(state, "organization_id", None) or state.org_id,
+        "resistance_level": getattr(state, "resistance_level", None) or "LOW",
+        "sensory_impairment_deaf": bool(getattr(state, "sensory_impairment_deaf", False)),
+        "cognitive_level": getattr(state, "cognitive_level", None) or "STANDARD",
     }
 
 
@@ -123,6 +126,9 @@ def session_from_storage(data: Dict[str, Any]) -> ChatSessionState:
             or "B2C_personal"
         ),
         organization_id=data.get("organization_id") or data.get("organizationId") or data.get("org_id"),
+        resistance_level=data.get("resistance_level") or "LOW",
+        sensory_impairment_deaf=bool(data.get("sensory_impairment_deaf")),
+        cognitive_level=data.get("cognitive_level") or "STANDARD",
     )
 
 
@@ -140,22 +146,29 @@ def save_session(state: ChatSessionState) -> None:
         or "psychology"
     )
     step = int(sanitized.get("currentStep") or sanitized.get("step") or 1)
+    resistance_level = getattr(state, "resistance_level", None) or "LOW"
+    sensory_impairment_deaf = bool(getattr(state, "sensory_impairment_deaf", False))
+    cognitive_level = getattr(state, "cognitive_level", None) or "STANDARD"
     conn = get_connection()
     try:
         conn.execute(
             """
             INSERT INTO session_snapshots (
                 session_id, user_id, state_json, updated_at,
-                consultation_mode, current_step, last_sanitized_json
+                consultation_mode, current_step, last_sanitized_json,
+                resistance_level, sensory_impairment_deaf, cognitive_level
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(session_id) DO UPDATE SET
                 user_id = excluded.user_id,
                 state_json = excluded.state_json,
                 updated_at = excluded.updated_at,
                 consultation_mode = excluded.consultation_mode,
                 current_step = excluded.current_step,
-                last_sanitized_json = excluded.last_sanitized_json
+                last_sanitized_json = excluded.last_sanitized_json,
+                resistance_level = excluded.resistance_level,
+                sensory_impairment_deaf = excluded.sensory_impairment_deaf,
+                cognitive_level = excluded.cognitive_level
             """,
             (
                 state.session_id,
@@ -165,6 +178,9 @@ def save_session(state: ChatSessionState) -> None:
                 mode,
                 step,
                 json.dumps(sanitized or {}, ensure_ascii=False),
+                resistance_level,
+                1 if sensory_impairment_deaf else 0,
+                cognitive_level,
             ),
         )
         conn.commit()

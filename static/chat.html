@@ -2936,6 +2936,23 @@
     let preSud = localStorage.getItem("psychology_ai_pre_sud") || "";
     let interventionEff = localStorage.getItem("psychology_ai_intervention_eff") || "";
     let consultationMode = localStorage.getItem("psychology_ai_consultation_mode") || "psychology";
+    let resistanceLevel = localStorage.getItem("psychology_ai_resistance_level") || "LOW";
+    let sensoryImpairmentDeaf = (localStorage.getItem("psychology_ai_sensory_impairment_deaf") || "false") === "true";
+    let cognitiveLevel = localStorage.getItem("psychology_ai_cognitive_level") || "STANDARD";
+
+    window.setClinicalAdaptiveSetup = function (setup = {}) {
+      resistanceLevel = String(setup.resistance_level || resistanceLevel || "LOW").toUpperCase();
+      sensoryImpairmentDeaf = !!setup.sensory_impairment_deaf;
+      cognitiveLevel = String(setup.cognitive_level || cognitiveLevel || "STANDARD").toUpperCase();
+      localStorage.setItem("psychology_ai_resistance_level", resistanceLevel);
+      localStorage.setItem("psychology_ai_sensory_impairment_deaf", sensoryImpairmentDeaf ? "true" : "false");
+      localStorage.setItem("psychology_ai_cognitive_level", cognitiveLevel);
+      return {
+        resistance_level: resistanceLevel,
+        sensory_impairment_deaf: sensoryImpairmentDeaf,
+        cognitive_level: cognitiveLevel,
+      };
+    };
 
     function syncMoodChips() {
       document.querySelectorAll("[data-mood-color]").forEach((btn) => {
@@ -3797,6 +3814,9 @@
         pre_sud: preSud === "" ? null : Number(preSud),
         intervention_effectiveness: interventionEff === "" ? null : Number(interventionEff),
         consultation_mode: consultationMode || "psychology",
+        resistance_level: resistanceLevel || "LOW",
+        sensory_impairment_deaf: !!sensoryImpairmentDeaf,
+        cognitive_level: cognitiveLevel || "STANDARD",
       });
     }
 

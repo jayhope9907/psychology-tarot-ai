@@ -764,6 +764,20 @@ def build_chat_messages(
     sanitized = sanitize_and_compensate(build_raw_input_from_session(state, mood_ctx=ctx))
     state.phase_notes["sanitized_input"] = sanitized
     system_prompt += "\n\n" + prompt_block_for_sanitized(sanitized)
+    try:
+        from app.services.clinical_adaptor import build_clinical_adaptor_prompt
+
+        clinical_setup = {
+            "resistance_level": getattr(state, "resistance_level", "LOW"),
+            "sensory_impairment_deaf": bool(getattr(state, "sensory_impairment_deaf", False)),
+            "cognitive_level": getattr(state, "cognitive_level", "STANDARD"),
+        }
+        state.phase_notes["clinical_adaptive_setup"] = clinical_setup
+        adaptor_block = build_clinical_adaptor_prompt(clinical_setup)
+        if adaptor_block:
+            system_prompt += "\n\n" + adaptor_block
+    except Exception:
+        pass
     system_prompt += "\n\n" + build_mood_mandatory_system_block(ctx, state)
     if style_block:
         system_prompt += "\n\n" + style_block
@@ -1323,6 +1337,7 @@ async def run_chat_turn(
         "sanitized_input_history_len": len(
             ((state.phase_notes or {}).get("sanitized_input_history") or [])
         ),
+        "clinical_adaptive_setup": (state.phase_notes or {}).get("clinical_adaptive_setup"),
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload

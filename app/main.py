@@ -236,6 +236,9 @@ class ChatStreamRequest(BaseModel):
     post_sud: Optional[float] = None
     intervention_effectiveness: Optional[float] = None
     consultation_mode: Optional[str] = None
+    resistance_level: Optional[str] = None
+    sensory_impairment_deaf: bool = False
+    cognitive_level: Optional[str] = None
 
 
 class EmotionalPatternRecordRequest(BaseModel):
@@ -2674,6 +2677,18 @@ async def chat_stream(request: ChatStreamRequest):
     session = get_or_create_session(request.user_id, request.session_id, request.plan)
     if request.preferred_school:
         session.preferred_school = request.preferred_school.value
+    from app.services.clinical_adaptor import normalize_clinical_setup
+
+    setup = normalize_clinical_setup(
+        resistance_level=request.resistance_level,
+        sensory_impairment_deaf=request.sensory_impairment_deaf,
+        cognitive_level=request.cognitive_level,
+    )
+    session.resistance_level = setup["resistance_level"]
+    session.sensory_impairment_deaf = setup["sensory_impairment_deaf"]
+    session.cognitive_level = setup["cognitive_level"]
+    session.phase_notes = session.phase_notes or {}
+    session.phase_notes["clinical_adaptive_setup"] = setup
     from app.services.consumer_access import consumer_open, unlock_session_for_consumer
 
     unlock_session_for_consumer(session)

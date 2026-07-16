@@ -54,7 +54,14 @@ def main() -> int:
                 print("FAIL users missing", col)
                 return 1
         sess_cols = {r[1] for r in conn.execute("PRAGMA table_info(session_snapshots)")}
-        for col in ("last_sanitized_json", "consultation_mode", "current_step"):
+        for col in (
+            "last_sanitized_json",
+            "consultation_mode",
+            "current_step",
+            "resistance_level",
+            "sensory_impairment_deaf",
+            "cognitive_level",
+        ):
             if col not in sess_cols:
                 print("FAIL session_snapshots missing", col)
                 return 1
@@ -66,6 +73,7 @@ def main() -> int:
     # Avoid binding side effects; just import module
     importlib.import_module("app.services.sanitized_input_store")
     importlib.import_module("app.services.input_sanitizer")
+    importlib.import_module("app.services.clinical_adaptor")
     main_mod = importlib.import_module("app.main")
     assert getattr(main_mod, "app", None) is not None
     routes = {getattr(r, "path", None) for r in main_mod.app.routes}

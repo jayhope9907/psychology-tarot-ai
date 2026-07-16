@@ -44,6 +44,9 @@ class ChatSessionState:
     consultation_mode: str = "psychology"
     license_type: str = "B2C_personal"
     organization_id: Optional[str] = None
+    resistance_level: str = "LOW"
+    sensory_impairment_deaf: bool = False
+    cognitive_level: str = "STANDARD"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -81,6 +84,9 @@ class ChatSessionState:
             "consultationMode": self.consultation_mode,
             "licenseType": self.license_type,
             "organizationId": self.organization_id or self.org_id,
+            "resistance_level": self.resistance_level,
+            "sensory_impairment_deaf": self.sensory_impairment_deaf,
+            "cognitive_level": self.cognitive_level,
         }
 
 
