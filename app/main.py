@@ -235,6 +235,7 @@ class ChatStreamRequest(BaseModel):
     pre_sud: Optional[float] = None
     post_sud: Optional[float] = None
     intervention_effectiveness: Optional[float] = None
+    consultation_mode: Optional[str] = None
 
 
 class EmotionalPatternRecordRequest(BaseModel):
@@ -371,6 +372,27 @@ class ReminderSettingsRequest(BaseModel):
     user_id: str
     evening_reminder: bool = False
     hour: int = 21
+
+
+class ConsultationModeRequest(BaseModel):
+    user_id: str
+    consultation_mode: str = "psychology"
+
+
+class CommercialLicenseContextRequest(BaseModel):
+    user_id: str
+    license_type: Optional[str] = None
+    organization_id: Optional[str] = None
+
+
+class PiiAnonymizeRequest(BaseModel):
+    text: str = ""
+    license_type: str = "B2B_society_general"
+    messages: Optional[List[Dict[str, Any]]] = None
+
+
+class SosAckRequest(BaseModel):
+    acked_by: str = "dashboard"
 
 
 class CounselingStyleTone(BaseModel):
@@ -1499,6 +1521,79 @@ async def weekly_insights(user_id: str):
     return build_weekly_report(user_id)
 
 
+@app.get("/api/v1/settings/consultation-mode/{user_id}")
+async def get_consultation_mode(user_id: str):
+    from app.services.consultation_mode import mode_meta, resolve_consultation_mode
+
+    mode = resolve_consultation_mode(user_id)
+    return {"user_id": user_id, **mode_meta(mode)}
+
+
+@app.post("/api/v1/settings/consultation-mode")
+async def update_consultation_mode(request: ConsultationModeRequest):
+    from app.services.consultation_mode import mode_meta, save_consultation_mode
+
+    saved = save_consultation_mode(request.user_id, request.consultation_mode)
+    return {**saved, **mode_meta(saved["consultationMode"])}
+
+
+@app.get("/api/v1/licenses/commercial-catalog")
+async def commercial_license_catalog():
+    from app.models.commercial_license import catalog_for_api
+
+    return catalog_for_api()
+
+
+@app.get("/api/v1/users/{user_id}/license-context")
+async def get_user_license_context(user_id: str):
+    from app.services.commercial_license_context import resolve_license_context
+    from app.services.consultation_mode import mode_meta, resolve_consultation_mode
+
+    lic = resolve_license_context(user_id)
+    mode = resolve_consultation_mode(user_id)
+    return {**lic, "consultationMode": mode, "mode_meta": mode_meta(mode)}
+
+
+@app.post("/api/v1/settings/license-context")
+async def update_license_context(request: CommercialLicenseContextRequest):
+    from app.services.commercial_license_context import save_license_context
+
+    return save_license_context(
+        request.user_id,
+        license_type=request.license_type,
+        organization_id=request.organization_id,
+    )
+
+
+@app.post("/api/v1/b2b/anonymize")
+async def b2b_anonymize_payload(request: PiiAnonymizeRequest):
+    from app.services.b2b_privacy import anonymize_messages, maybe_anonymize_for_license
+
+    if request.messages:
+        return anonymize_messages(request.messages)
+    return maybe_anonymize_for_license(request.text, license_type=request.license_type)
+
+
+@app.get("/api/v1/orgs/{org_id}/sos-alerts")
+async def list_sos_alerts(org_id: str, status: str = "pending", limit: int = 50):
+    from app.services.b2b_sos import list_org_sos_alerts
+
+    return {
+        "org_id": org_id,
+        "status": status,
+        "alerts": list_org_sos_alerts(org_id, status=status, limit=limit),
+        "websocket_event": "org_sos_alert",
+        "non_diagnostic": True,
+    }
+
+
+@app.post("/api/v1/orgs/{org_id}/sos-alerts/{alert_id}/ack")
+async def ack_sos_alert(org_id: str, alert_id: int, request: SosAckRequest):
+    from app.services.b2b_sos import ack_org_sos_alert
+
+    return ack_org_sos_alert(org_id, alert_id, acked_by=request.acked_by)
+
+
 @app.post("/api/v1/settings/reminder")
 async def update_reminder_settings(request: ReminderSettingsRequest):
     settings = get_user_settings(request.user_id)
@@ -2471,6 +2566,7 @@ async def chat_stream(request: ChatStreamRequest):
                 pre_sud=request.pre_sud,
                 post_sud=request.post_sud,
                 intervention_effectiveness=request.intervention_effectiveness,
+                consultation_mode=request.consultation_mode,
             ):
                 if event["event"] == "done":
                     profile_delta = event["data"].get("profile_delta") or {}

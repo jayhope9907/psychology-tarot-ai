@@ -79,10 +79,17 @@ def bind_license_to_session(
         }
 
     entitlements = result.get("entitlements") or {}
+    from app.services.commercial_license_context import apply_entitlements_license_type
+
+    entitlements = apply_entitlements_license_type(entitlements)
     session.association_license_key = result["license_key"]
     session.org_id = result["org_id"]
+    session.organization_id = result["org_id"]
     session.org_name = result["org_name"]
     session.org_entitlements = entitlements
+    session.license_type = entitlements.get("licenseType") or "B2C_personal"
+    if entitlements.get("licenseType") == "B2B_society_faith":
+        session.consultation_mode = "faith"
 
     plan = entitlements.get("plan_override")
     if plan:

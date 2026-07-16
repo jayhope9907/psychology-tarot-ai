@@ -332,6 +332,57 @@ DISCIPLINE_PROFILES: Dict[str, Dict[str, Any]] = {
             "각 학문 영역의 면허·윤리 규정을 준수하며, 진단·처방·응급 의료는 제공하지 않습니다."
         ),
     },
+    AssociationDiscipline.FAITH_COUNSELING.value: {
+        "discipline_id": AssociationDiscipline.FAITH_COUNSELING.value,
+        "label_ko": "기독교·목회상담 학회",
+        "tagline": "신앙 동반 · 영적 인지 · 묵상 케어 (비의료)",
+        "primary_lens": "목회상담 · 영적 인지 왜곡 · Spiritual Dryness",
+        "what_we_optimize": [
+            "신앙 모드(faith) 상담 페르소나 · 영적 Soft Reframing",
+            "영적 인지 왜곡·영적 탈진 휴리스틱 탐지",
+            "개인 정서 패턴 공통 코어 + B2B SOS(비식별)",
+        ],
+        "what_we_de_emphasize": [
+            "개종 강요·교파 논쟁·기적 단정",
+            "의료행위·정신과 진료 대체",
+        ],
+        "hero_stat": "신앙 동반 · 영적 안전",
+        "color": "#6b5b4d",
+        "icon": "✝",
+        "allowed_instruments": [
+            "micro_emotion",
+            "sct",
+            "attachment_ecr",
+            "cbt_thought",
+            "phq9",
+            "gad7",
+            "tarot_reflect",
+        ],
+        "allowed_projective": ["sct", "tarot_reflect"],
+        "feature_flags": {
+            "counseling_theories_full": True,
+            "counseling_phases": True,
+            "homework_packages": True,
+            "tarot_bridge": True,
+            "assessment_packages": True,
+            "clinical_hub": True,
+            "projective_battery": False,
+            "projective_drawing": False,
+            "projective_inkblot": False,
+            "projective_tat": False,
+            "dsm5_catalog": False,
+            "clinical_insight_risk": True,
+            "psych_timeline": True,
+            "b2b_export": True,
+            "white_label": False,
+            "faith_mode_default": True,
+            "sos_alerts": True,
+        },
+        "legal_framing_ko": (
+            "기독교학회 라이선스는 **신앙 동반·목회상담 교육·웰니스 보조**용입니다. "
+            "개종 강요·의료행위·진단을 하지 않으며, 위기 시 전문 상담·의료 자원 연계를 전제로 합니다."
+        ),
+    },
 }
 
 # ── 구독 등급 ─────────────────────────────────────────────────────────

@@ -67,6 +67,12 @@ def session_to_storage(state: ChatSessionState) -> Dict[str, Any]:
         "org_name": state.org_name,
         "org_entitlements": state.org_entitlements,
         "association_license_key": state.association_license_key,
+        "consultation_mode": getattr(state, "consultation_mode", None) or "psychology",
+        "consultationMode": getattr(state, "consultation_mode", None) or "psychology",
+        "license_type": getattr(state, "license_type", None) or "B2C_personal",
+        "licenseType": getattr(state, "license_type", None) or "B2C_personal",
+        "organization_id": getattr(state, "organization_id", None) or state.org_id,
+        "organizationId": getattr(state, "organization_id", None) or state.org_id,
     }
 
 
@@ -106,6 +112,17 @@ def session_from_storage(data: Dict[str, Any]) -> ChatSessionState:
         org_name=data.get("org_name"),
         org_entitlements=data.get("org_entitlements"),
         association_license_key=data.get("association_license_key"),
+        consultation_mode=(
+            data.get("consultation_mode")
+            or data.get("consultationMode")
+            or "psychology"
+        ),
+        license_type=(
+            data.get("license_type")
+            or data.get("licenseType")
+            or "B2C_personal"
+        ),
+        organization_id=data.get("organization_id") or data.get("organizationId") or data.get("org_id"),
     )
 
 

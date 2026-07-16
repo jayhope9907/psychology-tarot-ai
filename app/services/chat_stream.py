@@ -581,6 +581,42 @@ def build_chat_messages(
     distortions = (state.persona_routing or {}).get("detected_distortions") or []
     quant = state.quant_features or extract_chat_quant_features(user_message, state)
 
+    from app.services.consultation_mode import (
+        MODE_FAITH,
+        bind_consultation_mode_prompts,
+        personal_pattern_prompt_for_mode,
+        resolve_consultation_mode,
+    )
+
+    consultation_mode = resolve_consultation_mode(
+        state.user_id,
+        session_mode=getattr(state, "consultation_mode", None),
+    )
+    state.consultation_mode = consultation_mode
+
+    from app.services.commercial_license_context import resolve_license_context
+    from app.services.mode_analyzers import run_mode_specific_analyzer
+
+    lic_ctx = resolve_license_context(state.user_id, session=state)
+    analyzer = run_mode_specific_analyzer(
+        consultation_mode,
+        user_message,
+        base_distortions=distortions,
+    )
+    spiritual_hits: List[str] = list(analyzer.get("spiritualDistortionFlags") or [])
+    if analyzer.get("cognitiveDistortionFlags"):
+        distortions = list(analyzer["cognitiveDistortionFlags"])
+        if state.persona_routing is not None:
+            state.persona_routing = dict(state.persona_routing)
+            state.persona_routing["detected_distortions"] = distortions
+            state.persona_routing["mode_analyzer"] = {
+                "analyzerId": analyzer.get("analyzerId"),
+                "spiritualDryness": analyzer.get("spiritualDryness"),
+                "cbt15Flags": analyzer.get("cbt15Flags"),
+            }
+            if spiritual_hits:
+                state.persona_routing["spiritual_distortions"] = spiritual_hits
+
     binding = PromptContextWeightBindingFactory(
         school=school,
         psychological_readiness_index=quant["psychological_readiness_index"],
@@ -591,15 +627,53 @@ def build_chat_messages(
         structural_sign=quant["structural_sign"],
     ).build()
 
+    # Shared presence layer
     system_prompt = (
         build_chat_system_prompt(name)
         + "\n\n"
         + build_human_presence_directive(name)
-        + "\n\n"
-        + build_core_triad_directive(tarot_active=bool(getattr(state, "tarot_handoff", None)))
-        + "\n\n"
-        + build_persona_directive(school, distortions)
-        + "\n\n"
+    )
+
+    # Mode-switched persona / CBT vs faith stack
+    if consultation_mode == MODE_FAITH:
+        # Empathy first; skip heavy secular CBT triad — faith directive replaces CBT focus.
+        system_prompt += (
+            "\n\n"
+            + bind_consultation_mode_prompts(
+                mode=consultation_mode,
+                counselor_name=name,
+                pattern_analysis=None,  # filled after pattern load below
+                spiritual_distortions=spiritual_hits,
+            )
+        )
+        if analyzer.get("promptHintKo"):
+            system_prompt += "\n\n## 모드 분석기 힌트\n- " + str(analyzer["promptHintKo"])
+    else:
+        from app.services.counseling_core_triad import build_core_triad_directive
+
+        system_prompt += (
+            "\n\n"
+            + build_core_triad_directive(tarot_active=bool(getattr(state, "tarot_handoff", None)))
+            + "\n\n"
+            + build_persona_directive(school, distortions)
+            + "\n\n"
+            + bind_consultation_mode_prompts(
+                mode=consultation_mode,
+                counselor_name=name,
+                pattern_analysis=None,
+            )
+        )
+        if analyzer.get("promptHintKo"):
+            system_prompt += "\n\n## 모드 분석기 힌트\n- " + str(analyzer["promptHintKo"])
+
+    state.phase_notes["license_context"] = {
+        "licenseType": lic_ctx.get("licenseType"),
+        "organizationId": lic_ctx.get("organizationId"),
+        "b2b": lic_ctx.get("b2b"),
+    }
+
+    system_prompt += (
+        "\n\n"
         + binding["system_prompt"]
         + "\n\n"
         + binding["context_block"]
@@ -609,19 +683,18 @@ def build_chat_messages(
         system_prompt += "\n\n" + tone_extra
 
     try:
-        from app.services.emotional_pattern import (
-            analyze_personal_pattern,
-            personal_pattern_prompt_block,
-        )
+        from app.services.emotional_pattern import analyze_personal_pattern
 
+        # CORE algorithm is mode-agnostic; only prompt narration switches.
         pattern_analysis = analyze_personal_pattern(state.user_id)
         state.phase_notes["personal_emotional_pattern"] = {
             "inEmotionalCrisisVsBaseline": pattern_analysis.get("inEmotionalCrisisVsBaseline"),
             "trend": pattern_analysis.get("trend"),
             "sampleSize": pattern_analysis.get("sampleSize"),
             "topDistortions": pattern_analysis.get("topDistortions"),
+            "consultationMode": consultation_mode,
         }
-        pattern_block = personal_pattern_prompt_block(pattern_analysis)
+        pattern_block = personal_pattern_prompt_for_mode(pattern_analysis, consultation_mode)
         if pattern_block:
             system_prompt += "\n\n" + pattern_block
     except Exception:
@@ -835,12 +908,20 @@ async def run_chat_turn(
     pre_sud: Optional[float] = None,
     post_sud: Optional[float] = None,
     intervention_effectiveness: Optional[float] = None,
+    consultation_mode: Optional[str] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     from app.services.image_search import (
         extract_search_query,
         search_images,
         validate_image_data_url,
         wants_image_search,
+    )
+    from app.services.consultation_mode import resolve_consultation_mode
+
+    state.consultation_mode = resolve_consultation_mode(
+        state.user_id,
+        session_mode=getattr(state, "consultation_mode", None),
+        override=consultation_mode,
     )
 
     if multimodal_meta:
@@ -1161,6 +1242,9 @@ async def run_chat_turn(
         "homework": homework_package or None,
         "today_mood": ctx.to_dict(),
         "user_agent": state.phase_notes.get("user_agent"),
+        "consultationMode": getattr(state, "consultation_mode", None) or "psychology",
+        "licenseType": getattr(state, "license_type", None) or "B2C_personal",
+        "organizationId": getattr(state, "organization_id", None) or state.org_id,
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload

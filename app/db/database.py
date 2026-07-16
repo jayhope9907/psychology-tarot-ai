@@ -178,6 +178,24 @@ def init_db(force: bool = False) -> None:
 
             CREATE INDEX IF NOT EXISTS idx_uep_user_date
                 ON user_emotional_patterns(user_id, session_date DESC);
+
+            CREATE TABLE IF NOT EXISTS org_sos_alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                org_id TEXT NOT NULL,
+                user_id_hash TEXT NOT NULL,
+                session_id TEXT NOT NULL DEFAULT '',
+                license_type TEXT NOT NULL,
+                consultation_mode TEXT NOT NULL DEFAULT 'psychology',
+                alert_level TEXT NOT NULL DEFAULT 'elevated',
+                reason_codes_json TEXT NOT NULL DEFAULT '[]',
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                acked_at TEXT,
+                acked_by TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_sos_org_status
+                ON org_sos_alerts(org_id, status, created_at DESC);
             """
         )
         conn.commit()
@@ -209,6 +227,7 @@ def reset_db() -> None:
     conn = get_connection()
     try:
         for table in (
+            "org_sos_alerts",
             "organization_members",
             "organization_licenses",
             "organizations",

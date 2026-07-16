@@ -41,6 +41,9 @@ class ChatSessionState:
     org_name: Optional[str] = None
     org_entitlements: Optional[Dict[str, Any]] = None
     association_license_key: Optional[str] = None
+    consultation_mode: str = "psychology"
+    license_type: str = "B2C_personal"
+    organization_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -75,6 +78,9 @@ class ChatSessionState:
             "org_id": self.org_id,
             "org_name": self.org_name,
             "discipline_id": (self.org_entitlements or {}).get("discipline_id"),
+            "consultationMode": self.consultation_mode,
+            "licenseType": self.license_type,
+            "organizationId": self.organization_id or self.org_id,
         }
 
 

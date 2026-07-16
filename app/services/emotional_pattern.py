@@ -7,7 +7,6 @@ Non-diagnostic wellness framing only.
 from __future__ import annotations
 
 import json
-import re
 import statistics
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence
@@ -19,13 +18,27 @@ from app.services.persistence import ensure_user
 DISTORTION_LABELS_KO: Dict[str, str] = {
     "all_or_nothing": "흑백논리",
     "overgeneralization": "과잉일반화",
-    "catastrophizing": "파국화",
-    "rumination": "반추",
-    "emotional_reasoning": "감정적 추론",
+    "mental_filter": "정신적 여과",
+    "disqualifying_positive": "긍정 평가절하",
     "mind_reading": "독심술",
+    "fortune_telling": "예언적 사고",
+    "magnification": "확대·파국화",
+    "catastrophizing": "파국화",
+    "emotional_reasoning": "감정적 추론",
     "should_statements": "당위적 사고",
-    "personalization": "개인화",
     "labeling": "낙인찍기",
+    "personalization": "개인화",
+    "blaming": "비난",
+    "control_fallacy": "통제 오류",
+    "fallacy_of_fairness": "공정성 오류",
+    "always_being_right": "무조건 옳음",
+    "rumination": "반추",
+    "divine_punishment": "신벌·심판 과도귀인",
+    "condemnation_loop": "정죄 루프",
+    "works_righteousness": "행위 의로움 압박",
+    "spiritual_all_or_nothing": "영적 흑백사고",
+    "abandoned_by_god": "하나님 유기 감각",
+    "prayer_transaction": "기도-거래 사고",
 }
 
 # Stress-situation defense mechanisms (heuristic tags)
@@ -190,6 +203,7 @@ def build_user_emotional_pattern(
             "cognitiveDistortionFlags": list(cogn.get("cognitiveDistortionFlags") or []),
             "coreWordFrequencies": list(cogn.get("coreWordFrequencies") or []),
             "defenseMechanismFlags": list(cogn.get("defenseMechanismFlags") or []),
+            "modeAnalyzer": cogn.get("modeAnalyzer") or {},
         },
         "sudScores": {
             "preSessionSUD": _clamp_sud(sud.get("preSessionSUD")),
@@ -590,7 +604,16 @@ def record_pattern_from_chat_session(
     intervention_effectiveness: Optional[float] = None,
     physical_metrics: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Build + persist pattern snapshot after a counseling turn/session."""
+    """Build + persist pattern snapshot after a counseling turn/session.
+
+    Common core (physical + SUD + longitudinal flags) always runs.
+    Mode-specific analyzers enrich cognitiveMetrics only.
+    """
+    from app.services.commercial_license_context import resolve_license_context
+    from app.services.mode_analyzers import (
+        merge_analyzer_into_cognitive_metrics,
+        run_mode_specific_analyzer,
+    )
     from app.services.persona_router import detect_cognitive_distortions
 
     messages = getattr(session, "messages", None) or []
@@ -602,23 +625,18 @@ def record_pattern_from_chat_session(
     corpus = "\n".join(user_texts[-8:])
     routing = getattr(session, "persona_routing", None) or {}
     distortions = list(routing.get("detected_distortions") or [])
-    # Enrich from full corpus
     for d in detect_cognitive_distortions(corpus):
         if d not in distortions:
             distortions.append(d)
-    # Extra heuristics for emotional reasoning / shoulds
-    if re.search(r"느끼니까|기분상|감정적으로", corpus):
-        if "emotional_reasoning" not in distortions:
-            distortions.append("emotional_reasoning")
-    if re.search(r"해야|해야만|하면 안", corpus):
-        if "should_statements" not in distortions:
-            distortions.append("should_statements")
+
+    mode = getattr(session, "consultation_mode", None) or "psychology"
+    analyzer = run_mode_specific_analyzer(mode, corpus, base_distortions=distortions)
+    distortions = list(analyzer.get("cognitiveDistortionFlags") or distortions)
 
     mood_state = routing.get("mood_state")
     defenses = infer_defense_mechanisms(corpus, mood_state=mood_state, distortions=distortions)
     words = extract_core_emotion_words(corpus)
 
-    # Derive SUD proxies from session notes / phase if missing
     notes = getattr(session, "phase_notes", None) or {}
     stored = notes.get("emotional_pattern") or {}
     if pre_sud is None:
@@ -629,17 +647,14 @@ def record_pattern_from_chat_session(
         intervention_effectiveness = stored.get("intervention_effectiveness")
 
     if pre_sud is None:
-        # soft proxy from multimodal mood or stress weight
         quant = getattr(session, "quant_features", None) or {}
         stress = quant.get("psychiatric_stress_weight")
         if isinstance(stress, (int, float)):
             pre_sud = round(float(stress) * 10.0, 2)
     if post_sud is None and pre_sud is not None:
-        # slight relief assumption unless high rumination
         post_sud = max(0.0, float(pre_sud) - (0.4 if "rumination" not in distortions else 0.1))
 
     phys = physical_metrics or stored.get("physical_metrics") or empty_physical_metrics()
-    # Merge pending tarot phys from phase notes
     tarot_phys = (notes.get("tarot_physical_metrics") or {}) if isinstance(notes, dict) else {}
     if tarot_phys:
         phys = {
@@ -647,24 +662,65 @@ def record_pattern_from_chat_session(
             "gyroInstability": tarot_phys.get("gyroInstability", phys.get("gyroInstability")),
         }
 
-    doc = build_user_emotional_pattern(
-        user_id=user_id,
-        session_id=getattr(session, "session_id", "") or "",
-        physical_metrics=phys,
-        cognitive_metrics=empty_cognitive_metrics(
+    lic = resolve_license_context(user_id, session=session)
+    cogn = merge_analyzer_into_cognitive_metrics(
+        empty_cognitive_metrics(
             distortion_flags=distortions,
             core_words=words,
             defense_flags=defenses,
         ),
+        analyzer,
+    )
+
+    doc = build_user_emotional_pattern(
+        user_id=user_id,
+        session_id=getattr(session, "session_id", "") or "",
+        physical_metrics=phys,
+        cognitive_metrics=cogn,
         sud_scores=empty_sud_scores(pre=pre_sud, post=post_sud),
         ai_intervention_effectiveness=intervention_effectiveness,
         extra={
             "counseling_phase": getattr(session, "counseling_phase", None),
             "persona_school": routing.get("school"),
             "turn_count": getattr(session, "turn_count", 0),
+            "consultationMode": mode,
+            "licenseType": lic.get("licenseType"),
+            "organizationId": lic.get("organizationId"),
+            "modeAnalyzerId": analyzer.get("analyzerId"),
         },
     )
-    return save_emotional_pattern(doc)
+    saved = save_emotional_pattern(doc)
+
+    # B2B SOS (threshold) — shared core analysis + mode analyzer
+    try:
+        from app.services.b2b_sos import maybe_trigger_b2b_sos
+        from app.services.emotional_pattern import analyze_personal_pattern
+
+        analysis = analyze_personal_pattern(user_id)
+        alert = maybe_trigger_b2b_sos(
+            license_type=lic.get("licenseType") or "B2C_personal",
+            org_id=lic.get("organizationId"),
+            user_id=user_id,
+            consultation_mode=mode,
+            session_id=getattr(session, "session_id", "") or "",
+            pattern_analysis=analysis,
+            mode_analyzer=analyzer,
+            latest_sud=post_sud if post_sud is not None else pre_sud,
+            messages=messages,
+        )
+        if alert:
+            saved["sos_alert"] = {
+                "id": alert.get("id"),
+                "alert_level": alert.get("alert_level"),
+                "reason_codes": alert.get("reason_codes"),
+                "delivery": alert.get("delivery"),
+            }
+            if isinstance(notes, dict):
+                notes["last_sos_alert"] = saved["sos_alert"]
+    except Exception:
+        pass
+
+    return saved
 
 
 def record_tarot_physical_metrics(

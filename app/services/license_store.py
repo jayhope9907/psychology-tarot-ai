@@ -37,6 +37,11 @@ DEMO_LICENSES: Dict[str, Dict[str, Any]] = {
         "discipline_id": AssociationDiscipline.MH_SOCIAL_WORK.value,
         "tier_id": LicenseTier.SOCIETY.value,
     },
+    "MSHT-FAITH-DEMO-2026": {
+        "org_name": "데모 · 기독교 목회상담 학회",
+        "discipline_id": AssociationDiscipline.FAITH_COUNSELING.value,
+        "tier_id": LicenseTier.SOCIETY.value,
+    },
 }
 
 

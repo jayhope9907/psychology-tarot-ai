@@ -39,12 +39,18 @@ PERSONA_CATALOG = {
 
 
 def detect_cognitive_distortions(text: str) -> List[str]:
-    normalized = (text or "").lower()
-    detected: List[str] = []
-    for distortion, keywords in DISTORTION_KEYWORDS.items():
-        if any(keyword in normalized for keyword in keywords):
-            detected.append(distortion)
-    return detected
+    """Psychology CBT-15 detector (shared entry used by persona router)."""
+    try:
+        from app.services.mode_analyzers import detect_cbt_15_distortions
+
+        return detect_cbt_15_distortions(text)
+    except Exception:
+        normalized = (text or "").lower()
+        detected: List[str] = []
+        for distortion, keywords in DISTORTION_KEYWORDS.items():
+            if any(keyword in normalized for keyword in keywords):
+                detected.append(distortion)
+        return detected
 
 
 def detect_mood_state(user_message: str, recent_messages: Optional[List[Dict[str, str]]] = None) -> MoodState:

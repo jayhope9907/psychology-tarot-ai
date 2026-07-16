@@ -13,6 +13,7 @@ class AssociationDiscipline(str, Enum):
     CLINICAL_PSYCH_TRAINEE = "clinical_psych_trainee"  # 임상심리 수련: 검사·사례·슈퍼비전
     MH_SOCIAL_WORK = "mh_social_work_trainee"  # 정신보건사회복지사 수련: 사례관리·지역사회
     INTEGRATIVE = "integrative_society"  # 통합: 3영역 혼합
+    FAITH_COUNSELING = "faith_counseling_society"  # 기독교·목회상담 학회
 
 
 class LicenseTier(str, Enum):

@@ -2086,6 +2086,11 @@
           </div>
           <button type="button" id="attachClear">제거</button>
         </div>
+        <div class="mood-strip" id="modeStrip" aria-label="상담 모드">
+          <span class="mood-strip-label">상담 모드</span>
+          <button type="button" class="mood-chip" data-consultation-mode="psychology" aria-pressed="true">심리</button>
+          <button type="button" class="mood-chip" data-consultation-mode="faith" aria-pressed="false">신앙·묵상</button>
+        </div>
         <div class="mood-strip" id="moodStrip" aria-label="오늘의 기분 단서">
           <span class="mood-strip-label">오늘 기분</span>
           <button type="button" class="mood-chip" data-mood-color="blue" aria-pressed="false">파랑</button>
@@ -2930,6 +2935,7 @@
     let moodWeather = localStorage.getItem("psychology_ai_mood_weather") || "";
     let preSud = localStorage.getItem("psychology_ai_pre_sud") || "";
     let interventionEff = localStorage.getItem("psychology_ai_intervention_eff") || "";
+    let consultationMode = localStorage.getItem("psychology_ai_consultation_mode") || "psychology";
 
     function syncMoodChips() {
       document.querySelectorAll("[data-mood-color]").forEach((btn) => {
@@ -2943,6 +2949,12 @@
       });
       document.querySelectorAll("[data-intervention-eff]").forEach((btn) => {
         btn.setAttribute("aria-pressed", btn.getAttribute("data-intervention-eff") === String(interventionEff) ? "true" : "false");
+      });
+      document.querySelectorAll("[data-consultation-mode]").forEach((btn) => {
+        btn.setAttribute(
+          "aria-pressed",
+          btn.getAttribute("data-consultation-mode") === consultationMode ? "true" : "false"
+        );
       });
     }
 
@@ -2980,6 +2992,25 @@
           localStorage.setItem("psychology_ai_intervention_eff", interventionEff);
         }
         syncMoodChips();
+      });
+    }
+    const modeStrip = document.getElementById("modeStrip");
+    if (modeStrip) {
+      modeStrip.addEventListener("click", async (event) => {
+        const btn = event.target.closest(".mood-chip");
+        if (!btn) return;
+        const mode = btn.getAttribute("data-consultation-mode");
+        if (!mode || mode === consultationMode) return;
+        consultationMode = mode;
+        localStorage.setItem("psychology_ai_consultation_mode", consultationMode);
+        syncMoodChips();
+        try {
+          await fetch("/api/v1/settings/consultation-mode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, consultation_mode: consultationMode }),
+          });
+        } catch (_) {}
       });
     }
     syncMoodChips();
@@ -3765,6 +3796,7 @@
         mood_weather: moodWeather || null,
         pre_sud: preSud === "" ? null : Number(preSud),
         intervention_effectiveness: interventionEff === "" ? null : Number(interventionEff),
+        consultation_mode: consultationMode || "psychology",
       });
     }
 
