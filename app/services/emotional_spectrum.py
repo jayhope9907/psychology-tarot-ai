@@ -209,6 +209,7 @@ def parse_clinical_state_to_room(result: Optional[Mapping[str, Any]]) -> Dict[st
 
     - 와해성 신호 폭발: 방 레이아웃 파편화 왜곡 + 지지형 페르소나 강제 스위칭
     - 내재화 고위험(강박성 우울·억압): 차갑고 딱딱한 대칭의 고립된 방
+    - MONITOR 관찰 구간: 차가운 흰 방 (감정 온도 낮음, 정렬 유지)
     - 안정: 따뜻하고 인간미 넘치는 노란 방
     """
     doc = dict(result or {})
@@ -237,11 +238,68 @@ def parse_clinical_state_to_room(result: Optional[Mapping[str, Any]]) -> Dict[st
             "agent_persona": str(doc.get("suggested_approach") or "SUNG_AH_SUPPORT"),
         }
 
+    if total >= 50.0:
+        return {
+            "color_tone": "cold-white",
+            "lighting_level": 55,
+            "wall_symmetry": "rigid",
+            "agent_persona": str(doc.get("suggested_approach") or "PROST_CONFRONTATION"),
+        }
+
     return {
         "color_tone": "warm-yellow",
         "lighting_level": 85,
         "wall_symmetry": "natural",
         "agent_persona": "SUNG_AH_SUPPORT",
+    }
+
+
+def to_dsm5_integrated_diagnostic(
+    result: Optional[Mapping[str, Any]],
+    *,
+    session_id: str = "",
+    user_id: str = "",
+    timestamp: Optional[str] = None,
+) -> Dict[str, Any]:
+    """엔진 결과 → DSM5IntegratedDiagnostic TS 인터페이스 계약 직렬화.
+
+    프론트(듀얼 에이전트 스위칭 + 가상 방 인테리어 바인딩)가 그대로 소비한다.
+    """
+    from datetime import datetime, timezone
+
+    doc = dict(result or {})
+    room = parse_clinical_state_to_room(doc)
+    dims = dict(doc.get("dimensions") or {})
+    sch = dict(dims.get("schizophrenia_spectrum") or {})
+    return {
+        "session_id": session_id or "",
+        "user_id": user_id or "",
+        "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
+        "total_internalizing_score": float(doc.get("total_internalizing_score") or 0.0),
+        "internalizing_risk_level": str(doc.get("internalizing_risk_level") or "NORMAL"),
+        "dimensions": {
+            "depressive_index": float(dims.get("depressive_index") or 0.0),
+            "anxiety_index": float(dims.get("anxiety_index") or 0.0),
+            "obsessive_compulsive": float(dims.get("obsessive_compulsive") or 0.0),
+            "panic_index": float(dims.get("panic_index") or 0.0),
+            "bipolar_fluctuation_index": float(dims.get("bipolar_fluctuation_index") or 0.0),
+            "somatic_symptom_index": float(dims.get("somatic_symptom_index") or 0.0),
+            "schizophrenia_spectrum": {
+                "loose_association": float(sch.get("loose_association") or 0.0),
+                "thought_blocking": float(sch.get("thought_blocking") or 0.0),
+                "ego_boundary_loss": float(sch.get("ego_boundary_loss") or 0.0),
+                "delusional_affinity": float(sch.get("delusional_affinity") or 0.0),
+            },
+        },
+        "clinical_meta": {
+            "suggested_approach": str(doc.get("suggested_approach") or "PROST_CONFRONTATION"),
+            "room_projection": {
+                "color_tone": room["color_tone"],
+                "lighting_level": int(room["lighting_level"]),
+                "wall_symmetry": room["wall_symmetry"],
+            },
+        },
+        "non_diagnostic": True,
     }
 
 

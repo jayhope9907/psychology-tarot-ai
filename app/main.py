@@ -2110,7 +2110,10 @@ async def org_stress_management_history(org_id: str, limit: int = 100):
 @app.post("/api/v1/users/{user_id}/emotional-spectrum")
 async def compute_user_emotional_spectrum(user_id: str, request: SpectrumComputeRequest):
     """통합 내재화 스펙트럼 온디맨드 계산 (비진단 참고 지표)."""
-    from app.services.emotional_spectrum import compute_emotional_spectrum
+    from app.services.emotional_spectrum import (
+        compute_emotional_spectrum,
+        to_dsm5_integrated_diagnostic,
+    )
     from app.services.emotional_spectrum_store import persist_spectrum_tick
     from app.services.sanitized_input_store import get_user_last_sanitized
 
@@ -2134,18 +2137,25 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
         "user_id": user_id,
         "record_id": record_id,
         "spectrum": result,
+        "diagnostic": to_dsm5_integrated_diagnostic(
+            result, session_id=request.session_id or "", user_id=user_id
+        ),
         "non_diagnostic": True,
     }
 
 
 @app.get("/api/v1/users/{user_id}/emotional-spectrum")
 async def user_emotional_spectrum_latest(user_id: str):
+    from app.services.emotional_spectrum import to_dsm5_integrated_diagnostic
     from app.services.emotional_spectrum_store import get_user_last_spectrum
 
     latest = get_user_last_spectrum(user_id)
     return {
         "user_id": user_id,
         "latest": latest,
+        "diagnostic": (
+            to_dsm5_integrated_diagnostic(latest, user_id=user_id) if latest else None
+        ),
         "non_diagnostic": True,
     }
 

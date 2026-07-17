@@ -4,6 +4,7 @@ from app.services.emotional_spectrum import (
     compute_emotional_spectrum,
     parse_clinical_state_to_room,
     resolve_base_scores_from_sanitized,
+    to_dsm5_integrated_diagnostic,
 )
 
 ENGINE = UnifiedEmotionalSpectrumEngine()
@@ -89,11 +90,56 @@ def test_room_layout_branches():
     assert rigid["lighting_level"] == 15
     assert rigid["wall_symmetry"] == "rigid"
 
+    cold = parse_clinical_state_to_room(
+        {"total_internalizing_score": 60, "dimensions": {}}
+    )
+    assert cold["color_tone"] == "cold-white"
+    assert cold["lighting_level"] == 55
+    assert cold["wall_symmetry"] == "rigid"
+
     warm = parse_clinical_state_to_room(
         {"total_internalizing_score": 20, "dimensions": {}}
     )
     assert warm["color_tone"] == "warm-yellow"
     assert warm["lighting_level"] == 85
+
+
+def test_dsm5_integrated_diagnostic_contract():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 90, "anxiety": 90, "somatic": 40},
+        behavioral_metrics={"hesitation_index": 0.9, "backspace_count": 18, "word_delay_ms": 4500},
+    )
+    doc = to_dsm5_integrated_diagnostic(result, session_id="s1", user_id="u1")
+
+    # DSM5IntegratedDiagnostic TS 인터페이스 필드 계약 검증
+    assert doc["session_id"] == "s1"
+    assert doc["user_id"] == "u1"
+    assert isinstance(doc["timestamp"], str) and doc["timestamp"]
+    assert doc["internalizing_risk_level"] in ("NORMAL", "MONITOR", "HIGH_ALERT")
+    assert isinstance(doc["total_internalizing_score"], float)
+
+    dims = doc["dimensions"]
+    for key in (
+        "depressive_index",
+        "anxiety_index",
+        "obsessive_compulsive",
+        "panic_index",
+        "bipolar_fluctuation_index",
+        "somatic_symptom_index",
+    ):
+        assert isinstance(dims[key], float)
+    sch = dims["schizophrenia_spectrum"]
+    for key in ("loose_association", "thought_blocking", "ego_boundary_loss", "delusional_affinity"):
+        assert isinstance(sch[key], float)
+
+    meta = doc["clinical_meta"]
+    assert meta["suggested_approach"] in ("PROST_CONFRONTATION", "SUNG_AH_SUPPORT")
+    proj = meta["room_projection"]
+    assert proj["color_tone"] in ("cold-white", "dark-gray", "warm-yellow", "fractured-distorted")
+    assert 0 <= proj["lighting_level"] <= 100
+    assert proj["wall_symmetry"] in ("rigid", "natural", "broken")
+    assert set(proj.keys()) == {"color_tone", "lighting_level", "wall_symmetry"}
+    assert doc["non_diagnostic"] is True
 
 
 def test_base_scores_from_sanitized_proxy():

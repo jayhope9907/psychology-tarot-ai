@@ -1959,6 +1959,10 @@
     .main.room-warm-yellow .chat-scroll {
       background: linear-gradient(180deg, rgba(255, 243, 205, 0.35), rgba(255, 250, 240, 0.15));
     }
+    .main.room-cold-white .chat-scroll {
+      background: linear-gradient(180deg, rgba(228, 234, 240, 0.4), rgba(240, 244, 248, 0.2));
+      filter: saturate(0.88);
+    }
     .main.room-dark-gray .chat-scroll {
       background: linear-gradient(180deg, rgba(74, 78, 88, 0.16), rgba(52, 56, 64, 0.1));
       filter: saturate(0.82) brightness(0.94);
@@ -3272,6 +3276,7 @@
     if (behaviorInput) behaviorInput.addEventListener("keydown", (e) => BehaviorTracker.onKey(e));
 
     // ── 마음의 방 (MindRoom): 스펙트럼 상태 → 공간 톤 시각화 ──
+    // DSM5IntegratedDiagnostic.clinical_meta.room_projection 계약 소비
     const MindRoom = {
       current: null,
       apply(room) {
@@ -3279,13 +3284,23 @@
         this.current = room;
         const main = document.querySelector(".main");
         if (!main) return;
-        main.classList.remove("room-warm-yellow", "room-dark-gray", "room-fractured-distorted");
+        main.classList.remove(
+          "room-warm-yellow",
+          "room-cold-white",
+          "room-dark-gray",
+          "room-fractured-distorted"
+        );
         const cls = {
           "warm-yellow": "room-warm-yellow",
+          "cold-white": "room-cold-white",
           "dark-gray": "room-dark-gray",
           "fractured-distorted": "room-fractured-distorted",
         }[room.color_tone];
         if (cls) main.classList.add(cls);
+      },
+      applyDiagnostic(diagnostic) {
+        const proj = diagnostic?.clinical_meta?.room_projection;
+        if (proj) this.apply(proj);
       },
     };
 
@@ -4233,7 +4248,8 @@
               updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
               updateClinicalInsight(data.profile_delta?.clinical_insight);
               if (data.mindmap) MindmapView.setData(data.mindmap);
-              if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);
+              if (data.dsm5_integrated_diagnostic) MindRoom.applyDiagnostic(data.dsm5_integrated_diagnostic);
+              else if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);
               BehaviorTracker.markReplyShown();
               updatePsychProfile(data.psych_profile);
               refreshBatteryStatus(sessionId);

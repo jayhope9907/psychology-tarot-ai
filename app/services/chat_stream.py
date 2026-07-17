@@ -1533,6 +1533,18 @@ async def run_chat_turn(
         ),
         "emotional_spectrum": (state.phase_notes or {}).get("emotional_spectrum"),
     }
+    try:
+        from app.services.emotional_spectrum import to_dsm5_integrated_diagnostic
+
+        es_doc = (state.phase_notes or {}).get("emotional_spectrum")
+        if es_doc:
+            done_data["dsm5_integrated_diagnostic"] = to_dsm5_integrated_diagnostic(
+                es_doc,
+                session_id=state.session_id,
+                user_id=state.user_id,
+            )
+    except Exception:
+        pass
     if image_search_payload:
         done_data["image_results"] = image_search_payload
     if safe_image:
