@@ -2288,7 +2288,23 @@
         <span class="wc-count" id="mmStressLink"></span>
         <div>
           <button type="button" class="wc-close" id="mmClose">닫기</button>
+          <button type="button" class="wc-close" id="mmOpen3d">🧊 3D 방 보기</button>
           <button type="button" class="wc-send" id="mmOpenCards">낱말카드 다시 고르기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 마음의 방 3D (MindRoom3D) -->
+  <div class="wc-overlay" id="mindRoom3dOverlay" role="dialog" aria-label="마음의 방 3D" hidden>
+    <div class="wc-panel mm-panel">
+      <h3>🧊 마음의 방 3D</h3>
+      <p class="wc-guide" id="mr3dGuide">지금 마음 상태가 투사된 방이에요. 드래그해서 둘러보세요.</p>
+      <div id="mindRoom3dCanvas" style="width:100%;height:420px;border-radius:16px;overflow:hidden;background:#14161c;"></div>
+      <div class="wc-actions">
+        <span class="wc-count" id="mr3dStatus"></span>
+        <div>
+          <button type="button" class="wc-close" id="mr3dClose">닫기</button>
         </div>
       </div>
     </div>
@@ -3298,11 +3314,102 @@
         }[room.color_tone];
         if (cls) main.classList.add(cls);
       },
+      lastDiagnostic: null,
       applyDiagnostic(diagnostic) {
-        const proj = diagnostic?.clinical_meta?.room_projection;
+        if (!diagnostic) return;
+        this.lastDiagnostic = diagnostic;
+        const proj = diagnostic.clinical_meta?.room_projection;
         if (proj) this.apply(proj);
+        if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(diagnostic);
       },
     };
+
+    // ── 마음의 방 3D (MindRoom3D vanilla 런타임) ──
+    const MindRoom3DView = {
+      scene: null,
+      overlay: document.getElementById("mindRoom3dOverlay"),
+      _loading: null,
+      loadScript(src, fallback) {
+        return new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = src;
+          s.onload = () => resolve();
+          s.onerror = () => {
+            if (fallback) {
+              s.remove();
+              const f = document.createElement("script");
+              f.src = fallback;
+              f.onload = () => resolve();
+              f.onerror = reject;
+              document.head.appendChild(f);
+            } else reject(new Error("load fail " + src));
+          };
+          document.head.appendChild(s);
+        });
+      },
+      async ensureLoaded() {
+        if (window.MindRoom3DScene && typeof THREE !== "undefined") return;
+        if (!this._loading) {
+          this._loading = (async () => {
+            if (typeof THREE === "undefined") {
+              await this.loadScript(
+                "/static/js/vendor/three.min.js",
+                "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+              );
+            }
+            if (!window.MindRoom3DScene) {
+              await this.loadScript("/static/js/mind-room-3d.js");
+            }
+          })();
+        }
+        await this._loading;
+      },
+      async open() {
+        const status = document.getElementById("mr3dStatus");
+        if (this.overlay) {
+          this.overlay.hidden = false;
+          this.overlay.classList.add("show");
+        }
+        try {
+          if (status) status.textContent = "불러오는 중…";
+          await this.ensureLoaded();
+          if (!this.scene) {
+            const host = document.getElementById("mindRoom3dCanvas");
+            this.scene = new MindRoom3DScene(host);
+          }
+          this.scene.resize();
+          let doc = MindRoom.lastDiagnostic;
+          if (!doc) {
+            try {
+              const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/emotional-spectrum`);
+              if (res.ok) doc = (await res.json()).diagnostic;
+            } catch (_) {}
+          }
+          if (doc) {
+            this.scene.setDiagnostic(doc);
+            if (status) {
+              const proj = doc.clinical_meta?.room_projection || {};
+              status.textContent = `조도 ${proj.lighting_level ?? "-"} · ${proj.color_tone || ""}`;
+            }
+          } else if (status) {
+            status.textContent = "아직 기록이 없어요. 대화를 나누면 방이 그려져요.";
+          }
+        } catch (_) {
+          if (status) status.textContent = "3D를 불러오지 못했어요.";
+        }
+      },
+      close() {
+        if (this.overlay) {
+          this.overlay.classList.remove("show");
+          this.overlay.hidden = true;
+        }
+      },
+    };
+    document.getElementById("mmOpen3d")?.addEventListener("click", () => {
+      MindmapView.close();
+      MindRoom3DView.open();
+    });
+    document.getElementById("mr3dClose")?.addEventListener("click", () => MindRoom3DView.close());
 
     // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
     const WordCardGame = {
