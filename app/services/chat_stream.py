@@ -798,6 +798,16 @@ def build_chat_messages(
             system_prompt += "\n\n" + adaptor_block
     except Exception:
         pass
+    try:
+        from app.services.word_card_mindmap import build_word_card_prompt_block
+
+        wc_analysis = (state.phase_notes or {}).get("word_card_analysis")
+        if wc_analysis:
+            wc_block = build_word_card_prompt_block(wc_analysis)
+            if wc_block:
+                system_prompt += "\n\n" + wc_block
+    except Exception:
+        pass
     system_prompt += "\n\n" + build_mood_mandatory_system_block(ctx, state)
     if style_block:
         system_prompt += "\n\n" + style_block
@@ -976,6 +986,7 @@ async def run_chat_turn(
     post_sud: Optional[float] = None,
     intervention_effectiveness: Optional[float] = None,
     consultation_mode: Optional[str] = None,
+    word_cards: Optional[List[str]] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     from app.services.image_search import (
         extract_search_query,
@@ -990,6 +1001,23 @@ async def run_chat_turn(
         session_mode=getattr(state, "consultation_mode", None),
         override=consultation_mode,
     )
+
+    # 낱말카드: allowlist 파서로 정제 후에만 AI 스트림에 반영.
+    word_card_selection: List[Dict[str, Any]] = []
+    if word_cards:
+        try:
+            from app.services.word_card_mindmap import (
+                analyze_conscious_boundary,
+                sanitize_word_card_selection,
+            )
+
+            word_card_selection = sanitize_word_card_selection(word_cards)
+            if word_card_selection:
+                state.phase_notes["word_card_analysis"] = analyze_conscious_boundary(
+                    word_card_selection
+                )
+        except Exception:
+            word_card_selection = []
 
     if multimodal_meta:
         state.phase_notes["multimodal_meta"] = {
@@ -1378,6 +1406,50 @@ async def run_chat_turn(
     except Exception:
         pass
 
+    word_card_tick: Optional[Dict[str, Any]] = None
+    mindmap_doc: Optional[Dict[str, Any]] = None
+    if word_card_selection:
+        try:
+            from app.services.stress_management_store import session_stress_summary
+            from app.services.word_card_mindmap import (
+                analyze_conscious_boundary,
+                build_mindmap_model,
+                build_warm_boundary_question,
+                extract_conversation_keywords,
+            )
+            from app.services.word_card_store import persist_word_card_tick
+
+            wc_analysis = analyze_conscious_boundary(
+                word_card_selection,
+                psychodynamic_metrics=psychodynamic_metrics,
+            )
+            state.phase_notes["word_card_analysis"] = wc_analysis
+            try:
+                stress_summary = session_stress_summary(state.session_id)
+            except Exception:
+                stress_summary = None
+            mindmap_doc = build_mindmap_model(
+                user_id=state.user_id,
+                analysis=wc_analysis,
+                conversation_keywords=extract_conversation_keywords(state.messages),
+                stress_summary=stress_summary,
+            )
+            word_card_tick = persist_word_card_tick(
+                user_id=state.user_id,
+                session_id=state.session_id,
+                turn_index=int(getattr(state, "turn_count", 0) or 0),
+                source="chat",
+                selection=word_card_selection,
+                analysis=wc_analysis,
+                mindmap=mindmap_doc,
+                license_type=getattr(state, "license_type", None) or "B2C_personal",
+                organization_id=getattr(state, "organization_id", None) or state.org_id,
+                state=state,
+            )
+            wc_analysis["warmQuestionKo"] = build_warm_boundary_question(wc_analysis)
+        except Exception:
+            word_card_tick = None
+
     state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
 
@@ -1414,6 +1486,11 @@ async def run_chat_turn(
         "stress_management": stress_tick or (state.phase_notes or {}).get("stress_management"),
         "stress_management_history_len": len(
             ((state.phase_notes or {}).get("stress_management_history") or [])
+        ),
+        "word_card_analysis": (state.phase_notes or {}).get("word_card_analysis"),
+        "mindmap": mindmap_doc or (state.phase_notes or {}).get("mindmap"),
+        "word_card_history_len": len(
+            ((state.phase_notes or {}).get("word_card_history") or [])
         ),
     }
     if image_search_payload:

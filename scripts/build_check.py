@@ -43,6 +43,7 @@ def main() -> int:
             "sanitized_input_history",
             "stress_management_history",
             "clinical_adaptive_history",
+            "word_card_mindmap_history",
             "user_emotional_patterns",
             "psych_timeline_events",
         }
@@ -51,7 +52,7 @@ def main() -> int:
             print("FAIL missing tables:", missing)
             return 1
         user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
-        for col in ("last_sanitized_json", "consultation_mode", "last_stress_json", "last_clinical_adaptive_json"):
+        for col in ("last_sanitized_json", "consultation_mode", "last_stress_json", "last_clinical_adaptive_json", "last_mindmap_json"):
             if col not in user_cols:
                 print("FAIL users missing", col)
                 return 1
@@ -79,6 +80,8 @@ def main() -> int:
     importlib.import_module("app.services.stress_management")
     importlib.import_module("app.services.stress_management_store")
     importlib.import_module("app.services.clinical_adaptive_store")
+    importlib.import_module("app.services.word_card_mindmap")
+    importlib.import_module("app.services.word_card_store")
     main_mod = importlib.import_module("app.main")
     assert getattr(main_mod, "app", None) is not None
     routes = {getattr(r, "path", None) for r in main_mod.app.routes}
@@ -92,6 +95,10 @@ def main() -> int:
         "/api/v1/users/{user_id}/clinical-adaptive",
         "/api/v1/users/{user_id}/clinical-adaptive/history",
         "/api/v1/orgs/{org_id}/clinical-adaptive/history",
+        "/api/v1/word-cards/deck",
+        "/api/v1/users/{user_id}/word-cards",
+        "/api/v1/users/{user_id}/word-cards/history",
+        "/api/v1/users/{user_id}/mindmap",
     ):
         if path not in routes:
             print("FAIL missing route", path)
@@ -139,6 +146,30 @@ def main() -> int:
         cognitive_level="SIMPLE_EASY",
     )
     print("OK stress + clinical adaptive persist")
+
+    from app.services.word_card_mindmap import (
+        analyze_conscious_boundary,
+        build_mindmap_model,
+        sanitize_word_card_selection,
+    )
+    from app.services.word_card_store import persist_word_card_tick, list_word_card_history
+
+    picked = sanitize_word_card_selection(["emptiness", "joy", "free text is dropped"])
+    wc_analysis = analyze_conscious_boundary(picked)
+    mindmap = build_mindmap_model(user_id="build-check-user", analysis=wc_analysis)
+    persist_word_card_tick(
+        user_id="build-check-user",
+        session_id="build-check-sess",
+        turn_index=3,
+        selection=picked,
+        analysis=wc_analysis,
+        mindmap=mindmap,
+    )
+    wc_history = list_word_card_history("build-check-user", session_id="build-check-sess")
+    if len(wc_history) != 1 or wc_history[0]["selectedCards"] != ["emptiness", "joy"]:
+        print("FAIL word card tracking", wc_history)
+        return 1
+    print("OK word card + mindmap persist")
     print("BUILD CHECK PASSED")
     try:
         db_path.unlink(missing_ok=True)

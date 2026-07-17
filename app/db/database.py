@@ -269,6 +269,10 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE users ADD COLUMN last_clinical_adaptive_json TEXT NOT NULL DEFAULT '{}'"
         )
+    if "last_mindmap_json" not in user_cols:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN last_mindmap_json TEXT NOT NULL DEFAULT '{}'"
+        )
 
     session_cols = {row[1] for row in conn.execute("PRAGMA table_info(session_snapshots)")}
     if "consultation_mode" not in session_cols:
@@ -372,6 +376,26 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             ON clinical_adaptive_history(session_id, turn_index, id);
         CREATE INDEX IF NOT EXISTS idx_cah_org_created
             ON clinical_adaptive_history(organization_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS word_card_mindmap_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            session_id TEXT NOT NULL DEFAULT '',
+            turn_index INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'chat',
+            selected_cards_json TEXT NOT NULL DEFAULT '[]',
+            boundary_score REAL NOT NULL DEFAULT 0.5,
+            analysis_json TEXT NOT NULL DEFAULT '{}',
+            mindmap_json TEXT NOT NULL DEFAULT '{}',
+            license_type TEXT NOT NULL DEFAULT 'B2C_personal',
+            organization_id TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_wch_user_created
+            ON word_card_mindmap_history(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_wch_session_turn
+            ON word_card_mindmap_history(session_id, turn_index, id);
         """
     )
 
@@ -382,6 +406,7 @@ def reset_db() -> None:
     conn = get_connection()
     try:
         for table in (
+            "word_card_mindmap_history",
             "clinical_adaptive_history",
             "stress_management_history",
             "sanitized_input_history",

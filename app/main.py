@@ -239,6 +239,15 @@ class ChatStreamRequest(BaseModel):
     resistance_level: Optional[str] = None
     sensory_impairment_deaf: bool = False
     cognitive_level: Optional[str] = None
+    word_cards: Optional[List[str]] = None
+
+
+class WordCardSubmitRequest(BaseModel):
+    cards: List[str] = []
+    session_id: Optional[str] = None
+    turn_index: int = 0
+    source: Optional[str] = "word_card_game"
+    display_name: Optional[str] = None
 
 
 class EmotionalPatternRecordRequest(BaseModel):
@@ -2088,6 +2097,92 @@ async def org_stress_management_history(org_id: str, limit: int = 100):
     }
 
 
+@app.get("/api/v1/word-cards/deck")
+async def word_card_deck():
+    """낱말카드 놀이 덱 (WordCardGame UI)."""
+    from app.services.word_card_mindmap import get_word_card_deck
+
+    return get_word_card_deck()
+
+
+@app.post("/api/v1/users/{user_id}/word-cards")
+async def submit_word_cards(user_id: str, request: WordCardSubmitRequest):
+    """낱말카드 선택 → allowlist 정제 → 경계 분석 + 마인드맵 + 따뜻한 질문."""
+    from app.services.stress_management_store import session_stress_summary
+    from app.services.word_card_mindmap import (
+        analyze_conscious_boundary,
+        build_mindmap_model,
+        build_warm_boundary_question,
+        sanitize_word_card_selection,
+    )
+    from app.services.word_card_store import persist_word_card_tick
+
+    selection = sanitize_word_card_selection(request.cards)
+    analysis = analyze_conscious_boundary(selection)
+    stress_summary = None
+    if request.session_id:
+        try:
+            stress_summary = session_stress_summary(request.session_id)
+        except Exception:
+            stress_summary = None
+    mindmap = build_mindmap_model(
+        user_id=user_id,
+        analysis=analysis,
+        stress_summary=stress_summary,
+        display_name=request.display_name or "",
+    )
+    record = persist_word_card_tick(
+        user_id=user_id,
+        session_id=request.session_id or "",
+        turn_index=int(request.turn_index or 0),
+        source=request.source or "word_card_game",
+        selection=selection,
+        analysis=analysis,
+        mindmap=mindmap,
+    )
+    return {
+        "user_id": user_id,
+        "record_id": record.get("id"),
+        "analysis": analysis,
+        "mindmap": mindmap,
+        "warm_question_ko": build_warm_boundary_question(
+            analysis, display_name=request.display_name or ""
+        ),
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/mindmap")
+async def user_mindmap_latest(user_id: str):
+    """최신 '지금의 나' 마인드맵 (스트레스 돌봄 기록 연동)."""
+    from app.services.word_card_store import get_user_last_mindmap
+
+    latest = get_user_last_mindmap(user_id)
+    return {
+        "user_id": user_id,
+        "mindmap": latest,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/word-cards/history")
+async def user_word_card_history(
+    user_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+):
+    from app.services.word_card_store import list_word_card_history
+
+    history = list_word_card_history(user_id, session_id=session_id, limit=limit)
+    return {
+        "user_id": user_id,
+        "session_id": session_id,
+        "count": len(history),
+        "history": history,
+        "non_diagnostic": True,
+    }
+
+
 @app.get("/api/v1/users/{user_id}/clinical-adaptive")
 async def user_clinical_adaptive_latest(user_id: str):
     from app.services.clinical_adaptive_store import get_user_last_clinical_adaptive
@@ -2818,6 +2913,7 @@ async def chat_stream(request: ChatStreamRequest):
                 post_sud=request.post_sud,
                 intervention_effectiveness=request.intervention_effectiveness,
                 consultation_mode=request.consultation_mode,
+                word_cards=request.word_cards,
             ):
                 if event["event"] == "done":
                     profile_delta = event["data"].get("profile_delta") or {}

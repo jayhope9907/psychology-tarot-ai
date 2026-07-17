@@ -1872,6 +1872,87 @@
       .composer-meta { flex-direction: column; align-items: flex-start; }
       .safety { text-align: left; }
     }
+
+    /* ── 낱말카드 놀이 & 마인드맵 오버레이 ─────────────────────── */
+    .wc-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(30, 32, 40, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 90;
+      padding: 18px;
+    }
+    .wc-overlay.show { display: flex; }
+    .wc-panel {
+      background: #fffdf9;
+      border-radius: 22px;
+      max-width: 560px;
+      width: 100%;
+      max-height: 86vh;
+      overflow-y: auto;
+      padding: 22px 20px 18px;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.22);
+    }
+    .wc-panel h3 { margin: 0 0 4px; font-size: 1.05rem; }
+    .wc-panel .wc-guide { margin: 0 0 14px; font-size: 0.8rem; color: var(--text-muted); }
+    .wc-category { margin-bottom: 12px; }
+    .wc-category .wc-cat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+    .wc-cards { display: flex; flex-wrap: wrap; gap: 8px; }
+    .wc-card {
+      border: 1.5px solid rgba(0,0,0,0.08);
+      background: #fff;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--text-soft);
+    }
+    .wc-card:hover { border-color: var(--accent-light); }
+    .wc-card[aria-pressed="true"] {
+      background: var(--accent-soft, #ffe9d6);
+      border-color: var(--accent, #f2994a);
+      color: var(--accent, #b25b18);
+      font-weight: 600;
+    }
+    .wc-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      gap: 10px;
+    }
+    .wc-actions .wc-count { font-size: 0.75rem; color: var(--text-muted); }
+    .wc-actions button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .wc-actions .wc-send { background: var(--accent, #f2994a); color: #fff; font-weight: 600; }
+    .wc-actions .wc-close { background: rgba(0,0,0,0.06); color: var(--text-soft); }
+
+    .mm-panel { max-width: 640px; }
+    .mm-svg-wrap { width: 100%; overflow: hidden; border-radius: 16px; background: #fbf7ef; }
+    .mm-svg-wrap svg { width: 100%; height: auto; display: block; }
+    .mm-reflection {
+      margin: 12px 0 0;
+      font-size: 0.82rem;
+      color: var(--text-soft);
+      background: rgba(242, 185, 107, 0.12);
+      border-radius: 12px;
+      padding: 10px 12px;
+      line-height: 1.5;
+    }
+    .mm-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 40px 0; }
   </style>
   <link rel="stylesheet" href="/static/css/toss-ui.css" />
   <link rel="stylesheet" href="/static/css/embed.css" />
@@ -2064,6 +2145,11 @@
             <span class="t-stat-value" id="dashBatteryValue">준비 중</span>
             <span class="t-stat-sub" id="dashPaceSub">페이스 여유롭게</span>
           </div>
+          <button type="button" class="t-stat-card is-blue" id="dashMindmap">
+            <span class="t-stat-label">마음 지도</span>
+            <span class="t-stat-value" id="dashMindmapValue">지금의 나</span>
+            <span class="t-stat-sub" id="dashMindmapSub">낱말카드로 그려요</span>
+          </button>
         </div>
       </section>
 
@@ -2133,6 +2219,7 @@
           <div class="composer-tools">
             <button type="button" class="composer-tool" id="btnAttachPhoto" title="사진 첨부" aria-label="사진 첨부">🖼</button>
             <button type="button" class="composer-tool" id="btnImageSearch" title="사진 검색" aria-label="사진 검색" aria-pressed="false">🔍</button>
+            <button type="button" class="composer-tool" id="btnWordCards" title="낱말카드 놀이" aria-label="낱말카드 놀이">🃏</button>
             <input type="file" id="photoInput" accept="image/*" hidden />
           </div>
           <textarea
@@ -2149,6 +2236,41 @@
         </div>
       </footer>
     </main>
+  </div>
+
+  <!-- 낱말카드 놀이 (WordCardGame) -->
+  <div class="wc-overlay" id="wordCardOverlay" role="dialog" aria-label="낱말카드 놀이" hidden>
+    <div class="wc-panel">
+      <h3>🃏 낱말카드 놀이</h3>
+      <p class="wc-guide" id="wcGuide">마음에 와닿는 낱말을 편하게 골라 주세요. 정답은 없어요.</p>
+      <div id="wcCategories"></div>
+      <div class="wc-actions">
+        <span class="wc-count" id="wcCount">0개 선택</span>
+        <div>
+          <button type="button" class="wc-close" id="wcClose">닫기</button>
+          <button type="button" class="wc-send" id="wcSend">마음 카드 보내기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 나의 마인드맵 (MindmapView) -->
+  <div class="wc-overlay" id="mindmapOverlay" role="dialog" aria-label="지금의 나 마인드맵" hidden>
+    <div class="wc-panel mm-panel">
+      <h3 id="mmTitle">🗺️ 지금 마음 지도</h3>
+      <p class="wc-guide" id="mmBoundary"></p>
+      <div class="mm-svg-wrap" id="mmSvgWrap">
+        <p class="mm-empty" id="mmEmpty">아직 지도가 없어요. 낱말카드를 골라 첫 지도를 그려 보세요.</p>
+      </div>
+      <p class="mm-reflection" id="mmReflection" hidden></p>
+      <div class="wc-actions">
+        <span class="wc-count" id="mmStressLink"></span>
+        <div>
+          <button type="button" class="wc-close" id="mmClose">닫기</button>
+          <button type="button" class="wc-send" id="mmOpenCards">낱말카드 다시 고르기</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <nav class="t-bottom-nav" aria-label="하단 메뉴">
@@ -3081,6 +3203,258 @@
     }
     syncMoodChips();
 
+    // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
+    const WordCardGame = {
+      deck: null,
+      selected: [],
+      pendingForChat: [],
+      overlay: document.getElementById("wordCardOverlay"),
+      async open() {
+        if (!this.deck) await this.loadDeck();
+        this.render();
+        if (this.overlay) {
+          this.overlay.hidden = false;
+          this.overlay.classList.add("show");
+        }
+      },
+      close() {
+        if (this.overlay) {
+          this.overlay.classList.remove("show");
+          this.overlay.hidden = true;
+        }
+      },
+      async loadDeck() {
+        try {
+          const res = await fetch("/api/v1/word-cards/deck");
+          if (res.ok) this.deck = await res.json();
+        } catch (_) {}
+      },
+      render() {
+        const host = document.getElementById("wcCategories");
+        if (!host || !this.deck) return;
+        const guide = document.getElementById("wcGuide");
+        if (guide && this.deck.guide_ko) guide.textContent = this.deck.guide_ko;
+        host.innerHTML = "";
+        (this.deck.categories || []).forEach((cat) => {
+          const wrap = document.createElement("div");
+          wrap.className = "wc-category";
+          const label = document.createElement("span");
+          label.className = "wc-cat-label";
+          label.textContent = cat.category;
+          wrap.appendChild(label);
+          const cards = document.createElement("div");
+          cards.className = "wc-cards";
+          (cat.cards || []).forEach((card) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "wc-card";
+            btn.textContent = card.label_ko;
+            btn.setAttribute("aria-pressed", this.selected.includes(card.id) ? "true" : "false");
+            btn.addEventListener("click", () => this.toggle(card.id, btn));
+            cards.appendChild(btn);
+          });
+          wrap.appendChild(cards);
+          host.appendChild(wrap);
+        });
+        this.updateCount();
+      },
+      toggle(id, btn) {
+        const max = (this.deck && this.deck.maxSelect) || 8;
+        const idx = this.selected.indexOf(id);
+        if (idx >= 0) this.selected.splice(idx, 1);
+        else if (this.selected.length < max) this.selected.push(id);
+        btn.setAttribute("aria-pressed", this.selected.includes(id) ? "true" : "false");
+        this.updateCount();
+      },
+      updateCount() {
+        const el = document.getElementById("wcCount");
+        if (el) el.textContent = `${this.selected.length}개 선택`;
+      },
+      consumeSelection() {
+        if (!this.pendingForChat.length) return null;
+        const out = [...this.pendingForChat];
+        this.pendingForChat = [];
+        return out;
+      },
+      async send() {
+        if (!this.selected.length) {
+          this.close();
+          return;
+        }
+        const cards = [...this.selected];
+        this.pendingForChat = cards;
+        this.selected = [];
+        this.close();
+        try {
+          const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/word-cards`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cards, session_id: sessionId || null, source: "word_card_game" }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.mindmap) MindmapView.setData(data.mindmap);
+            if (data.warm_question_ko) {
+              const bubble = createAssistantRow();
+              bubble.textContent = data.warm_question_ko;
+              scrollToBottom();
+            }
+          }
+        } catch (_) {}
+      },
+    };
+
+    const MindmapView = {
+      data: null,
+      overlay: document.getElementById("mindmapOverlay"),
+      setData(mm) {
+        if (!mm || !Array.isArray(mm.nodes) || !mm.nodes.length) return;
+        this.data = mm;
+        const sub = document.getElementById("dashMindmapSub");
+        if (sub && mm.boundaryReadingKo) sub.textContent = mm.boundaryReadingKo;
+      },
+      async open() {
+        if (!this.data) await this.fetchLatest();
+        this.render();
+        if (this.overlay) {
+          this.overlay.hidden = false;
+          this.overlay.classList.add("show");
+        }
+      },
+      close() {
+        if (this.overlay) {
+          this.overlay.classList.remove("show");
+          this.overlay.hidden = true;
+        }
+      },
+      async fetchLatest() {
+        try {
+          const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/mindmap`);
+          if (res.ok) {
+            const d = await res.json();
+            if (d.mindmap) this.setData(d.mindmap);
+          }
+        } catch (_) {}
+      },
+      nodeFill(n) {
+        if (n.kind === "center") return "#f2994a";
+        if (n.kind === "branch") return n.color || "#d8cbb8";
+        if (n.kind === "stress") return "#8fd6a8";
+        if (n.kind === "keyword") return "#f2b96b";
+        if (n.layer === "conscious") return "#7cb8f2";
+        return "#b393e8";
+      },
+      render() {
+        const wrap = document.getElementById("mmSvgWrap");
+        const empty = document.getElementById("mmEmpty");
+        const boundaryEl = document.getElementById("mmBoundary");
+        const refl = document.getElementById("mmReflection");
+        const stressLink = document.getElementById("mmStressLink");
+        if (!wrap) return;
+        wrap.querySelectorAll("svg").forEach((s) => s.remove());
+        if (!this.data || !(this.data.nodes || []).length) {
+          if (empty) empty.hidden = false;
+          if (refl) refl.hidden = true;
+          return;
+        }
+        if (empty) empty.hidden = true;
+        const title = document.getElementById("mmTitle");
+        if (title) title.textContent = "🗺️ " + (this.data.titleKo || "지금 마음 지도");
+        if (boundaryEl) boundaryEl.textContent = this.data.boundaryReadingKo || "";
+        if (refl) {
+          refl.textContent = this.data.reflectionPromptKo || "";
+          refl.hidden = !this.data.reflectionPromptKo;
+        }
+        const hasStress = (this.data.nodes || []).some((n) => n.kind === "stress");
+        if (stressLink) stressLink.textContent = hasStress ? "🌿 스트레스 돌봄 기록 연동" : "";
+
+        const W = 640;
+        const H = 470;
+        const cx = W / 2;
+        const cy = H / 2;
+        const nodes = this.data.nodes || [];
+        const edges = this.data.edges || [];
+        const byId = {};
+        nodes.forEach((n) => (byId[n.id] = n));
+        const childrenOf = (id) =>
+          edges.filter((e) => e.from === id).map((e) => byId[e.to]).filter(Boolean);
+        const centerId = this.data.centerNodeId || "me_now";
+        const branches = childrenOf(centerId);
+        const pos = {};
+        pos[centerId] = { x: cx, y: cy };
+        const R1 = 132;
+        const R2 = 96;
+        branches.forEach((b, i) => {
+          const ang = (Math.PI * 2 * i) / Math.max(branches.length, 1) - Math.PI / 2;
+          const bx = cx + R1 * Math.cos(ang);
+          const by = cy + R1 * Math.sin(ang);
+          pos[b.id] = { x: bx, y: by };
+          const kids = childrenOf(b.id);
+          const spread = Math.PI / 2.1;
+          kids.forEach((k, j) => {
+            const a2 =
+              kids.length > 1 ? ang - spread / 2 + (spread * j) / (kids.length - 1) : ang;
+            pos[k.id] = { x: bx + R2 * Math.cos(a2), y: by + R2 * Math.sin(a2) };
+          });
+        });
+
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        edges.forEach((e) => {
+          const p1 = pos[e.from];
+          const p2 = pos[e.to];
+          if (!p1 || !p2) return;
+          const line = document.createElementNS(svgNS, "line");
+          line.setAttribute("x1", p1.x);
+          line.setAttribute("y1", p1.y);
+          line.setAttribute("x2", p2.x);
+          line.setAttribute("y2", p2.y);
+          line.setAttribute("stroke", "#d8cbb8");
+          line.setAttribute("stroke-width", "1.5");
+          svg.appendChild(line);
+        });
+        nodes.forEach((n) => {
+          const p = pos[n.id];
+          if (!p) return;
+          const g = document.createElementNS(svgNS, "g");
+          const r = n.kind === "center" ? 40 : n.kind === "branch" ? 10 : 7;
+          const circle = document.createElementNS(svgNS, "circle");
+          circle.setAttribute("cx", p.x);
+          circle.setAttribute("cy", p.y);
+          circle.setAttribute("r", r);
+          circle.setAttribute("fill", this.nodeFill(n));
+          circle.setAttribute("opacity", n.kind === "center" ? "1" : "0.9");
+          g.appendChild(circle);
+          const text = document.createElementNS(svgNS, "text");
+          text.setAttribute("x", p.x);
+          text.setAttribute(
+            "y",
+            n.kind === "center" ? p.y + 4 : p.y + r + 13
+          );
+          text.setAttribute("text-anchor", "middle");
+          text.setAttribute("font-size", n.kind === "center" ? "13" : n.kind === "branch" ? "12" : "11");
+          text.setAttribute("fill", n.kind === "center" ? "#fff" : "#5c5344");
+          if (n.kind === "center" || n.kind === "branch") text.setAttribute("font-weight", "700");
+          text.textContent = n.label_ko || "";
+          g.appendChild(text);
+          svg.appendChild(g);
+        });
+        wrap.appendChild(svg);
+      },
+    };
+
+    document.getElementById("btnWordCards")?.addEventListener("click", () => WordCardGame.open());
+    document.getElementById("wcClose")?.addEventListener("click", () => WordCardGame.close());
+    document.getElementById("wcSend")?.addEventListener("click", () => WordCardGame.send());
+    document.getElementById("dashMindmap")?.addEventListener("click", () => MindmapView.open());
+    document.getElementById("mmClose")?.addEventListener("click", () => MindmapView.close());
+    document.getElementById("mmOpenCards")?.addEventListener("click", () => {
+      MindmapView.close();
+      WordCardGame.open();
+    });
+    MindmapView.fetchLatest();
+
     function hideTyping() {
       if (typingEl) {
         typingEl.remove();
@@ -3770,6 +4144,7 @@
               updatePace(data.profile_delta?.fatigue);
               updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
               updateClinicalInsight(data.profile_delta?.clinical_insight);
+              if (data.mindmap) MindmapView.setData(data.mindmap);
               updatePsychProfile(data.psych_profile);
               refreshBatteryStatus(sessionId);
               refreshPsychProfile();
@@ -3866,6 +4241,7 @@
         resistance_level: resistanceLevel || "LOW",
         sensory_impairment_deaf: !!sensoryImpairmentDeaf,
         cognitive_level: cognitiveLevel || "STANDARD",
+        word_cards: WordCardGame.consumeSelection(),
       });
     }
 
