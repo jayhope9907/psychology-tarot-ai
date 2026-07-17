@@ -808,6 +808,23 @@ def build_chat_messages(
                 system_prompt += "\n\n" + wc_block
     except Exception:
         pass
+    try:
+        from app.services.emotional_spectrum import (
+            build_spectrum_prompt_block,
+            compute_emotional_spectrum,
+        )
+
+        spectrum = compute_emotional_spectrum(
+            state=state,
+            sanitized=sanitized,
+            behavioral_metrics=(state.phase_notes or {}).get("behavioral_metrics_client"),
+        )
+        state.phase_notes["emotional_spectrum"] = spectrum
+        sp_block = build_spectrum_prompt_block(spectrum)
+        if sp_block:
+            system_prompt += "\n\n" + sp_block
+    except Exception:
+        pass
     system_prompt += "\n\n" + build_mood_mandatory_system_block(ctx, state)
     if style_block:
         system_prompt += "\n\n" + style_block
@@ -987,6 +1004,7 @@ async def run_chat_turn(
     intervention_effectiveness: Optional[float] = None,
     consultation_mode: Optional[str] = None,
     word_cards: Optional[List[str]] = None,
+    behavioral_metrics: Optional[Dict[str, Any]] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     from app.services.image_search import (
         extract_search_query,
@@ -1001,6 +1019,9 @@ async def run_chat_turn(
         session_mode=getattr(state, "consultation_mode", None),
         override=consultation_mode,
     )
+
+    if behavioral_metrics:
+        state.phase_notes["behavioral_metrics_client"] = dict(behavioral_metrics)
 
     # 낱말카드: allowlist 파서로 정제 후에만 AI 스트림에 반영.
     word_card_selection: List[Dict[str, Any]] = []
@@ -1450,6 +1471,24 @@ async def run_chat_turn(
         except Exception:
             word_card_tick = None
 
+    spectrum_result = (state.phase_notes or {}).get("emotional_spectrum")
+    if spectrum_result:
+        try:
+            from app.services.emotional_spectrum_store import persist_spectrum_tick
+
+            persist_spectrum_tick(
+                user_id=state.user_id,
+                session_id=state.session_id,
+                turn_index=int(getattr(state, "turn_count", 0) or 0),
+                source="chat",
+                result=spectrum_result,
+                license_type=getattr(state, "license_type", None) or "B2C_personal",
+                organization_id=getattr(state, "organization_id", None) or state.org_id,
+                state=state,
+            )
+        except Exception:
+            pass
+
     state.messages.append({"role": "user", "content": transcript_user})
     state.messages.append({"role": "assistant", "content": assistant_text})
 
@@ -1492,6 +1531,7 @@ async def run_chat_turn(
         "word_card_history_len": len(
             ((state.phase_notes or {}).get("word_card_history") or [])
         ),
+        "emotional_spectrum": (state.phase_notes or {}).get("emotional_spectrum"),
     }
     if image_search_payload:
         done_data["image_results"] = image_search_payload

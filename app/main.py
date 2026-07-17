@@ -240,6 +240,16 @@ class ChatStreamRequest(BaseModel):
     sensory_impairment_deaf: bool = False
     cognitive_level: Optional[str] = None
     word_cards: Optional[List[str]] = None
+    behavioral_metrics: Optional[Dict[str, Any]] = None
+
+
+class SpectrumComputeRequest(BaseModel):
+    base_scores: Optional[Dict[str, float]] = None
+    behavioral_metrics: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
+    turn_index: int = 0
+    source: Optional[str] = "api"
+    persist: bool = True
 
 
 class WordCardSubmitRequest(BaseModel):
@@ -2097,6 +2107,81 @@ async def org_stress_management_history(org_id: str, limit: int = 100):
     }
 
 
+@app.post("/api/v1/users/{user_id}/emotional-spectrum")
+async def compute_user_emotional_spectrum(user_id: str, request: SpectrumComputeRequest):
+    """통합 내재화 스펙트럼 온디맨드 계산 (비진단 참고 지표)."""
+    from app.services.emotional_spectrum import compute_emotional_spectrum
+    from app.services.emotional_spectrum_store import persist_spectrum_tick
+    from app.services.sanitized_input_store import get_user_last_sanitized
+
+    latest = get_user_last_sanitized(user_id) or {}
+    result = compute_emotional_spectrum(
+        sanitized=latest.get("sanitizedInput"),
+        behavioral_metrics=request.behavioral_metrics,
+        base_scores=request.base_scores,
+    )
+    record_id = None
+    if request.persist:
+        record = persist_spectrum_tick(
+            user_id=user_id,
+            session_id=request.session_id or "",
+            turn_index=int(request.turn_index or 0),
+            source=request.source or "api",
+            result=result,
+        )
+        record_id = record.get("id")
+    return {
+        "user_id": user_id,
+        "record_id": record_id,
+        "spectrum": result,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/emotional-spectrum")
+async def user_emotional_spectrum_latest(user_id: str):
+    from app.services.emotional_spectrum_store import get_user_last_spectrum
+
+    latest = get_user_last_spectrum(user_id)
+    return {
+        "user_id": user_id,
+        "latest": latest,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/emotional-spectrum/history")
+async def user_emotional_spectrum_history(
+    user_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+):
+    from app.services.emotional_spectrum_store import list_spectrum_history
+
+    history = list_spectrum_history(user_id, session_id=session_id, limit=limit)
+    return {
+        "user_id": user_id,
+        "session_id": session_id,
+        "count": len(history),
+        "history": history,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/orgs/{org_id}/emotional-spectrum/history")
+async def org_emotional_spectrum_history(org_id: str, limit: int = 100):
+    from app.services.emotional_spectrum_store import list_org_spectrum_history
+
+    history = list_org_spectrum_history(org_id, limit=limit)
+    return {
+        "organizationId": org_id,
+        "count": len(history),
+        "history": history,
+        "pii_policy": "user_id_hashed",
+        "non_diagnostic": True,
+    }
+
+
 @app.get("/api/v1/word-cards/deck")
 async def word_card_deck():
     """낱말카드 놀이 덱 (WordCardGame UI)."""
@@ -2914,6 +2999,7 @@ async def chat_stream(request: ChatStreamRequest):
                 intervention_effectiveness=request.intervention_effectiveness,
                 consultation_mode=request.consultation_mode,
                 word_cards=request.word_cards,
+                behavioral_metrics=request.behavioral_metrics,
             ):
                 if event["event"] == "done":
                     profile_delta = event["data"].get("profile_delta") or {}

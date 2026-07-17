@@ -1953,6 +1953,23 @@
       line-height: 1.5;
     }
     .mm-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 40px 0; }
+
+    /* ── 마음의 방 (MindRoom) 톤 ───────────────────────────── */
+    .main { transition: background 0.8s ease, filter 0.8s ease; }
+    .main.room-warm-yellow .chat-scroll {
+      background: linear-gradient(180deg, rgba(255, 243, 205, 0.35), rgba(255, 250, 240, 0.15));
+    }
+    .main.room-dark-gray .chat-scroll {
+      background: linear-gradient(180deg, rgba(74, 78, 88, 0.16), rgba(52, 56, 64, 0.1));
+      filter: saturate(0.82) brightness(0.94);
+    }
+    .main.room-fractured-distorted .chat-scroll {
+      background:
+        linear-gradient(112deg, rgba(120, 108, 160, 0.14) 0%, transparent 42%),
+        linear-gradient(248deg, rgba(96, 116, 152, 0.12) 8%, transparent 55%),
+        linear-gradient(180deg, rgba(90, 88, 110, 0.1), rgba(70, 72, 90, 0.06));
+      filter: saturate(0.75) brightness(0.9);
+    }
   </style>
   <link rel="stylesheet" href="/static/css/toss-ui.css" />
   <link rel="stylesheet" href="/static/css/embed.css" />
@@ -3203,6 +3220,75 @@
     }
     syncMoodChips();
 
+    // ── 미세 행동 추적 (BehaviorTracker): 타이핑 망설임·백스페이스·카드 취소 ──
+    const BehaviorTracker = {
+      backspaceCount: 0,
+      keyCount: 0,
+      pauseMs: 0,
+      typingMs: 0,
+      lastKeyTs: 0,
+      replyShownTs: Date.now(),
+      firstKeyDelayMs: 0,
+      wordCardCancelCount: 0,
+      onKey(e) {
+        const now = Date.now();
+        if (!this.firstKeyDelayMs && this.replyShownTs) {
+          this.firstKeyDelayMs = Math.min(now - this.replyShownTs, 5000);
+        }
+        if (this.lastKeyTs) {
+          const gap = now - this.lastKeyTs;
+          if (gap < 30000) {
+            this.typingMs += gap;
+            if (gap > 1500) this.pauseMs += gap;
+          }
+        }
+        this.lastKeyTs = now;
+        this.keyCount += 1;
+        if (e && e.key === "Backspace") this.backspaceCount += 1;
+      },
+      markReplyShown() {
+        this.replyShownTs = Date.now();
+        this.firstKeyDelayMs = 0;
+      },
+      snapshotAndReset() {
+        const hesitation = this.typingMs > 0 ? Math.min(this.pauseMs / this.typingMs, 1) : 0;
+        const snap = {
+          hesitation_index: Math.round(hesitation * 100) / 100,
+          backspace_count: this.backspaceCount,
+          word_delay_ms: this.firstKeyDelayMs,
+          word_card_cancel_count: this.wordCardCancelCount,
+        };
+        this.backspaceCount = 0;
+        this.keyCount = 0;
+        this.pauseMs = 0;
+        this.typingMs = 0;
+        this.lastKeyTs = 0;
+        this.firstKeyDelayMs = 0;
+        this.wordCardCancelCount = 0;
+        return snap;
+      },
+    };
+    const behaviorInput = document.getElementById("messageInput");
+    if (behaviorInput) behaviorInput.addEventListener("keydown", (e) => BehaviorTracker.onKey(e));
+
+    // ── 마음의 방 (MindRoom): 스펙트럼 상태 → 공간 톤 시각화 ──
+    const MindRoom = {
+      current: null,
+      apply(room) {
+        if (!room || !room.color_tone) return;
+        this.current = room;
+        const main = document.querySelector(".main");
+        if (!main) return;
+        main.classList.remove("room-warm-yellow", "room-dark-gray", "room-fractured-distorted");
+        const cls = {
+          "warm-yellow": "room-warm-yellow",
+          "dark-gray": "room-dark-gray",
+          "fractured-distorted": "room-fractured-distorted",
+        }[room.color_tone];
+        if (cls) main.classList.add(cls);
+      },
+    };
+
     // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
     const WordCardGame = {
       deck: null,
@@ -3261,8 +3347,10 @@
       toggle(id, btn) {
         const max = (this.deck && this.deck.maxSelect) || 8;
         const idx = this.selected.indexOf(id);
-        if (idx >= 0) this.selected.splice(idx, 1);
-        else if (this.selected.length < max) this.selected.push(id);
+        if (idx >= 0) {
+          this.selected.splice(idx, 1);
+          BehaviorTracker.wordCardCancelCount += 1;
+        } else if (this.selected.length < max) this.selected.push(id);
         btn.setAttribute("aria-pressed", this.selected.includes(id) ? "true" : "false");
         this.updateCount();
       },
@@ -4145,6 +4233,8 @@
               updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
               updateClinicalInsight(data.profile_delta?.clinical_insight);
               if (data.mindmap) MindmapView.setData(data.mindmap);
+              if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);
+              BehaviorTracker.markReplyShown();
               updatePsychProfile(data.psych_profile);
               refreshBatteryStatus(sessionId);
               refreshPsychProfile();
@@ -4242,6 +4332,7 @@
         sensory_impairment_deaf: !!sensoryImpairmentDeaf,
         cognitive_level: cognitiveLevel || "STANDARD",
         word_cards: WordCardGame.consumeSelection(),
+        behavioral_metrics: BehaviorTracker.snapshotAndReset(),
       });
     }
 

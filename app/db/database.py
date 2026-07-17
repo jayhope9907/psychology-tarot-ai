@@ -273,6 +273,10 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE users ADD COLUMN last_mindmap_json TEXT NOT NULL DEFAULT '{}'"
         )
+    if "last_spectrum_json" not in user_cols:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN last_spectrum_json TEXT NOT NULL DEFAULT '{}'"
+        )
 
     session_cols = {row[1] for row in conn.execute("PRAGMA table_info(session_snapshots)")}
     if "consultation_mode" not in session_cols:
@@ -396,6 +400,28 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             ON word_card_mindmap_history(user_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_wch_session_turn
             ON word_card_mindmap_history(session_id, turn_index, id);
+
+        CREATE TABLE IF NOT EXISTS emotional_spectrum_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            session_id TEXT NOT NULL DEFAULT '',
+            turn_index INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'chat',
+            total_score REAL NOT NULL DEFAULT 0,
+            risk_level TEXT NOT NULL DEFAULT 'NORMAL',
+            suggested_approach TEXT NOT NULL DEFAULT '',
+            result_json TEXT NOT NULL DEFAULT '{}',
+            license_type TEXT NOT NULL DEFAULT 'B2C_personal',
+            organization_id TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_esh_user_created
+            ON emotional_spectrum_history(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_esh_session_turn
+            ON emotional_spectrum_history(session_id, turn_index, id);
+        CREATE INDEX IF NOT EXISTS idx_esh_org_created
+            ON emotional_spectrum_history(organization_id, created_at DESC);
         """
     )
 
@@ -406,6 +432,7 @@ def reset_db() -> None:
     conn = get_connection()
     try:
         for table in (
+            "emotional_spectrum_history",
             "word_card_mindmap_history",
             "clinical_adaptive_history",
             "stress_management_history",

@@ -44,6 +44,7 @@ def main() -> int:
             "stress_management_history",
             "clinical_adaptive_history",
             "word_card_mindmap_history",
+            "emotional_spectrum_history",
             "user_emotional_patterns",
             "psych_timeline_events",
         }
@@ -52,7 +53,7 @@ def main() -> int:
             print("FAIL missing tables:", missing)
             return 1
         user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
-        for col in ("last_sanitized_json", "consultation_mode", "last_stress_json", "last_clinical_adaptive_json", "last_mindmap_json"):
+        for col in ("last_sanitized_json", "consultation_mode", "last_stress_json", "last_clinical_adaptive_json", "last_mindmap_json", "last_spectrum_json"):
             if col not in user_cols:
                 print("FAIL users missing", col)
                 return 1
@@ -82,6 +83,8 @@ def main() -> int:
     importlib.import_module("app.services.clinical_adaptive_store")
     importlib.import_module("app.services.word_card_mindmap")
     importlib.import_module("app.services.word_card_store")
+    importlib.import_module("app.services.emotional_spectrum")
+    importlib.import_module("app.services.emotional_spectrum_store")
     main_mod = importlib.import_module("app.main")
     assert getattr(main_mod, "app", None) is not None
     routes = {getattr(r, "path", None) for r in main_mod.app.routes}
@@ -99,6 +102,9 @@ def main() -> int:
         "/api/v1/users/{user_id}/word-cards",
         "/api/v1/users/{user_id}/word-cards/history",
         "/api/v1/users/{user_id}/mindmap",
+        "/api/v1/users/{user_id}/emotional-spectrum",
+        "/api/v1/users/{user_id}/emotional-spectrum/history",
+        "/api/v1/orgs/{org_id}/emotional-spectrum/history",
     ):
         if path not in routes:
             print("FAIL missing route", path)
@@ -170,6 +176,28 @@ def main() -> int:
         print("FAIL word card tracking", wc_history)
         return 1
     print("OK word card + mindmap persist")
+
+    from app.services.emotional_spectrum import compute_emotional_spectrum
+    from app.services.emotional_spectrum_store import persist_spectrum_tick, list_spectrum_history
+
+    spectrum = compute_emotional_spectrum(
+        sanitized={"initialWeights": {"mood": 20, "energy": 30, "anxiety": 80}},
+        behavioral_metrics={"hesitation_index": 0.6, "backspace_count": 10, "word_delay_ms": 3000},
+    )
+    if "mind_room" not in spectrum or spectrum["internalizing_risk_level"] not in ("NORMAL", "MONITOR", "HIGH_ALERT"):
+        print("FAIL spectrum compute", spectrum)
+        return 1
+    persist_spectrum_tick(
+        user_id="build-check-user",
+        session_id="build-check-sess",
+        turn_index=4,
+        result=spectrum,
+    )
+    es_history = list_spectrum_history("build-check-user", session_id="build-check-sess")
+    if len(es_history) != 1:
+        print("FAIL spectrum tracking", es_history)
+        return 1
+    print("OK emotional spectrum persist")
     print("BUILD CHECK PASSED")
     try:
         db_path.unlink(missing_ok=True)
