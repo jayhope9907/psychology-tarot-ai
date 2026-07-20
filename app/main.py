@@ -2113,6 +2113,7 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
     from app.services.emotional_spectrum import (
         compute_emotional_spectrum,
         to_dsm5_integrated_diagnostic,
+        to_integrated_diagnostic_model,
     )
     from app.services.emotional_spectrum_store import persist_spectrum_tick
     from app.services.sanitized_input_store import get_user_last_sanitized
@@ -2140,6 +2141,11 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
         "diagnostic": to_dsm5_integrated_diagnostic(
             result, session_id=request.session_id or "", user_id=user_id
         ),
+        "integrated_diagnostic_model": to_integrated_diagnostic_model(
+            result,
+            session_id=request.session_id or "",
+            patient_id=user_id,
+        ),
         "non_diagnostic": True,
     }
 
@@ -2147,6 +2153,7 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
 @app.get("/api/v1/users/{user_id}/emotional-spectrum")
 async def user_emotional_spectrum_latest(user_id: str):
     from app.services.emotional_spectrum import to_dsm5_integrated_diagnostic
+    from app.services.emotional_spectrum import to_integrated_diagnostic_model
     from app.services.emotional_spectrum_store import get_user_last_spectrum
 
     latest = get_user_last_spectrum(user_id)
@@ -2155,6 +2162,32 @@ async def user_emotional_spectrum_latest(user_id: str):
         "latest": latest,
         "diagnostic": (
             to_dsm5_integrated_diagnostic(latest, user_id=user_id) if latest else None
+        ),
+        "integrated_diagnostic_model": (
+            to_integrated_diagnostic_model(latest, patient_id=user_id) if latest else None
+        ),
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/integrated-diagnostic")
+async def user_integrated_diagnostic(user_id: str, session_id: Optional[str] = None):
+    """CognitiveProfile/clinicalProfile/threeRenderMetrics 계약 제공."""
+    from app.services.emotional_spectrum import to_integrated_diagnostic_model
+    from app.services.emotional_spectrum_store import get_user_last_spectrum
+
+    latest = get_user_last_spectrum(user_id)
+    return {
+        "user_id": user_id,
+        "session_id": session_id or "",
+        "integrated_diagnostic_model": (
+            to_integrated_diagnostic_model(
+                latest,
+                session_id=session_id or "",
+                patient_id=user_id,
+            )
+            if latest
+            else None
         ),
         "non_diagnostic": True,
     }

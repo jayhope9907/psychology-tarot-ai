@@ -21,6 +21,8 @@
     this.container = container;
     this.internalizingFactor = 0;
     this.schTotal = 0;
+    this.backboneTension = 0.5; // 0..1
+    this.clusterDensity = 0.0; // 0..1
     this._disposed = false;
 
     const width = container.clientWidth || 560;
@@ -114,21 +116,48 @@
 
   MindRoom3DScene.prototype.setDiagnostic = function (data) {
     const doc = data || {};
-    const dims = doc.dimensions || {};
-    const sch = dims.schizophrenia_spectrum || {};
-    this.internalizingFactor = Math.min(
-      Math.max((Number(doc.total_internalizing_score) || 0) / 100, 0),
-      1
-    );
-    this.schTotal = Math.min(
-      Math.max(
-        ((Number(sch.loose_association) || 0) + (Number(sch.ego_boundary_loss) || 0)) / 200,
-        0
-      ),
-      1
-    );
+    // Contract: either DSM5IntegratedDiagnostic or IntegratedDiagnosticModel
+    if (doc.threeRenderMetrics && doc.clinicalProfile) {
+      const cp = doc.clinicalProfile || {};
+      const tm = doc.threeRenderMetrics || {};
+      this.internalizingFactor = Math.min(
+        Math.max((Number(cp.depression_index) || 0) / 100, 0),
+        1
+      );
+      this.schTotal = Math.min(
+        Math.max((Number(cp.schizophrenia_index) || 0) / 100, 0),
+        1
+      );
+      this.backboneTension = Math.min(
+        Math.max((Number(tm.backbone_tension) || 50) / 100, 0),
+        1
+      );
+      this.clusterDensity = Math.min(
+        Math.max((Number(tm.cluster_density) || 0) / 100, 0),
+        1
+      );
+    } else {
+      const dims = doc.dimensions || {};
+      const sch = dims.schizophrenia_spectrum || {};
+      this.internalizingFactor = Math.min(
+        Math.max((Number(doc.total_internalizing_score) || 0) / 100, 0),
+        1
+      );
+      this.schTotal = Math.min(
+        Math.max(
+          ((Number(sch.loose_association) || 0) +
+            (Number(sch.ego_boundary_loss) || 0)) /
+            200,
+          0
+        ),
+        1
+      );
+      // DSM5 입력에는 threeRenderMetrics가 없으므로 임시 매핑
+      this.backboneTension = Math.min(1, Math.max(0, 1.0 - this.internalizingFactor * 0.6));
+      this.clusterDensity = Math.min(1, Math.max(0, this.schTotal * 0.7 + this.internalizingFactor * 0.3));
+    }
     this.material.color.set(this._roomColor());
-    this.material.wireframe = this.schTotal > 0.6; // 프레임 깨짐 효과
+    this.material.wireframe = this.schTotal > 0.6 || this.clusterDensity > 0.65; // 프레임 깨짐 효과
     this.material.needsUpdate = true;
     this.pointLight.color.set(this.internalizingFactor >= 0.8 ? "#ff3333" : "#ffffff");
   };
@@ -138,19 +167,27 @@
     requestAnimationFrame(this._animate);
     const t = (performance.now() - this._clockStart) / 1000;
 
-    // 1. [내재화 반영] 점수가 높을수록 천장이 낮아지고 공간이 수축 (최대 50%)
-    const targetYScale = 1.0 - this.internalizingFactor * 0.5;
+    // 1. [인지 와해/안정] backbone_tension이 낮을수록 천장이 낮아지고 공간이 수축 (최대 50%)
+    const targetYScale = 1.0 - (1.0 - this.backboneTension) * 0.5;
     this.room.scale.y = lerp(this.room.scale.y, targetYScale, 0.05);
 
-    // 2. [와해성 반영] 방이 기괴하게 회전·뒤틀림
-    if (this.schTotal > 0.5) {
-      this.room.rotation.x = Math.sin(t) * (this.schTotal * 0.1);
-      this.room.rotation.z = Math.cos(t) * (this.schTotal * 0.1);
+    // 2. [노드 밀집 반영] cluster_density가 높을수록 좌우/전후가 약간 부풀며(노드 뭉침) 왜곡이 증가
+    const targetXZ = 1.0 + this.clusterDensity * 0.15;
+    this.room.scale.x = lerp(this.room.scale.x, targetXZ, 0.05);
+    this.room.scale.z = lerp(this.room.scale.z, targetXZ, 0.05);
+
+    // 3. [와해성 반영] 방이 기괴하게 회전·뒤틀림
+    const warpAmp = this.schTotal > 0.5 ? this.schTotal * 0.1 : 0;
+    const clusterAmp = this.clusterDensity > 0.55 ? this.clusterDensity * 0.05 : 0;
+    const amp = warpAmp + clusterAmp;
+    if (amp > 0) {
+      this.room.rotation.x = Math.sin(t) * amp;
+      this.room.rotation.z = Math.cos(t) * amp;
     } else {
       this.room.rotation.set(0, 0, 0);
     }
 
-    // 3. [우울/공황 반영] 조도 차단 (최대 80% 어두워짐)
+    // 4. [우울/공황 반영] 조도 차단 (최대 80% 어두워짐)
     const targetIntensity = 1.0 - this.internalizingFactor * 0.8;
     this.ambient.intensity = lerp(this.ambient.intensity, targetIntensity, 0.05);
 

@@ -303,6 +303,98 @@ def to_dsm5_integrated_diagnostic(
     }
 
 
+def to_integrated_diagnostic_model(
+    result: Optional[Mapping[str, Any]],
+    *,
+    session_id: str = "",
+    patient_id: str = "",
+) -> Dict[str, Any]:
+    """
+    엔진 결과 → IntegratedDiagnosticModel TS 인터페이스 계약 직렬화.
+
+    - 인지 프로필(CognitiveProfile)은 체크인 기반의 비진단 참고 지표로 매핑
+    - 임상 프로필(clinicalProfile)도 비진단 참고 지표로만 제공
+    - threeRenderMetrics는 3D 렌더러 노드 스케일 힌트로 사용
+    """
+    doc = dict(result or {})
+    base_scores = dict(doc.get("baseScores") or {})
+    dims = dict(doc.get("dimensions") or {})
+
+    # cognitiveProfile proxy: 체크인 가중치 보정값(우울/불안/신체화 프록시)으로 "그릇 크기"를 안정적으로 추정
+    d_dep = float(base_scores.get("depressive", 50) or 50)
+    d_anx = float(base_scores.get("anxiety", 50) or 50)
+    d_som = float(base_scores.get("somatic", 50) or 50)
+
+    # 안정성(0-100): 우울/불안/신체화가 낮을수록 인지 안정이 높아지는 방향
+    stability = (100.0 - d_dep) * 0.35 + (100.0 - d_anx) * 0.35 + (100.0 - d_som) * 0.30
+    stability = max(0.0, min(100.0, stability))
+
+    def _clamp150(x: float) -> float:
+        return max(0.0, min(150.0, float(x)))
+
+    g_factor = _clamp150(50.0 + stability)  # 50..150
+    crystallized_gc = _clamp150(45.0 + (100.0 - d_dep) * 0.55 + (100.0 - d_anx) * 0.15)
+    fluid_gf = _clamp150(40.0 + (100.0 - d_anx) * 0.40 + (100.0 - d_som) * 0.40)
+    working_memory_gwm = _clamp150(35.0 + (100.0 - d_anx) * 0.50 + (100.0 - d_dep) * 0.20)
+    processing_speed_gs = _clamp150(30.0 + (100.0 - d_som) * 0.55 + (100.0 - d_anx) * 0.15)
+    visual_processing_gv = _clamp150(30.0 + (100.0 - d_dep) * 0.35 + (100.0 - d_som) * 0.45)
+
+    # clinicalProfile: dimensions 기반 비진단 참고 지표
+    schizophrenia_dim = dict(dims.get("schizophrenia_spectrum") or {})
+    loose_assoc = float(schizophrenia_dim.get("loose_association", 0.0) or 0.0)
+    ego_boundary_loss = float(schizophrenia_dim.get("ego_boundary_loss", 0.0) or 0.0)
+    schizophrenia_index = max(0.0, min(100.0, (loose_assoc + ego_boundary_loss) / 2.0))
+
+    depression_index = max(0.0, min(100.0, float(dims.get("depressive_index", 0.0) or 0.0)))
+    obsessive_compulsive = max(
+        0.0, min(100.0, float(dims.get("obsessive_compulsive", 0.0) or 0.0))
+    )
+    panic_index = max(0.0, min(100.0, float(dims.get("panic_index", 0.0) or 0.0)))
+
+    # ASD stimming proxy: 강박적 고정/통제(OC) + 공황 각성(PI)로 "자극·반복성" 참고 지표 구성
+    asd_stimming_index = max(
+        0.0,
+        min(100.0, obsessive_compulsive * 0.6 + panic_index * 0.4),
+    )
+
+    # threeRenderMetrics: 3D 렌더러 노드 스케일 힌트
+    # backbone_tension이 낮을수록 "인지 와해" 경향(안정성 저하, sch 신호 증가)
+    backbone_tension = max(
+        0.0,
+        min(
+            100.0,
+            (g_factor / 150.0) * 100.0 * (1.0 - schizophrenia_index / 200.0),
+        ),
+    )
+
+    cluster_density = max(
+        0.0,
+        min(100.0, asd_stimming_index * 0.7 + schizophrenia_index * 0.3),
+    )
+
+    return {
+        "sessionId": session_id or "",
+        "patientId": patient_id or "",
+        "cognitiveProfile": {
+            "g_factor": round(g_factor, 1),
+            "crystallized_gc": round(crystallized_gc, 1),
+            "fluid_gf": round(fluid_gf, 1),
+            "working_memory_gwm": round(working_memory_gwm, 1),
+            "processing_speed_gs": round(processing_speed_gs, 1),
+            "visual_processing_gv": round(visual_processing_gv, 1),
+        },
+        "clinicalProfile": {
+            "schizophrenia_index": round(schizophrenia_index, 1),
+            "asd_stimming_index": round(asd_stimming_index, 1),
+            "depression_index": round(depression_index, 1),
+        },
+        "threeRenderMetrics": {
+            "backbone_tension": round(backbone_tension, 1),
+            "cluster_density": round(cluster_density, 1),
+        },
+    }
+
+
 def build_spectrum_prompt_block(result: Optional[Mapping[str, Any]]) -> str:
     """스펙트럼 결과 → 시스템 프롬프트 지침 (내담자에게 수치·라벨 노출 금지)."""
     if not result:

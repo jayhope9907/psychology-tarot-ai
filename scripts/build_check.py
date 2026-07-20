@@ -104,6 +104,7 @@ def main() -> int:
         "/api/v1/users/{user_id}/mindmap",
         "/api/v1/users/{user_id}/emotional-spectrum",
         "/api/v1/users/{user_id}/emotional-spectrum/history",
+        "/api/v1/users/{user_id}/integrated-diagnostic",
         "/api/v1/orgs/{org_id}/emotional-spectrum/history",
     ):
         if path not in routes:

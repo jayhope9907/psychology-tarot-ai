@@ -1534,7 +1534,10 @@ async def run_chat_turn(
         "emotional_spectrum": (state.phase_notes or {}).get("emotional_spectrum"),
     }
     try:
-        from app.services.emotional_spectrum import to_dsm5_integrated_diagnostic
+        from app.services.emotional_spectrum import (
+            to_dsm5_integrated_diagnostic,
+            to_integrated_diagnostic_model,
+        )
 
         es_doc = (state.phase_notes or {}).get("emotional_spectrum")
         if es_doc:
@@ -1542,6 +1545,11 @@ async def run_chat_turn(
                 es_doc,
                 session_id=state.session_id,
                 user_id=state.user_id,
+            )
+            done_data["integrated_diagnostic_model"] = to_integrated_diagnostic_model(
+                es_doc,
+                session_id=state.session_id,
+                patient_id=state.user_id,
             )
     except Exception:
         pass

@@ -3320,13 +3320,13 @@
         this.lastDiagnostic = diagnostic;
         const proj = diagnostic.clinical_meta?.room_projection;
         if (proj) this.apply(proj);
-        if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(diagnostic);
       },
     };
 
     // ── 마음의 방 3D (MindRoom3D vanilla 런타임) ──
     const MindRoom3DView = {
       scene: null,
+      lastDiagnosticModel: null,
       overlay: document.getElementById("mindRoom3dOverlay"),
       _loading: null,
       loadScript(src, fallback) {
@@ -3378,18 +3378,42 @@
             this.scene = new MindRoom3DScene(host);
           }
           this.scene.resize();
-          let doc = MindRoom.lastDiagnostic;
+          let doc = this.lastDiagnosticModel;
           if (!doc) {
             try {
-              const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/emotional-spectrum`);
-              if (res.ok) doc = (await res.json()).diagnostic;
+              const res = await fetch(
+                `/api/v1/users/${encodeURIComponent(userId)}/integrated-diagnostic?session_id=${encodeURIComponent(sessionId || "")}`
+              );
+              if (res.ok) {
+                const j = await res.json();
+                doc = j.integrated_diagnostic_model || null;
+              }
+            } catch (_) {}
+          }
+          if (!doc) {
+            try {
+              const res = await fetch(
+                `/api/v1/users/${encodeURIComponent(userId)}/emotional-spectrum`
+              );
+              if (res.ok) {
+                const j = await res.json();
+                doc = j.diagnostic || null;
+              }
             } catch (_) {}
           }
           if (doc) {
             this.scene.setDiagnostic(doc);
+            this.lastDiagnosticModel = doc;
             if (status) {
-              const proj = doc.clinical_meta?.room_projection || {};
-              status.textContent = `조도 ${proj.lighting_level ?? "-"} · ${proj.color_tone || ""}`;
+              if (doc.clinical_meta?.room_projection) {
+                const proj = doc.clinical_meta?.room_projection || {};
+                status.textContent = `조도 ${proj.lighting_level ?? "-"} · ${proj.color_tone || ""}`;
+              } else if (doc.threeRenderMetrics) {
+                const t = doc.threeRenderMetrics || {};
+                status.textContent = `백본 ${t.backbone_tension ?? "-"} · 클러스터 ${t.cluster_density ?? "-"}`;
+              } else {
+                status.textContent = "방을 불러왔어요.";
+              }
             }
           } else if (status) {
             status.textContent = "아직 기록이 없어요. 대화를 나누면 방이 그려져요.";
@@ -4355,6 +4379,13 @@
               updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
               updateClinicalInsight(data.profile_delta?.clinical_insight);
               if (data.mindmap) MindmapView.setData(data.mindmap);
+              if (data.integrated_diagnostic_model) {
+                MindRoom3DView.lastDiagnosticModel = data.integrated_diagnostic_model;
+                if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.integrated_diagnostic_model);
+              } else if (data.dsm5_integrated_diagnostic) {
+                MindRoom3DView.lastDiagnosticModel = data.dsm5_integrated_diagnostic;
+                if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.dsm5_integrated_diagnostic);
+              }
               if (data.dsm5_integrated_diagnostic) MindRoom.applyDiagnostic(data.dsm5_integrated_diagnostic);
               else if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);
               BehaviorTracker.markReplyShown();

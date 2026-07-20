@@ -4,6 +4,7 @@ from app.services.emotional_spectrum import (
     compute_emotional_spectrum,
     parse_clinical_state_to_room,
     resolve_base_scores_from_sanitized,
+    to_integrated_diagnostic_model,
     to_dsm5_integrated_diagnostic,
 )
 
@@ -169,3 +170,22 @@ def test_compute_includes_room_and_prompt_gating():
         behavioral_metrics={},
     )
     assert build_spectrum_prompt_block(calm) == ""
+
+
+def test_integrated_diagnostic_contract_shape():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 80, "anxiety": 60, "somatic": 30},
+        behavioral_metrics={"hesitation_index": 0.7, "backspace_count": 10, "word_delay_ms": 2500},
+    )
+    model = to_integrated_diagnostic_model(result, session_id="s1", patient_id="u1")
+    assert model["sessionId"] == "s1"
+    assert model["patientId"] == "u1"
+    cp = model["cognitiveProfile"]
+    assert 0 <= cp["g_factor"] <= 150
+    clinical = model["clinicalProfile"]
+    assert 0 <= clinical["depression_index"] <= 100
+    assert 0 <= clinical["schizophrenia_index"] <= 100
+    assert 0 <= clinical["asd_stimming_index"] <= 100
+    metrics = model["threeRenderMetrics"]
+    assert 0 <= metrics["backbone_tension"] <= 100
+    assert 0 <= metrics["cluster_density"] <= 100
