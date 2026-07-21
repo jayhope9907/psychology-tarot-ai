@@ -2039,6 +2039,7 @@
         <h2 id="counselorName">이서연</h2>
         <p class="role" id="counselorRole">상담 · 마음 대화<br/><span style="opacity:.75;font-size:.85em">자기성찰 지원 (비의료)</span></p>
         <span class="session-chip" id="sessionChip">대화 준비 중</span>
+        <span class="session-chip" id="blueprintChip" hidden style="opacity:0.8;font-size:11px;" title="3D Blueprint"></span>
         <span class="mood-chip" id="moodChip" hidden>오늘 기분</span>
         <span class="license-chip" id="licenseChip" hidden></span>
 
@@ -2326,6 +2327,7 @@
       <div id="mindNetwork3dCanvas" style="width:100%;height:420px;border-radius:16px;overflow:hidden;background:#0b0f19;"></div>
       <div class="wc-actions">
         <span class="wc-count" id="mn3dStatus"></span>
+        <span class="wc-count" id="blueprintStatus" style="margin-left:8px;font-size:11px;opacity:0.75;" title="3D Blueprint Builder"></span>
         <div>
           <button type="button" class="wc-close" id="mn3dOpenRoom">🧊 3D 방 보기</button>
           <button type="button" class="wc-close" id="mn3dClose">닫기</button>
@@ -2357,6 +2359,7 @@
   <script src="/static/js/maum-organism.js"></script>
   <script src="/static/js/voice-engine.js"></script>
   <script src="/static/js/chat-offline.js"></script>
+  <script src="/static/js/blueprint-builder.js"></script>
   <script>
     let COUNSELOR_NAME = "이서연";
     const WELCOME_KEY = "psychology_ai_welcomed";
@@ -2376,6 +2379,8 @@
     let streaming = false;
     let typingEl = null;
     let preferredSchool = localStorage.getItem("psychology_ai_preferred_school") || "";
+    let lastBlueprintMessage = "";
+    let lastBlueprintBehavior = null;
 
     const messagesEl = document.getElementById("messages");
     const emptyState = document.getElementById("emptyState");
@@ -3012,6 +3017,12 @@
       empty.innerHTML = "<p>새 대화를 시작해요. 편한 만큼만 이야기해 주세요.</p>";
       messagesEl.appendChild(empty);
       sessionChip.textContent = "새 대화";
+      lastBlueprintMessage = "";
+      lastBlueprintBehavior = null;
+      if (window.BlueprintBuilder && typeof BlueprintBuilder.reset === "function") {
+        BlueprintBuilder.reset();
+        updateBlueprintStatus();
+      }
       syncTarotLink();
       loadMoodWelcome();
       loadSessionList();
@@ -3314,6 +3325,53 @@
     };
     const behaviorInput = document.getElementById("messageInput");
     if (behaviorInput) behaviorInput.addEventListener("keydown", (e) => BehaviorTracker.onKey(e));
+
+    // ── 3D Blueprint Builder (vanilla): grows graph from each user turn ──
+    function updateBlueprintStatus() {
+      const el = document.getElementById("blueprintStatus");
+      const chip = document.getElementById("blueprintChip");
+      if (!window.BlueprintBuilder) return;
+      const st = BlueprintBuilder.getLastStatus ? BlueprintBuilder.getLastStatus() : null;
+      if (!st || !st.label) {
+        if (el) el.textContent = "";
+        if (chip) {
+          chip.hidden = true;
+          chip.textContent = "";
+        }
+        return;
+      }
+      const text = `Blueprint · ${st.label}${st.dashed ? " · dashed" : ""} · n${st.nodeCount}`;
+      if (el) el.textContent = text;
+      if (chip) {
+        chip.hidden = false;
+        chip.textContent = `${st.label}${st.dashed ? " · dashed" : ""}`;
+      }
+    }
+    function ingestBlueprintFromDone(data, userMessage) {
+      if (!window.BlueprintBuilder || typeof BlueprintBuilder.ingest !== "function") return;
+      const msg = (userMessage || lastBlueprintMessage || "").trim();
+      if (!msg) return;
+      const diagnostic =
+        data?.integrated_diagnostic_model ||
+        data?.dsm5_integrated_diagnostic ||
+        data?.neurodevelopmental_matrix ||
+        MindNetwork3DView?.lastDiagnosticModel ||
+        MindRoom3DView?.lastDiagnosticModel ||
+        null;
+      try {
+        BlueprintBuilder.ingest(msg, diagnostic, lastBlueprintBehavior);
+        updateBlueprintStatus();
+        // Soft hint into open MindNetwork status line when visible
+        const mnStatus = document.getElementById("mn3dStatus");
+        const st = BlueprintBuilder.getLastStatus && BlueprintBuilder.getLastStatus();
+        if (mnStatus && st && st.label && MindNetwork3DView?.overlay && !MindNetwork3DView.overlay.hidden) {
+          const base = MindNetwork3DView._statusText(MindNetwork3DView.lastDiagnosticModel);
+          mnStatus.textContent = `${base} · ${st.label}${st.dashed ? " · dashed" : ""}`;
+        }
+      } catch (_) {}
+      lastBlueprintMessage = "";
+      lastBlueprintBehavior = null;
+    }
 
     // ── 마음의 방 (MindRoom): 스펙트럼 상태 → 공간 톤 시각화 ──
     // DSM5IntegratedDiagnostic.clinical_meta.room_projection 계약 소비
@@ -4554,6 +4612,7 @@
                   wtLabel.textContent = label;
                 }
               }
+              ingestBlueprintFromDone(data, lastBlueprintMessage);
               if (data.dsm5_integrated_diagnostic) MindRoom.applyDiagnostic(data.dsm5_integrated_diagnostic);
               else if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);
               BehaviorTracker.markReplyShown();
@@ -4634,6 +4693,12 @@
       if (!assessmentResponse && !homeworkResponse) {
         appendUserMessage(message, false, imageDataUrl);
       }
+      const behaviorSnap = BehaviorTracker.snapshotAndReset();
+      lastBlueprintMessage = String(message || "");
+      lastBlueprintBehavior = behaviorSnap;
+      if (window.BlueprintBuilder && typeof BlueprintBuilder.rememberBehavior === "function") {
+        BlueprintBuilder.rememberBehavior(behaviorSnap);
+      }
       await streamChat({
         user_id: userId,
         session_id: sessionId,
@@ -4654,7 +4719,7 @@
         sensory_impairment_deaf: !!sensoryImpairmentDeaf,
         cognitive_level: cognitiveLevel || "STANDARD",
         word_cards: WordCardGame.consumeSelection(),
-        behavioral_metrics: BehaviorTracker.snapshotAndReset(),
+        behavioral_metrics: behaviorSnap,
       });
     }
 
