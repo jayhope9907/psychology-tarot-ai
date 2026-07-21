@@ -145,10 +145,11 @@
     if (doc.threeRenderMetrics && doc.clinicalProfile) {
       const cp = doc.clinicalProfile || {};
       const tm = doc.threeRenderMetrics || {};
-      this.internalizingFactor = Math.min(
-        Math.max((Number(cp.depression_index) || 0) / 100, 0),
-        1
-      );
+      var coreScore = doc.internalizing_core && doc.internalizing_core.total_internalizing_score != null
+        ? Number(doc.internalizing_core.total_internalizing_score)
+        : NaN;
+      var rawInternal = Number.isFinite(coreScore) ? coreScore : (Number(cp.depression_index) || 0);
+      this.internalizingFactor = Math.min(Math.max(rawInternal / 100, 0), 1);
       this.schTotal = Math.min(
         Math.max((Number(cp.schizophrenia_index) || 0) / 100, 0),
         1

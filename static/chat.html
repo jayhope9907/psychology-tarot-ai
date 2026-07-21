@@ -4539,7 +4539,20 @@
               if (data.neurodevelopmental_matrix) {
                 if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.neurodevelopmental_matrix);
                 const wtLabel = document.getElementById('ndWallTextureLabel');
-                if (wtLabel) wtLabel.textContent = data.neurodevelopmental_matrix.three_d_room_fx?.wall_texture || '';
+                if (wtLabel) {
+                  const coreRisk =
+                    data.dsm5_integrated_diagnostic?.internalizing_risk_level ||
+                    data.integrated_diagnostic_model?.internalizing_core?.internalizing_risk_level ||
+                    data.emotional_spectrum?.internalizing_risk_level ||
+                    '';
+                  const hasLoop = Boolean(
+                    data.dsm5_integrated_diagnostic?.downstream_triggers?.ocd_asd_loop?.enabled
+                  );
+                  let label = data.neurodevelopmental_matrix.three_d_room_fx?.wall_texture || '';
+                  if (coreRisk) label += ` · ${coreRisk}`;
+                  if (hasLoop) label += ` · OCD/ASD loop`;
+                  wtLabel.textContent = label;
+                }
               }
               if (data.dsm5_integrated_diagnostic) MindRoom.applyDiagnostic(data.dsm5_integrated_diagnostic);
               else if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);

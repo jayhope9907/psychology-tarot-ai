@@ -64,6 +64,12 @@ const PARTICLE_COUNT = 200;
 const NeuralNetworkGraph: React.FC<{ data: MindNetworkDiagnostic }> = ({ data }) => {
   const pointsRef = useRef<THREE.Points>(null);
   const { asdRigidity, schFragmentation } = parseNetworkMetrics(data);
+  const internalScore =
+    (data as IntegratedDiagnosticModel).internalizing_core?.total_internalizing_score ??
+    (data as DSM5IntegratedDiagnostic).total_internalizing_score ??
+    0;
+  const internalizingPressure = Math.min(1, Math.max(0, Number(internalScore) / 100));
+  const amp = 1.0 + internalizingPressure * 0.5;
 
   // 옵시디언 그래프처럼 프레임마다 노드들의 유기적 움직임 연산
   useFrame((state) => {
@@ -76,16 +82,16 @@ const NeuralNetworkGraph: React.FC<{ data: MindNetworkDiagnostic }> = ({ data })
     for (let i = 0; i < positions.length; i += 3) {
       if (schFragmentation > 0.6) {
         // [조현병 스펙트럼]: 노드가 중심에서 흩어져 파편화
-        positions[i] += Math.sin(time + i) * 0.05 * schFragmentation;
-        positions[i + 1] += Math.cos(time + i) * 0.05 * schFragmentation;
-        positions[i + 2] += Math.sin(time * 0.5 + i) * 0.05 * schFragmentation;
+        positions[i] += Math.sin(time + i) * 0.05 * schFragmentation * amp;
+        positions[i + 1] += Math.cos(time + i) * 0.05 * schFragmentation * amp;
+        positions[i + 2] += Math.sin(time * 0.5 + i) * 0.05 * schFragmentation * amp;
       } else if (asdRigidity > 0.6) {
         // [자폐 스펙트럼]: 특정 축(고정점)으로 노드가 압축
-        positions[i] = THREE.MathUtils.lerp(positions[i], Math.sin(i) * 0.5, 0.02);
-        positions[i + 1] = THREE.MathUtils.lerp(positions[i + 1], Math.cos(i) * 0.5, 0.02);
+        positions[i] = THREE.MathUtils.lerp(positions[i], Math.sin(i) * 0.5, 0.02 * amp);
+        positions[i + 1] = THREE.MathUtils.lerp(positions[i + 1], Math.cos(i) * 0.5, 0.02 * amp);
       } else {
         // 안정 상태: 부드러운 신경망 파동
-        positions[i + 1] += Math.sin(time + positions[i]) * 0.005;
+        positions[i + 1] += Math.sin(time + positions[i]) * 0.005 * amp;
       }
     }
     geometry.attributes.position.needsUpdate = true;
@@ -108,6 +114,7 @@ const NeuralNetworkGraph: React.FC<{ data: MindNetworkDiagnostic }> = ({ data })
   }, []);
 
   const getNetworkColor = (): string => {
+    if (internalizingPressure > 0.75) return "#ff3333"; // core internalizing high
     if (schFragmentation > 0.6) return "#a855f7"; // 파편화 보라
     if (asdRigidity > 0.6) return "#06b6d4"; // 고착 시안
     return "#10b981"; // 안정 에메랄드

@@ -64,6 +64,7 @@
     this.container = container;
     this.asdRigidity = 0;
     this.schFragmentation = 0;
+    this.internalizingPressure = 0; // 0..1
     this._disposed = false;
 
     var width = container.clientWidth || 560;
@@ -166,6 +167,7 @@
   };
 
   MindNetwork3DScene.prototype._networkColor = function () {
+    if (this.internalizingPressure > 0.75) return "#ff3333";
     if (this.schFragmentation > 0.6) return "#a855f7";
     if (this.asdRigidity > 0.6) return "#06b6d4";
     return "#10b981";
@@ -175,6 +177,13 @@
     var m = parseNetworkMetrics(data);
     this.asdRigidity = m.asdRigidity;
     this.schFragmentation = m.schFragmentation;
+    var coreScore = NaN;
+    if (data && data.internalizing_core && data.internalizing_core.total_internalizing_score != null) {
+      coreScore = Number(data.internalizing_core.total_internalizing_score);
+    } else if (data && data.total_internalizing_score != null) {
+      coreScore = Number(data.total_internalizing_score);
+    }
+    this.internalizingPressure = clamp01(Number.isFinite(coreScore) ? coreScore / 100 : 0);
     // 모드 전환 시 구형 레이아웃 재시드 (파편화가 누적된 경우 리셋)
     this.positions = buildSpherePositions();
     this.geometry.setAttribute(
@@ -192,17 +201,18 @@
     var positions = this.geometry.attributes.position.array;
     var sch = this.schFragmentation;
     var asd = this.asdRigidity;
+    var amp = 1.0 + this.internalizingPressure * 0.5;
 
     for (var i = 0; i < positions.length; i += 3) {
       if (sch > 0.6) {
-        positions[i] += Math.sin(t + i) * 0.05 * sch;
-        positions[i + 1] += Math.cos(t + i) * 0.05 * sch;
-        positions[i + 2] += Math.sin(t * 0.5 + i) * 0.05 * sch;
+        positions[i] += Math.sin(t + i) * 0.05 * sch * amp;
+        positions[i + 1] += Math.cos(t + i) * 0.05 * sch * amp;
+        positions[i + 2] += Math.sin(t * 0.5 + i) * 0.05 * sch * amp;
       } else if (asd > 0.6) {
-        positions[i] = lerp(positions[i], Math.sin(i) * 0.5, 0.02);
-        positions[i + 1] = lerp(positions[i + 1], Math.cos(i) * 0.5, 0.02);
+        positions[i] = lerp(positions[i], Math.sin(i) * 0.5, 0.02 * amp);
+        positions[i + 1] = lerp(positions[i + 1], Math.cos(i) * 0.5, 0.02 * amp);
       } else {
-        positions[i + 1] += Math.sin(t + positions[i]) * 0.005;
+        positions[i + 1] += Math.sin(t + positions[i]) * 0.005 * amp;
       }
     }
     this.geometry.attributes.position.needsUpdate = true;

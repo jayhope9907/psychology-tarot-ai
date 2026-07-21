@@ -18,7 +18,10 @@ const DynamicRoomMesh: React.FC<{ data: IntegratedDiagnosticModel }> = ({ data }
   const roomRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.AmbientLight>(null);
 
-  const internalizingFactor = (data.clinicalProfile.depression_index || 0) / 100;
+  const internalizingFactor =
+    (typeof data.internalizing_core?.total_internalizing_score === "number"
+      ? data.internalizing_core.total_internalizing_score
+      : data.clinicalProfile.depression_index || 0) / 100;
   const schTotal = (data.clinicalProfile.schizophrenia_index || 0) / 100;
   const backboneTension = (data.threeRenderMetrics.backbone_tension || 50) / 100;
   const clusterDensity = (data.threeRenderMetrics.cluster_density || 0) / 100;

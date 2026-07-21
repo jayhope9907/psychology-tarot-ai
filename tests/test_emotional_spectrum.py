@@ -1,5 +1,5 @@
 from app.services.emotional_spectrum import (
-    UnifiedEmotionalSpectrumEngine,
+    InternalizingCoreEngine,
     build_spectrum_prompt_block,
     compute_emotional_spectrum,
     parse_clinical_state_to_room,
@@ -9,7 +9,7 @@ from app.services.emotional_spectrum import (
     to_neurodevelopmental_matrix,
 )
 
-ENGINE = UnifiedEmotionalSpectrumEngine()
+ENGINE = InternalizingCoreEngine()
 
 
 def test_normal_low_signal():
@@ -68,6 +68,30 @@ def test_behavioral_metrics_shape_ocd_panic():
     )
     assert tense["dimensions"]["obsessive_compulsive"] > calm["dimensions"]["obsessive_compulsive"]
     assert tense["dimensions"]["panic_index"] > calm["dimensions"]["panic_index"]
+
+
+def test_downstream_triggers_depression_panic_elevated():
+    result = ENGINE.calculate_internalizing_spectrum(
+        {"depressive": 90, "anxiety": 90, "somatic": 0},
+        {"hesitation_index": 0.9, "backspace_count": 20, "word_delay_ms": 5000},
+    )
+    triggers = result.get("downstream_triggers") or {}
+    track = triggers.get("depression_panic_track_risk") or {}
+    assert result["total_internalizing_score"] > 70
+    assert track["level"] == "ELEVATED"
+    assert track["panic_bump"] >= 0.0
+
+
+def test_downstream_triggers_ocd_asd_loop_debug_console():
+    result = ENGINE.calculate_internalizing_spectrum(
+        {"depressive": 90, "anxiety": 90, "somatic": 0},
+        {"hesitation_index": 0.95, "backspace_count": 20, "word_delay_ms": 5200},
+    )
+    triggers = result.get("downstream_triggers") or {}
+    ocd_asd = triggers.get("ocd_asd_loop") or {}
+    assert result["total_internalizing_score"] > 70
+    assert ocd_asd["enabled"] is True
+    assert ocd_asd["issues"] and ocd_asd["issues"][0]["code"] == "OCD_ASD_LOOP"
 
 
 def test_room_layout_branches():
@@ -142,6 +166,8 @@ def test_dsm5_integrated_diagnostic_contract():
     assert proj["wall_symmetry"] in ("rigid", "natural", "broken")
     assert set(proj.keys()) == {"color_tone", "lighting_level", "wall_symmetry"}
     assert doc["non_diagnostic"] is True
+    if doc["total_internalizing_score"] > 70:
+        assert (doc.get("downstream_triggers") or {}).get("depression_panic_track_risk", {}).get("level") == "ELEVATED"
 
 
 def test_base_scores_from_sanitized_proxy():

@@ -6,6 +6,14 @@
  *   - SSE `done` payload key `integrated_diagnostic_model`
  *   - GET /api/v1/users/{user_id}/integrated-diagnostic
  */
+import type { DownstreamTriggers, InternalizingRiskLevel } from "./DSM5IntegratedDiagnostic";
+
+export interface InternalizingCore {
+  total_internalizing_score: number;
+  internalizing_risk_level: InternalizingRiskLevel;
+  downstream_triggers?: DownstreamTriggers | null;
+}
+
 export interface CognitiveProfile {
   // CHC 이론 기반 5대 지능 축 (0 ~ 150 표준점수 기준 변환)
   g_factor: number; // 전체 지능 (FSIQ)
@@ -19,6 +27,7 @@ export interface CognitiveProfile {
 export interface IntegratedDiagnosticModel {
   sessionId: string;
   patientId: string;
+  internalizing_core?: InternalizingCore;
   cognitiveProfile: CognitiveProfile; // 뼈대 (그릇의 크기)
   clinicalProfile: {
     schizophrenia_index: number;

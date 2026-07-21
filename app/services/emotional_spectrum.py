@@ -10,11 +10,13 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Optional
 
 
-class UnifiedEmotionalSpectrumEngine:
-    """내재화 스펙트럼 통합 연산 엔진.
+class InternalizingCoreEngine:
+    """내재화 핵심(InternalizingCore) 연산 엔진.
 
-    우울·불안·강박·공황·조울 순환 고리와 와해성(사고 이탈) 신호를
-    선형 결합 + 공병(Comorbidity) 시너지 항으로 통합한다.
+    요구사항 반영:
+    - `total_internalizing_score`를 가장 먼저 계산한 뒤
+    - 내부 참고 지표(디멘전/메타)를 파생
+    - 70점 초과 시 다운스트림(우울/공황 트랙 리스크 + OCD/ASD 루프 디버그)까지 명시적으로 산출
     """
 
     def __init__(self) -> None:
@@ -26,35 +28,60 @@ class UnifiedEmotionalSpectrumEngine:
         self,
         base_scores: Dict[str, float],
         behavioral_metrics: Dict[str, Any],
+        *,
+        defensive_language_signal: float = 0.0,
     ) -> Dict[str, Any]:
-        """우울, 강박, 공황, 조울 4대 순환 고리와 와해성 신호를 통합 연산."""
-        # 1. 기초 범주별 normalized 지표 (0.0 ~ 1.0)
-        d_dep = min(max(base_scores.get("depressive", 0.0) / 100.0, 0.0), 1.0)
-        d_anx = min(max(base_scores.get("anxiety", 0.0) / 100.0, 0.0), 1.0)
-        d_som = min(max(base_scores.get("somatic", 0.0) / 100.0, 0.0), 1.0)
+        """내재화 핵심(InternalizingCore) 연산.
 
-        # 2. 미세 행동 데이터(타이핑 망설임, 낱말카드 취소) 기반 강박·공황 정밀 보정
-        hesitation_idx = float(behavioral_metrics.get("hesitation_index", 0.0) or 0.0)
-        hesitation_idx = min(max(hesitation_idx, 0.0), 1.0)
+        - 입력 프록시:
+          1) `Gs slowdown proxy`: `word_delay_ms`
+          2) `stimming proxy`: `backspace_count` + `word_card_cancel_count`
+          3) `defensive language signal`: 외부(estado/persona)에서 주입되는 방어 언어 강도
+        - 출력:
+          - 0..100 `total_internalizing_score` (가장 먼저 산출)
+          - 다운스트림 트리거(명시적 payload)
+          - 기존 contract 유지용 `dimensions`
+        """
+
+        def _clamp01(x: float) -> float:
+            return min(1.0, max(0.0, float(x)))
+
+        defensive_language_signal = _clamp01(defensive_language_signal or 0.0)
+
+        # 1) 기초 범주별 normalized 지표 (0.0 ~ 1.0)
+        d_dep = _clamp01(base_scores.get("depressive", 0.0) / 100.0)
+        d_anx = _clamp01(base_scores.get("anxiety", 0.0) / 100.0)
+        d_som = _clamp01(base_scores.get("somatic", 0.0) / 100.0)
+
+        # 2) 미세 행동 데이터 기반 프록시
+        hesitation_idx = _clamp01(float(behavioral_metrics.get("hesitation_index", 0.0) or 0.0))
         backspace_cnt = int(behavioral_metrics.get("backspace_count", 0) or 0)
+        word_card_cancel_count = int(behavioral_metrics.get("word_card_cancel_count", 0) or 0)
 
-        # 인지적 과다 통제(강박) 지수
-        d_ocd = min(d_anx * 0.5 + (hesitation_idx * 0.3) + (min(backspace_cnt, 20) / 20.0) * 0.2, 1.0)
-
-        # 특정 단어 지연 반응(Reaction Time) 기반 공황 지수
+        # 2-1) 타이핑 지연 → Gs slowdown proxy
         delay_ms = float(behavioral_metrics.get("word_delay_ms", 0) or 0)
-        d_pan = min(d_anx * 0.4 + (min(delay_ms, 5000) / 5000.0) * 0.6, 1.0)
+        gs_slowdown_proxy = _clamp01(min(delay_ms, 5000.0) / 5000.0)
 
-        # 3. 조울(Bipolar) 감정 진동 폭(Variance)
-        history_variance = float(behavioral_metrics.get("mood_history_variance", 0.0) or 0.0)
-        history_variance = min(max(history_variance, 0.0), 1.0)
+        # 2-2) 반복/취소 → stimming proxy
+        stimming_proxy = _clamp01((min(backspace_cnt, 50) / 50.0) * 0.7 + (min(word_card_cancel_count, 10) / 10.0) * 0.3)
+
+        # 3) 방어 언어 신호 → 불안 코어에 소폭 가중
+        # (기본값 defensive_language_signal=0이면 기존 산식과 동일)
+        d_anx_eff = _clamp01(d_anx + defensive_language_signal * 0.15)
+
+        # 3-1) 인지적 과다 통제(강박) 지수
+        d_ocd = min(d_anx_eff * 0.5 + (hesitation_idx * 0.3) + (min(backspace_cnt, 20) / 20.0) * 0.2, 1.0)
+
+        # 3-2) 특정 단어 지연 반응(Reaction Time) 기반 공황 지수
+        d_pan = min(d_anx_eff * 0.4 + (min(delay_ms, 5000.0) / 5000.0) * 0.6, 1.0)
+
+        # 4) 조울(Bipolar) 감정 진동 폭(Variance)
+        history_variance = _clamp01(float(behavioral_metrics.get("mood_history_variance", 0.0) or 0.0))
         d_bip = min(d_dep * 0.3 + (history_variance * 0.7), 1.0)
 
-        # 4. 와해성 신호 분석 (연상 이완 및 마인드맵 파편화) — 참고 지표
-        loose_assoc = float(behavioral_metrics.get("loose_association_score", 0.0) or 0.0)
-        loose_assoc = min(max(loose_assoc, 0.0), 1.0)
-        ego_loss = float(behavioral_metrics.get("ego_boundary_loss_score", 0.0) or 0.0)
-        ego_loss = min(max(ego_loss, 0.0), 1.0)
+        # 5) 와해성 신호 분석 (연상 이완 및 마인드맵 파편화) — 참고 지표
+        loose_assoc = _clamp01(float(behavioral_metrics.get("loose_association_score", 0.0) or 0.0))
+        ego_loss = _clamp01(float(behavioral_metrics.get("ego_boundary_loss_score", 0.0) or 0.0))
 
         sch_spectrum = {
             "loose_association": round(loose_assoc * 100, 1),
@@ -64,15 +91,15 @@ class UnifiedEmotionalSpectrumEngine:
         }
         sch_total_avg = (loose_assoc + ego_loss) / 2.0
 
-        # 5. 내재화 총합 지수: 선형 결합 + 상호작용 공병 시너지
-        linear_sum = (d_dep * 0.3) + (d_anx * 0.25) + (d_ocd * 0.25) + (d_pan * 0.2)
+        # 6) 내재화 총합 지수: 선형 결합 + 상호작용 공병 시너지
+        linear_sum = (d_dep * 0.3) + (d_anx_eff * 0.25) + (d_ocd * 0.25) + (d_pan * 0.2)
         interaction_term = (
-            self.beta_depression_anxiety * (d_dep * d_anx)
+            self.beta_depression_anxiety * (d_dep * d_anx_eff)
             + self.beta_ocd_panic * (d_ocd * d_pan)
         )
         total_internalizing = min((linear_sum + interaction_term * 0.4) * 100, 100.0)
 
-        # 6. 내재화 참고 경고 레벨 (겉은 멀쩡해 보여도 속이 타는 고위험군 신호)
+        # 7) 내재화 참고 경고 레벨
         if total_internalizing >= 80.0:
             risk_level = "HIGH_ALERT"
         elif total_internalizing >= 50.0:
@@ -80,31 +107,120 @@ class UnifiedEmotionalSpectrumEngine:
         else:
             risk_level = "NORMAL"
 
-        # 7. 와해성/고위험 신호 시 지지형 안전 기지 접근으로 강제 스위칭
+        # 8) 지지형 안전 기지 접근으로 강제 스위칭
         suggested_agent = (
             "SUNG_AH_SUPPORT"
             if (sch_total_avg > 0.6 or risk_level == "HIGH_ALERT")
             else "PROST_CONFRONTATION"
         )
 
+        # 9) 디멘전(기존 contract) 산출: total_internalizing이 먼저 계산되었음
+        depressive_index = float(d_dep * 100.0)
+        anxiety_index = float(d_anx_eff * 100.0)
+        obsessive_compulsive = float(d_ocd * 100.0)
+        panic_index = float(d_pan * 100.0)
+        bipolar_fluctuation_index = float(d_bip * 100.0)
+        somatic_symptom_index = float(d_som * 100.0)
+
+        downstream_triggers: Dict[str, Any] = {
+            "depression_panic_track_risk": None,
+            "ocd_asd_loop": None,
+        }
+
+        # 10) 체인드 다운스트림 트리거 #1:
+        #    internalizing > 70 → 우울/공황 트랙 리스크를 명시적으로 'ELEVATED' + 차원 보정
+        if total_internalizing > 70.0:
+            excess = (total_internalizing - 70.0) / 30.0  # 0..1
+            excess = min(1.0, max(0.0, excess))
+            depression_bump = round(excess * 15.0, 1)
+            panic_bump = round(excess * 15.0, 1)
+
+            depressive_index = min(100.0, depressive_index + depression_bump)
+            panic_index = min(100.0, panic_index + panic_bump)
+
+            downstream_triggers["depression_panic_track_risk"] = {
+                "level": "ELEVATED",
+                "trigger_internalizing_threshold": 70.0,
+                "depression_bump": depression_bump,
+                "panic_bump": panic_bump,
+            }
+        else:
+            downstream_triggers["depression_panic_track_risk"] = {
+                "level": "NORMAL",
+                "trigger_internalizing_threshold": 70.0,
+                "depression_bump": 0.0,
+                "panic_bump": 0.0,
+            }
+
+        # 11) 체인드 다운스트림 트리거 #2:
+        #    internalizing이 높고(>70) 인지 경직(cognitive_rigidity)이 동반되면
+        #    OCD/ASD 루프 이슈를 debug-console style 구조로 명시.
+        cognitive_rigidity_score = obsessive_compulsive  # 0..100 (obsessive_compulsive dim proxy)
+        if total_internalizing > 70.0 and cognitive_rigidity_score >= 60.0:
+            downstream_triggers["ocd_asd_loop"] = {
+                "enabled": True,
+                "issues": [
+                    {
+                        "code": "OCD_ASD_LOOP",
+                        "labelKo": "강박·공황-고착 루프",
+                        "severity": "HIGH",
+                        "evidence": {
+                            "total_internalizing_score": round(total_internalizing, 1),
+                            "cognitive_rigidity_score": round(cognitive_rigidity_score, 1),
+                            "gs_slowdown_proxy": round(gs_slowdown_proxy, 3),
+                            "stimming_proxy": round(stimming_proxy, 3),
+                            "defensive_language_signal": round(defensive_language_signal, 3),
+                            "panic_index": round(panic_index, 1),
+                            "obsessive_compulsive_index": round(obsessive_compulsive, 1),
+                        },
+                    }
+                ],
+            }
+        else:
+            downstream_triggers["ocd_asd_loop"] = {
+                "enabled": False,
+                "issues": [],
+            }
+
+        core_inputs = {
+            "gs_slowdown_proxy": round(gs_slowdown_proxy, 3),
+            "stimming_proxy": round(stimming_proxy, 3),
+            "defensive_language_signal": round(defensive_language_signal, 3),
+            # raw-ish supporting fields for debugging
+            "word_delay_ms": round(delay_ms, 1),
+            "backspace_count": backspace_cnt,
+            "word_card_cancel_count": word_card_cancel_count,
+        }
+
         return {
             "total_internalizing_score": round(total_internalizing, 1),
             "internalizing_risk_level": risk_level,
             "suggested_approach": suggested_agent,
+            "core_inputs": core_inputs,
+            "downstream_triggers": downstream_triggers,
+            "internalizing_core": {
+                "total_internalizing_score": round(total_internalizing, 1),
+                "internalizing_risk_level": risk_level,
+                "core_inputs": core_inputs,
+                "downstream_triggers": downstream_triggers,
+            },
             "dimensions": {
-                "depressive_index": round(d_dep * 100, 1),
-                "anxiety_index": round(d_anx * 100, 1),
-                "obsessive_compulsive": round(d_ocd * 100, 1),
-                "panic_index": round(d_pan * 100, 1),
-                "bipolar_fluctuation_index": round(d_bip * 100, 1),
-                "somatic_symptom_index": round(d_som * 100, 1),
+                "depressive_index": round(depressive_index, 1),
+                "anxiety_index": round(anxiety_index, 1),
+                "obsessive_compulsive": round(obsessive_compulsive, 1),
+                "panic_index": round(panic_index, 1),
+                "bipolar_fluctuation_index": round(bipolar_fluctuation_index, 1),
+                "somatic_symptom_index": round(somatic_symptom_index, 1),
                 "schizophrenia_spectrum": sch_spectrum,
             },
             "non_diagnostic": True,
         }
 
 
-_ENGINE = UnifiedEmotionalSpectrumEngine()
+_ENGINE = InternalizingCoreEngine()
+
+# Backwards compatibility (older imports / tests)
+UnifiedEmotionalSpectrumEngine = InternalizingCoreEngine
 
 APPROACH_LABELS_KO = {
     "SUNG_AH_SUPPORT": "지지·안전 기지 모드",
@@ -196,7 +312,19 @@ def compute_emotional_spectrum(
     metrics = resolve_behavioral_metrics(state, behavioral_metrics) if state is not None else dict(
         behavioral_metrics or {}
     )
-    result = _ENGINE.calculate_internalizing_spectrum(scores, metrics)
+    defense_enabled = bool((sanitized or {}).get("defenseMechanismEnabled", True))
+    persona = (getattr(state, "persona_routing", None) or {}) if state is not None else {}
+    mood_state = str(persona.get("mood_state") or "")
+    reason = str(persona.get("reason") or "")
+    defensive_language_signal = 0.0
+    if defense_enabled and (reason == "defensive_pattern_signal" or mood_state.upper() == "DEFENSIVE"):
+        defensive_language_signal = 0.85
+
+    result = _ENGINE.calculate_internalizing_spectrum(
+        scores,
+        metrics,
+        defensive_language_signal=defensive_language_signal,
+    )
     result["baseScores"] = {k: round(float(v), 1) for k, v in scores.items()}
     result["behavioralMetrics"] = metrics
     result["approachLabelKo"] = APPROACH_LABELS_KO.get(result["suggested_approach"], "")
@@ -278,6 +406,7 @@ def to_dsm5_integrated_diagnostic(
         "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
         "total_internalizing_score": float(doc.get("total_internalizing_score") or 0.0),
         "internalizing_risk_level": str(doc.get("internalizing_risk_level") or "NORMAL"),
+        "downstream_triggers": doc.get("downstream_triggers") or None,
         "dimensions": {
             "depressive_index": float(dims.get("depressive_index") or 0.0),
             "anxiety_index": float(dims.get("anxiety_index") or 0.0),
@@ -373,9 +502,20 @@ def to_integrated_diagnostic_model(
         min(100.0, asd_stimming_index * 0.7 + schizophrenia_index * 0.3),
     )
 
+    # Core internalizing pressure: 핵심 점수가 높을수록 '인지 안정(Backbone)'을 약화시키는 시각적 반영.
+    internalizing_total = float(doc.get("total_internalizing_score") or 0.0)
+    pressure = min(1.0, max(0.0, internalizing_total / 100.0))
+    backbone_tension = max(0.0, min(100.0, backbone_tension * (1.0 - 0.18 * pressure)))
+    cluster_density = max(0.0, min(100.0, cluster_density * (1.0 + 0.10 * pressure)))
+
     return {
         "sessionId": session_id or "",
         "patientId": patient_id or "",
+        "internalizing_core": {
+            "total_internalizing_score": round(internalizing_total, 1),
+            "internalizing_risk_level": str(doc.get("internalizing_risk_level") or "NORMAL"),
+            "downstream_triggers": doc.get("downstream_triggers") or None,
+        },
         "cognitiveProfile": {
             "g_factor": round(g_factor, 1),
             "crystallized_gc": round(crystallized_gc, 1),
@@ -419,8 +559,16 @@ def to_neurodevelopmental_matrix(
     boundary_score = float(wc.get("boundaryScore", 0.5) or 0.5)
     mindmap_boundary = float((mindmap or {}).get("boundaryScore", boundary_score) or boundary_score)
 
-    # cognitive_disorganization_score: weighted combination
-    cds = min(100.0, max(0.0, (sch_avg * 50.0 + hesitation * 30.0 + (1.0 - boundary_score) * 20.0) * 2.0))
+    # cognitive_disorganization_score: 기존(와해/불안/경계) 기반 + internalizing_core 압력 블렌딩
+    cds_base = min(
+        100.0,
+        max(
+            0.0,
+            (sch_avg * 50.0 + hesitation * 30.0 + (1.0 - boundary_score) * 20.0) * 2.0,
+        ),
+    )
+    total_internalizing = float(doc.get("total_internalizing_score") or 0.0)
+    cds = min(100.0, max(0.0, cds_base * 0.7 + total_internalizing * 0.3))
 
     # spectrum_mapping
     social_blindness = min(100.0, max(0.0, (1.0 - boundary_score) * 100.0))

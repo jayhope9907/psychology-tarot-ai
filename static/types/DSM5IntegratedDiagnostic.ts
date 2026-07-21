@@ -34,6 +34,42 @@ export interface RoomProjection {
   wall_symmetry: 'rigid' | 'natural' | 'broken';
 }
 
+export type DownstreamTrackRiskLevel = 'NORMAL' | 'ELEVATED';
+
+export interface DepressionPanicTrackRisk {
+  level: DownstreamTrackRiskLevel;
+  trigger_internalizing_threshold: number;
+  depression_bump: number;
+  panic_bump: number;
+}
+
+export interface OcdAsdLoopIssueEvidence {
+  total_internalizing_score: number;
+  cognitive_rigidity_score: number;
+  gs_slowdown_proxy: number;
+  stimming_proxy: number;
+  defensive_language_signal: number;
+  panic_index: number;
+  obsessive_compulsive_index: number;
+}
+
+export interface OcdAsdLoopIssue {
+  code: 'OCD_ASD_LOOP';
+  labelKo: string;
+  severity: 'HIGH';
+  evidence: OcdAsdLoopIssueEvidence;
+}
+
+export interface OcdAsdLoopDebugConsole {
+  enabled: boolean;
+  issues: OcdAsdLoopIssue[];
+}
+
+export interface DownstreamTriggers {
+  depression_panic_track_risk: DepressionPanicTrackRisk;
+  ocd_asd_loop: OcdAsdLoopDebugConsole;
+}
+
 export interface DSM5IntegratedDiagnostic {
   session_id: string;
   user_id: string;
@@ -42,6 +78,9 @@ export interface DSM5IntegratedDiagnostic {
   // 1. 핵심 내재화(Internalizing) 스펙트럼 총합 지표
   total_internalizing_score: number;
   internalizing_risk_level: InternalizingRiskLevel;
+
+  // Chained downstream triggers from InternalizingCoreEngine (explicit debug payload)
+  downstream_triggers?: DownstreamTriggers | null;
 
   // 2. DSM-5 기반 다차원 스펙트럼 지수
   dimensions: IntegratedDimensions;
