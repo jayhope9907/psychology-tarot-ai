@@ -304,6 +304,21 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             "ALTER TABLE session_snapshots ADD COLUMN cognitive_level TEXT NOT NULL DEFAULT 'STANDARD'"
         )
 
+    esh_cols = {row[1] for row in conn.execute("PRAGMA table_info(emotional_spectrum_history)")}
+    if esh_cols:
+        if "age_group" not in esh_cols:
+            conn.execute("ALTER TABLE emotional_spectrum_history ADD COLUMN age_group TEXT")
+        if "metrics_json" not in esh_cols:
+            conn.execute(
+                "ALTER TABLE emotional_spectrum_history ADD COLUMN metrics_json TEXT NOT NULL DEFAULT '{}'"
+            )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_esh_age_group_created
+                ON emotional_spectrum_history(age_group, created_at DESC)
+            """
+        )
+
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS sanitized_input_history (
@@ -413,6 +428,8 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             result_json TEXT NOT NULL DEFAULT '{}',
             license_type TEXT NOT NULL DEFAULT 'B2C_personal',
             organization_id TEXT,
+            age_group TEXT,
+            metrics_json TEXT NOT NULL DEFAULT '{}',
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );
@@ -422,6 +439,8 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             ON emotional_spectrum_history(session_id, turn_index, id);
         CREATE INDEX IF NOT EXISTS idx_esh_org_created
             ON emotional_spectrum_history(organization_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_esh_age_group_created
+            ON emotional_spectrum_history(age_group, created_at DESC);
         """
     )
 

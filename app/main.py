@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -250,6 +250,17 @@ class SpectrumComputeRequest(BaseModel):
     turn_index: int = 0
     source: Optional[str] = "api"
     persist: bool = True
+    age_group: Optional[str] = None
+    age_years: Optional[int] = None
+
+
+class AgeCohortExportRequest(BaseModel):
+    age_group: Optional[str] = None
+    risk_cohort: str = "any"
+    organization_id: Optional[str] = None
+    org_id: Optional[str] = None
+    research_token: Optional[str] = None
+    limit: int = 200
 
 
 class WordCardSubmitRequest(BaseModel):
@@ -1234,6 +1245,74 @@ async def research_export(request: ResearchExportRequest):
     return payload
 
 
+@app.get("/api/v1/research/age-cohorts/stats")
+async def research_age_cohort_stats(
+    age_group: Optional[str] = None,
+    risk_cohort: str = "any",
+    organization_id: Optional[str] = None,
+    org_id: Optional[str] = None,
+    research_token: Optional[str] = None,
+    x_research_token: Optional[str] = Header(default=None, alias="X-Research-Token"),
+):
+    """Age-cohort mean/stddev for IntegratedDiagnosticModel metrics (hospital research)."""
+    from app.services.dsm5_integrator import get_age_group_pipeline, verify_research_access
+    from app.services.vault import write_audit_event
+
+    org = (organization_id or org_id or "").strip() or None
+    token = (research_token or x_research_token or "").strip() or None
+    if not verify_research_access(research_token=token, org_id=org):
+        raise HTTPException(status_code=401, detail="research_token_or_org_required")
+
+    pipeline = get_age_group_pipeline()
+    payload = pipeline.aggregate_stats(
+        age_group=age_group,
+        organization_id=org,
+        risk_cohort=risk_cohort,
+    )
+    if payload.get("ok"):
+        write_audit_event(
+            "AGE_COHORT_STATS",
+            "research",
+            {
+                "age_group": age_group,
+                "risk_cohort": risk_cohort,
+                "organization_id": org,
+            },
+        )
+    return payload
+
+
+@app.post("/api/v1/research/age-cohorts/export")
+async def research_age_cohort_export(request: AgeCohortExportRequest):
+    """Anonymized hospital JSON package (no PII / no free-text chat)."""
+    from app.services.dsm5_integrator import get_age_group_pipeline, verify_research_access
+    from app.services.vault import write_audit_event
+
+    org = (request.organization_id or request.org_id or "").strip() or None
+    if not verify_research_access(research_token=request.research_token, org_id=org):
+        raise HTTPException(status_code=401, detail="research_token_or_org_required")
+
+    pipeline = get_age_group_pipeline()
+    payload = pipeline.export_package(
+        age_group=request.age_group,
+        risk_cohort=request.risk_cohort or "any",
+        organization_id=org,
+        limit=request.limit,
+    )
+    if payload.get("ok"):
+        write_audit_event(
+            "AGE_COHORT_EXPORT",
+            "research",
+            {
+                "age_group": request.age_group,
+                "risk_cohort": request.risk_cohort,
+                "organization_id": org,
+                "sample_count": payload.get("sample_count", 0),
+            },
+        )
+    return payload
+
+
 @app.get("/api/v1/legal/consent")
 async def legal_consent():
     from app.services.legal_compliance import build_consent_document
@@ -2133,11 +2212,14 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
             turn_index=int(request.turn_index or 0),
             source=request.source or "api",
             result=result,
+            age_group=request.age_group,
+            age_years=request.age_years,
         )
         record_id = record.get("id")
     return {
         "user_id": user_id,
         "record_id": record_id,
+        "age_group": request.age_group,
         "spectrum": result,
         "diagnostic": to_dsm5_integrated_diagnostic(
             result, session_id=request.session_id or "", user_id=user_id

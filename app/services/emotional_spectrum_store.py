@@ -31,6 +31,8 @@ def persist_spectrum_tick(
     license_type: str = "B2C_personal",
     organization_id: Optional[str] = None,
     state: Any = None,
+    age_group: Optional[str] = None,
+    age_years: Optional[int] = None,
 ) -> Dict[str, Any]:
     ensure_spectrum_tables()
     ensure_user(user_id)
@@ -41,6 +43,16 @@ def persist_spectrum_tick(
     sid = session_id or ""
     turn = max(0, int(turn_index or 0))
     src = (source or "chat").strip()[:32] or "chat"
+
+    from app.services.dsm5_integrator import AgeGroupDataPipeline, resolve_age_group
+
+    cohort = resolve_age_group(age_years=age_years, age_group=age_group)
+    metrics = AgeGroupDataPipeline().persist_tick_metrics(
+        doc,
+        session_id=sid,
+        age_group=cohort,
+        age_years=age_years,
+    )
 
     record = {
         "userId": user_id,
@@ -53,6 +65,8 @@ def persist_spectrum_tick(
         "result": doc,
         "licenseType": license_type or "B2C_personal",
         "organizationId": org,
+        "ageGroup": cohort,
+        "metrics": metrics,
         "recordedAt": when,
         "non_diagnostic": True,
     }
@@ -64,8 +78,8 @@ def persist_spectrum_tick(
             INSERT INTO emotional_spectrum_history (
                 user_id, session_id, turn_index, source,
                 total_score, risk_level, suggested_approach, result_json,
-                license_type, organization_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                license_type, organization_id, age_group, metrics_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id,
@@ -78,6 +92,8 @@ def persist_spectrum_tick(
                 json.dumps(doc, ensure_ascii=False),
                 license_type or "B2C_personal",
                 org,
+                cohort,
+                json.dumps(metrics, ensure_ascii=False),
                 when,
             ),
         )
@@ -172,7 +188,7 @@ def list_spectrum_history(
                 """
                 SELECT id, user_id, session_id, turn_index, source,
                        total_score, risk_level, suggested_approach, result_json,
-                       license_type, organization_id, created_at
+                       license_type, organization_id, age_group, metrics_json, created_at
                 FROM emotional_spectrum_history
                 WHERE user_id = ? AND session_id = ?
                 ORDER BY turn_index ASC, id ASC
@@ -185,7 +201,7 @@ def list_spectrum_history(
                 """
                 SELECT id, user_id, session_id, turn_index, source,
                        total_score, risk_level, suggested_approach, result_json,
-                       license_type, organization_id, created_at
+                       license_type, organization_id, age_group, metrics_json, created_at
                 FROM emotional_spectrum_history
                 WHERE user_id = ?
                 ORDER BY created_at DESC, id DESC
@@ -207,7 +223,7 @@ def list_org_spectrum_history(organization_id: str, *, limit: int = 100) -> List
             """
             SELECT id, user_id, session_id, turn_index, source,
                    total_score, risk_level, suggested_approach, result_json,
-                   license_type, organization_id, created_at
+                   license_type, organization_id, age_group, metrics_json, created_at
             FROM emotional_spectrum_history
             WHERE organization_id = ?
             ORDER BY created_at DESC, id DESC
@@ -246,6 +262,13 @@ def get_user_last_spectrum(user_id: str) -> Optional[Dict[str, Any]]:
 
 
 def _row_to_public(row: Any) -> Dict[str, Any]:
+    keys = set(row.keys()) if hasattr(row, "keys") else set()
+    metrics = {}
+    if "metrics_json" in keys and row["metrics_json"]:
+        try:
+            metrics = json.loads(row["metrics_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            metrics = {}
     return {
         "id": row["id"],
         "userId": row["user_id"],
@@ -258,6 +281,8 @@ def _row_to_public(row: Any) -> Dict[str, Any]:
         "result": json.loads(row["result_json"] or "{}"),
         "licenseType": row["license_type"],
         "organizationId": row["organization_id"],
+        "ageGroup": row["age_group"] if "age_group" in keys else None,
+        "metrics": metrics,
         "createdAt": row["created_at"],
         "non_diagnostic": True,
     }

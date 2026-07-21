@@ -57,6 +57,11 @@ def main() -> int:
             if col not in user_cols:
                 print("FAIL users missing", col)
                 return 1
+        esh_cols = {r[1] for r in conn.execute("PRAGMA table_info(emotional_spectrum_history)")}
+        for col in ("age_group", "metrics_json"):
+            if col not in esh_cols:
+                print("FAIL emotional_spectrum_history missing", col)
+                return 1
         sess_cols = {r[1] for r in conn.execute("PRAGMA table_info(session_snapshots)")}
         for col in (
             "last_sanitized_json",
@@ -106,12 +111,15 @@ def main() -> int:
         "/api/v1/users/{user_id}/emotional-spectrum/history",
         "/api/v1/users/{user_id}/integrated-diagnostic",
         "/api/v1/orgs/{org_id}/emotional-spectrum/history",
+        "/api/v1/research/age-cohorts/stats",
+        "/api/v1/research/age-cohorts/export",
     ):
         if path not in routes:
             print("FAIL missing route", path)
             return 1
     print("OK routes")
 
+    importlib.import_module("app.services.dsm5_integrator")
     from app.services.input_sanitizer import sanitize_and_compensate
     from app.services.sanitized_input_store import persist_sanitized_input, session_tracking_summary
 
@@ -193,12 +201,43 @@ def main() -> int:
         session_id="build-check-sess",
         turn_index=4,
         result=spectrum,
+        age_group="young_adult",
+        organization_id="org-build-check",
     )
     es_history = list_spectrum_history("build-check-user", session_id="build-check-sess")
     if len(es_history) != 1:
         print("FAIL spectrum tracking", es_history)
         return 1
+    if es_history[0].get("ageGroup") != "young_adult":
+        print("FAIL spectrum age_group", es_history[0])
+        return 1
     print("OK emotional spectrum persist")
+
+    from app.services.dsm5_integrator import AgeGroupDataPipeline, resolve_age_group
+
+    assert resolve_age_group(age_years=25) == "young_adult"
+    pipe = AgeGroupDataPipeline()
+    stats = pipe.aggregate_stats(age_group="young_adult", organization_id="org-build-check")
+    if not stats.get("ok") or not stats.get("cohorts"):
+        print("FAIL age cohort stats", stats)
+        return 1
+    export = pipe.export_package(
+        age_group="young_adult",
+        organization_id="org-build-check",
+        risk_cohort="any",
+        limit=50,
+    )
+    if not export.get("ok") or export.get("sample_count", 0) < 1:
+        print("FAIL age cohort export", export)
+        return 1
+    sample = (export.get("samples") or [{}])[0]
+    if "user_id" in sample or "patientId" in sample or "userId" in sample:
+        print("FAIL export leaked PII keys", sample)
+        return 1
+    if "cognitiveProfile" not in sample or "g_factor" not in (sample.get("cognitiveProfile") or {}):
+        print("FAIL export missing IntegratedDiagnosticModel keys", sample)
+        return 1
+    print("OK age cohort pipeline")
     print("BUILD CHECK PASSED")
     try:
         db_path.unlink(missing_ok=True)
