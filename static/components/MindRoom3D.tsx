@@ -1,56 +1,98 @@
 /**
- * MindRoom3D — IntegratedDiagnosticModel 기반 3D "마음의 방" 참조 구현.
+ * MindRoom3D — DSM5IntegratedDiagnostic 기반 3D "마음의 방" 참조 구현.
  *
  * 채팅 UI에서는 static/js/mind-room-3d.js (vanilla)가 실사용됩니다.
  * 이 파일은 React/Three 타입 계약을 고정하기 위한 참조 구현입니다.
+ *
+ * Dual-support: DSM5IntegratedDiagnostic | IntegratedDiagnosticModel
+ * (neurodevelopmental_matrix wall_texture는 vanilla 런타임에서 처리)
  */
 import React, { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import { DSM5IntegratedDiagnostic } from "../types/DSM5IntegratedDiagnostic";
 import { IntegratedDiagnosticModel } from "../types/IntegratedDiagnosticModel";
 
+export type MindRoomDiagnostic = DSM5IntegratedDiagnostic | IntegratedDiagnosticModel;
+
 interface MindRoom3DProps {
-  diagnosticData: IntegratedDiagnosticModel;
+  diagnosticData: MindRoomDiagnostic;
 }
 
-const DynamicRoomMesh: React.FC<{ data: IntegratedDiagnosticModel }> = ({ data }) => {
+function isIntegratedModel(data: MindRoomDiagnostic): data is IntegratedDiagnosticModel {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "clinicalProfile" in data &&
+      (data as IntegratedDiagnosticModel).clinicalProfile
+  );
+}
+
+/** Normalize DSM5 + IntegratedDiagnosticModel into room metrics (0..1). */
+export function parseRoomMetrics(data: MindRoomDiagnostic): {
+  internalizingFactor: number;
+  schTotal: number;
+} {
+  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+
+  if (isIntegratedModel(data)) {
+    const cp = data.clinicalProfile || {
+      schizophrenia_index: 0,
+      asd_stimming_index: 0,
+      depression_index: 0,
+    };
+    const coreScore = data.internalizing_core?.total_internalizing_score;
+    const rawInternal =
+      typeof coreScore === "number" && Number.isFinite(coreScore)
+        ? coreScore
+        : Number(cp.depression_index) || 0;
+    return {
+      internalizingFactor: clamp01(rawInternal / 100),
+      schTotal: clamp01((Number(cp.schizophrenia_index) || 0) / 100),
+    };
+  }
+
+  const dims = data.dimensions || ({} as DSM5IntegratedDiagnostic["dimensions"]);
+  const sch = dims.schizophrenia_spectrum || {
+    loose_association: 0,
+    thought_blocking: 0,
+    ego_boundary_loss: 0,
+    delusional_affinity: 0,
+  };
+  return {
+    internalizingFactor: clamp01((Number(data.total_internalizing_score) || 0) / 100),
+    schTotal: clamp01(
+      ((Number(sch.loose_association) || 0) + (Number(sch.ego_boundary_loss) || 0)) / 200
+    ),
+  };
+}
+
+// 방의 동적 변화를 담당하는 내부 3D 메시 컴포넌트
+const DynamicRoomMesh: React.FC<{ data: MindRoomDiagnostic }> = ({ data }) => {
   const roomRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.AmbientLight>(null);
 
-  const internalizingFactor =
-    (typeof data.internalizing_core?.total_internalizing_score === "number"
-      ? data.internalizing_core.total_internalizing_score
-      : data.clinicalProfile.depression_index || 0) / 100;
-  const schTotal = (data.clinicalProfile.schizophrenia_index || 0) / 100;
-  const backboneTension = (data.threeRenderMetrics.backbone_tension || 50) / 100;
-  const clusterDensity = (data.threeRenderMetrics.cluster_density || 0) / 100;
+  const { internalizingFactor, schTotal } = parseRoomMetrics(data);
 
   useFrame((state) => {
-    if (!roomRef.current) return;
+    if (roomRef.current) {
+      // 1. [내재화 반영] 점수가 높을수록 천장이 낮아지고 공간이 수축됨 (Y축 스케일 다운)
+      const targetYScale = 1.0 - internalizingFactor * 0.5; // 최대 50% 수축
+      roomRef.current.scale.y = THREE.MathUtils.lerp(roomRef.current.scale.y, targetYScale, 0.05);
 
-    // 1) backbone_tension이 낮을수록 천장이 더 낮아짐 (최대 50%)
-    const targetYScale = 1.0 - (1.0 - backboneTension) * 0.5;
-    roomRef.current.scale.y = THREE.MathUtils.lerp(roomRef.current.scale.y, targetYScale, 0.05);
-
-    // 2) cluster_density가 높을수록 좌우/전후가 약간 부풀어 보임
-    const targetXZ = 1.0 + clusterDensity * 0.15;
-    roomRef.current.scale.x = THREE.MathUtils.lerp(roomRef.current.scale.x, targetXZ, 0.05);
-    roomRef.current.scale.z = THREE.MathUtils.lerp(roomRef.current.scale.z, targetXZ, 0.05);
-
-    // 3) 회전 왜곡: sch 신호 + 클러스터 고착이 함께 높을수록 강화
-    const warpAmp =
-      (schTotal > 0.5 ? schTotal * 0.1 : 0) + (clusterDensity > 0.55 ? clusterDensity * 0.05 : 0);
-    if (warpAmp > 0) {
-      roomRef.current.rotation.x = Math.sin(state.clock.getElapsedTime()) * warpAmp;
-      roomRef.current.rotation.z = Math.cos(state.clock.getElapsedTime()) * warpAmp;
-    } else {
-      roomRef.current.rotation.set(0, 0, 0);
+      // 2. [조현병 와해성 반영] 점수가 높을수록 방이 기괴하게 회전하거나 뒤틀림
+      if (schTotal > 0.5) {
+        roomRef.current.rotation.x = Math.sin(state.clock.getElapsedTime()) * (schTotal * 0.1);
+        roomRef.current.rotation.z = Math.cos(state.clock.getElapsedTime()) * (schTotal * 0.1);
+      } else {
+        roomRef.current.rotation.set(0, 0, 0);
+      }
     }
 
-    // 4) 우울 지수가 높을수록 조도를 낮춤 (최대 80% 차단)
+    // 3. [우울/공황 반영] 내재화 지수가 높을수록 방안의 조도를 차단하여 어둡게 설정
     if (lightRef.current) {
-      const targetIntensity = 1.0 - internalizingFactor * 0.8;
+      const targetIntensity = 1.0 - internalizingFactor * 0.8; // 최대 80% 어두워짐
       lightRef.current.intensity = THREE.MathUtils.lerp(
         lightRef.current.intensity,
         targetIntensity,
@@ -59,10 +101,11 @@ const DynamicRoomMesh: React.FC<{ data: IntegratedDiagnosticModel }> = ({ data }
     }
   });
 
+  // 임상 상태에 따른 컬러 매핑 변환
   const getRoomColor = (): string => {
-    if (schTotal > 0.5) return "#4a2c5e";
-    if (internalizingFactor >= 0.8) return "#2b2b2b";
-    return "#f4ebd0";
+    if (schTotal > 0.5) return "#4a2c5e"; // 기괴하고 몽환적인 보라색 톤
+    if (internalizingFactor >= 0.8) return "#2b2b2b"; // 극도의 우울을 뜻하는 어두운 잿빛
+    return "#f4ebd0"; // 안정적인 상태의 따뜻한 샌드 옐로우 톤
   };
 
   return (
@@ -79,8 +122,8 @@ const DynamicRoomMesh: React.FC<{ data: IntegratedDiagnosticModel }> = ({ data }
         <boxGeometry args={[10, 8, 10]} />
         <meshStandardMaterial
           color={getRoomColor()}
-          side={THREE.BackSide}
-          wireframe={schTotal > 0.6 || clusterDensity > 0.65}
+          side={THREE.BackSide} // 큐브의 '내부' 벽면이 보이도록 설정
+          wireframe={schTotal > 0.6} // 조현병 와해성이 극도로 높을 때 프레임이 깨지는 시각 효과
         />
       </mesh>
     </>
@@ -92,9 +135,9 @@ export const MindRoom3D: React.FC<MindRoom3DProps> = ({ diagnosticData }) => {
     <div style={{ width: "100%", height: "500px", borderRadius: "12px", overflow: "hidden" }}>
       <Canvas camera={{ position: [0, 0, 8], fov: 60 }}>
         <DynamicRoomMesh data={diagnosticData} />
+        {/* 마우스나 터치로 방을 360도 회전하며 둘러볼 수 있는 조작계 */}
         <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 3} />
       </Canvas>
     </div>
   );
 };
-

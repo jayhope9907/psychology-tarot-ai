@@ -7,6 +7,8 @@
  *   - schTotal > 0.6 → 와이어프레임(프레임 깨짐) 효과
  *   - 드래그/터치로 360도 회전 (줌 금지, 상하각 PI/3 ~ PI/2 클램프)
  *
+ * Dual-support: DSM5IntegratedDiagnostic | IntegratedDiagnosticModel | neurodevelopmental_matrix
+ *
  * 사용: const room = new MindRoom3DScene(containerEl); room.setDiagnostic(doc);
  */
 (function () {
@@ -16,13 +18,16 @@
     return a + (b - a) * t;
   }
 
+  function clamp01(n) {
+    return Math.min(1, Math.max(0, n));
+  }
+
   function MindRoom3DScene(container) {
     if (typeof THREE === "undefined") throw new Error("THREE not loaded");
     this.container = container;
     this.internalizingFactor = 0;
     this.schTotal = 0;
-    this.backboneTension = 0.5; // 0..1
-    this.clusterDensity = 0.0; // 0..1
+    this._wallTextureOverride = false;
     this._disposed = false;
 
     const width = container.clientWidth || 560;
@@ -109,18 +114,52 @@
 
   // 임상 상태에 따른 컬러 매핑 변환
   MindRoom3DScene.prototype._roomColor = function () {
+    if (this._projColor) return this._projColor;
     if (this.schTotal > 0.5) return "#4a2c5e"; // 기괴하고 몽환적인 보라색 톤
     if (this.internalizingFactor >= 0.8) return "#2b2b2b"; // 극도의 우울 잿빛
+    if (this.internalizingFactor >= 0.5) return "#d8dee6"; // MONITOR cold-white
     return "#f4ebd0"; // 안정: 따뜻한 샌드 옐로우 톤
+  };
+
+  MindRoom3DScene.prototype._applyRoomProjection = function (proj) {
+    if (!proj || !proj.color_tone) return;
+    var tone = proj.color_tone;
+    var toneMap = {
+      "fractured-distorted": "#4a2c5e",
+      "dark-gray": "#1a1c20",
+      "cold-white": "#d8dee6",
+      "warm-yellow": "#f4ebd0",
+    };
+    this._projColor = toneMap[tone] || null;
+    if (typeof proj.lighting_level === "number") {
+      this._projLighting = Math.max(0, Math.min(100, Number(proj.lighting_level))) / 100;
+    } else {
+      this._projLighting = null;
+    }
+    this.material.wireframe = tone === "fractured-distorted" || this.schTotal > 0.6;
+    if (tone === "dark-gray") {
+      // HIGH_ALERT isolated: muffling + ceiling already via internalizingFactor
+      this.pointLight.intensity = Math.max(0.04, 0.35 * (this._projLighting != null ? this._projLighting : 0.15));
+    }
   };
 
   MindRoom3DScene.prototype.setDiagnostic = function (data) {
     const doc = data || {};
+    this._wallTextureOverride = false;
+    this._projColor = null;
+    this._projLighting = null;
 
-    // NeurodevelopmentalCognitiveMatrix contract
+    // Prefer clinical_meta.room_projection (DSM5IntegratedDiagnostic contract)
+    var proj = (doc.clinical_meta && doc.clinical_meta.room_projection) || doc.mind_room || null;
+    if (proj && proj.color_tone) {
+      this._applyRoomProjection(proj);
+    }
+
+    // NeurodevelopmentalCognitiveMatrix contract (wall_texture override)
     if (doc.three_d_room_fx) {
       var fx = doc.three_d_room_fx;
       var tex = fx.wall_texture || "rigid-grid";
+      this._wallTextureOverride = true;
       if (tex === "rigid-grid") {
         this.material.wireframe = false;
         this.material.color.set("#e0ddd6");
@@ -136,56 +175,41 @@
       this.pointLight.intensity = Math.max(0.05, 0.5 * (1.0 - muffling));
       // Also update internal state for animation continuity
       var sm = doc.spectrum_mapping || {};
-      this.schTotal = Math.min(1, ((Number(sm.cognitive_fragmentation) || 0) + (Number(sm.reality_detachment) || 0)) / 200);
-      this.internalizingFactor = Math.min(1, (Number(doc.cognitive_disorganization_score) || 0) / 100);
+      this.schTotal = clamp01(
+        ((Number(sm.cognitive_fragmentation) || 0) + (Number(sm.reality_detachment) || 0)) / 200
+      );
+      this.internalizingFactor = clamp01((Number(doc.cognitive_disorganization_score) || 0) / 100);
       return;
     }
 
     // Contract: either DSM5IntegratedDiagnostic or IntegratedDiagnosticModel
     if (doc.threeRenderMetrics && doc.clinicalProfile) {
       const cp = doc.clinicalProfile || {};
-      const tm = doc.threeRenderMetrics || {};
-      var coreScore = doc.internalizing_core && doc.internalizing_core.total_internalizing_score != null
-        ? Number(doc.internalizing_core.total_internalizing_score)
-        : NaN;
-      var rawInternal = Number.isFinite(coreScore) ? coreScore : (Number(cp.depression_index) || 0);
-      this.internalizingFactor = Math.min(Math.max(rawInternal / 100, 0), 1);
-      this.schTotal = Math.min(
-        Math.max((Number(cp.schizophrenia_index) || 0) / 100, 0),
-        1
-      );
-      this.backboneTension = Math.min(
-        Math.max((Number(tm.backbone_tension) || 50) / 100, 0),
-        1
-      );
-      this.clusterDensity = Math.min(
-        Math.max((Number(tm.cluster_density) || 0) / 100, 0),
-        1
-      );
+      var coreScore =
+        doc.internalizing_core && doc.internalizing_core.total_internalizing_score != null
+          ? Number(doc.internalizing_core.total_internalizing_score)
+          : NaN;
+      var rawInternal = Number.isFinite(coreScore) ? coreScore : Number(cp.depression_index) || 0;
+      this.internalizingFactor = clamp01(rawInternal / 100);
+      this.schTotal = clamp01((Number(cp.schizophrenia_index) || 0) / 100);
     } else {
       const dims = doc.dimensions || {};
       const sch = dims.schizophrenia_spectrum || {};
-      this.internalizingFactor = Math.min(
-        Math.max((Number(doc.total_internalizing_score) || 0) / 100, 0),
-        1
+      this.internalizingFactor = clamp01((Number(doc.total_internalizing_score) || 0) / 100);
+      // schTotal 0..1 factor: (avg of 0-100 scores) / 100 == (a+b)/200
+      this.schTotal = clamp01(
+        ((Number(sch.loose_association) || 0) + (Number(sch.ego_boundary_loss) || 0)) / 200
       );
-      this.schTotal = Math.min(
-        Math.max(
-          ((Number(sch.loose_association) || 0) +
-            (Number(sch.ego_boundary_loss) || 0)) /
-            200,
-          0
-        ),
-        1
-      );
-      // DSM5 입력에는 threeRenderMetrics가 없으므로 임시 매핑
-      this.backboneTension = Math.min(1, Math.max(0, 1.0 - this.internalizingFactor * 0.6));
-      this.clusterDensity = Math.min(1, Math.max(0, this.schTotal * 0.7 + this.internalizingFactor * 0.3));
     }
     this.material.color.set(this._roomColor());
-    this.material.wireframe = this.schTotal > 0.6 || this.clusterDensity > 0.65; // 프레임 깨짐 효과
+    if (!this._projColor) {
+      this.material.wireframe = this.schTotal > 0.6; // 프레임 깨짐 효과
+    }
     this.material.needsUpdate = true;
     this.pointLight.color.set(this.internalizingFactor >= 0.8 ? "#ff3333" : "#ffffff");
+    if (this._projLighting == null) {
+      this.pointLight.intensity = 0.5;
+    }
   };
 
   MindRoom3DScene.prototype._animate = function () {
@@ -193,28 +217,25 @@
     requestAnimationFrame(this._animate);
     const t = (performance.now() - this._clockStart) / 1000;
 
-    // 1. [인지 와해/안정] backbone_tension이 낮을수록 천장이 낮아지고 공간이 수축 (최대 50%)
-    const targetYScale = 1.0 - (1.0 - this.backboneTension) * 0.5;
+    // 1. [내재화 반영] 점수가 높을수록 천장이 낮아지고 공간이 수축됨 (Y축 스케일 다운)
+    const targetYScale = 1.0 - this.internalizingFactor * 0.5;
     this.room.scale.y = lerp(this.room.scale.y, targetYScale, 0.05);
 
-    // 2. [노드 밀집 반영] cluster_density가 높을수록 좌우/전후가 약간 부풀며(노드 뭉침) 왜곡이 증가
-    const targetXZ = 1.0 + this.clusterDensity * 0.15;
-    this.room.scale.x = lerp(this.room.scale.x, targetXZ, 0.05);
-    this.room.scale.z = lerp(this.room.scale.z, targetXZ, 0.05);
+    // Keep X/Z at unit scale (authoritative visual rules — no cluster inflate)
+    this.room.scale.x = lerp(this.room.scale.x, 1.0, 0.05);
+    this.room.scale.z = lerp(this.room.scale.z, 1.0, 0.05);
 
-    // 3. [와해성 반영] 방이 기괴하게 회전·뒤틀림
-    const warpAmp = this.schTotal > 0.5 ? this.schTotal * 0.1 : 0;
-    const clusterAmp = this.clusterDensity > 0.55 ? this.clusterDensity * 0.05 : 0;
-    const amp = warpAmp + clusterAmp;
-    if (amp > 0) {
-      this.room.rotation.x = Math.sin(t) * amp;
-      this.room.rotation.z = Math.cos(t) * amp;
+    // 2. [조현병 와해성 반영] 방이 기괴하게 회전·뒤틀림
+    if (this.schTotal > 0.5) {
+      this.room.rotation.x = Math.sin(t) * (this.schTotal * 0.1);
+      this.room.rotation.z = Math.cos(t) * (this.schTotal * 0.1);
     } else {
       this.room.rotation.set(0, 0, 0);
     }
 
-    // 4. [우울/공황 반영] 조도 차단 (최대 80% 어두워짐)
-    const targetIntensity = 1.0 - this.internalizingFactor * 0.8;
+    // 3. [우울/공황 반영] 조도 차단 (최대 80% 어두워짐) — room_projection lighting 우선
+    const lightingFloor = this._projLighting != null ? this._projLighting : (1.0 - this.internalizingFactor * 0.8);
+    const targetIntensity = lightingFloor;
     this.ambient.intensity = lerp(this.ambient.intensity, targetIntensity, 0.05);
 
     // 궤도 카메라
