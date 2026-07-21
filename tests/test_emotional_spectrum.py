@@ -6,6 +6,7 @@ from app.services.emotional_spectrum import (
     resolve_base_scores_from_sanitized,
     to_integrated_diagnostic_model,
     to_dsm5_integrated_diagnostic,
+    to_neurodevelopmental_matrix,
 )
 
 ENGINE = UnifiedEmotionalSpectrumEngine()
@@ -189,3 +190,64 @@ def test_integrated_diagnostic_contract_shape():
     metrics = model["threeRenderMetrics"]
     assert 0 <= metrics["backbone_tension"] <= 100
     assert 0 <= metrics["cluster_density"] <= 100
+
+
+def test_neurodevelopmental_matrix_wall_texture_isolated_island():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 10, "anxiety": 80, "somatic": 10},
+        behavioral_metrics={"hesitation_index": 0.9, "backspace_count": 20},
+    )
+    matrix = to_neurodevelopmental_matrix(
+        result, word_card_analysis={"boundaryScore": 0.1}
+    )
+    assert matrix["three_d_room_fx"]["wall_texture"] == "isolated-island"
+    assert matrix["non_diagnostic"] is True
+
+
+def test_neurodevelopmental_matrix_wall_texture_wireframe_dissolve():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 20, "anxiety": 20, "somatic": 10},
+        behavioral_metrics={"loose_association_score": 0.9, "ego_boundary_loss_score": 0.8},
+    )
+    matrix = to_neurodevelopmental_matrix(result)
+    assert matrix["three_d_room_fx"]["wall_texture"] == "wireframe-dissolve"
+
+
+def test_neurodevelopmental_matrix_wall_texture_rigid_grid():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 10, "anxiety": 10, "somatic": 10},
+        behavioral_metrics={},
+    )
+    matrix = to_neurodevelopmental_matrix(result)
+    assert matrix["three_d_room_fx"]["wall_texture"] == "rigid-grid"
+
+
+def test_neurodevelopmental_matrix_sound_muffling_clamp():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 10, "anxiety": 99, "somatic": 10},
+        behavioral_metrics={"hesitation_index": 1.0, "backspace_count": 20},
+    )
+    matrix = to_neurodevelopmental_matrix(
+        result, word_card_analysis={"boundaryScore": 0.0}
+    )
+    assert 0.0 <= matrix["three_d_room_fx"]["sound_muffling_factor"] <= 1.0
+
+
+def test_neurodevelopmental_matrix_spectrum_mapping_ranges():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 50, "anxiety": 50, "somatic": 50},
+        behavioral_metrics={"hesitation_index": 0.5, "loose_association_score": 0.5, "ego_boundary_loss_score": 0.5},
+    )
+    matrix = to_neurodevelopmental_matrix(result)
+    sm = matrix["spectrum_mapping"]
+    for key in ("social_blindness", "rigid_fixation", "cognitive_fragmentation", "reality_detachment"):
+        assert 0 <= sm[key] <= 100
+
+
+def test_compute_includes_neurodevelopmental_matrix():
+    result = compute_emotional_spectrum(
+        base_scores={"depressive": 50, "anxiety": 50, "somatic": 50},
+        behavioral_metrics={},
+    )
+    assert "neurodevelopmental_matrix" in result
+    assert result["neurodevelopmental_matrix"]["non_diagnostic"] is True

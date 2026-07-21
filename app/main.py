@@ -2114,6 +2114,7 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
         compute_emotional_spectrum,
         to_dsm5_integrated_diagnostic,
         to_integrated_diagnostic_model,
+        to_neurodevelopmental_matrix,
     )
     from app.services.emotional_spectrum_store import persist_spectrum_tick
     from app.services.sanitized_input_store import get_user_last_sanitized
@@ -2146,6 +2147,7 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
             session_id=request.session_id or "",
             patient_id=user_id,
         ),
+        "neurodevelopmental_matrix": result.get("neurodevelopmental_matrix"),
         "non_diagnostic": True,
     }
 
@@ -2154,6 +2156,7 @@ async def compute_user_emotional_spectrum(user_id: str, request: SpectrumCompute
 async def user_emotional_spectrum_latest(user_id: str):
     from app.services.emotional_spectrum import to_dsm5_integrated_diagnostic
     from app.services.emotional_spectrum import to_integrated_diagnostic_model
+    from app.services.emotional_spectrum import to_neurodevelopmental_matrix
     from app.services.emotional_spectrum_store import get_user_last_spectrum
 
     latest = get_user_last_spectrum(user_id)
@@ -2165,6 +2168,9 @@ async def user_emotional_spectrum_latest(user_id: str):
         ),
         "integrated_diagnostic_model": (
             to_integrated_diagnostic_model(latest, patient_id=user_id) if latest else None
+        ),
+        "neurodevelopmental_matrix": (
+            to_neurodevelopmental_matrix(latest) if latest else None
         ),
         "non_diagnostic": True,
     }

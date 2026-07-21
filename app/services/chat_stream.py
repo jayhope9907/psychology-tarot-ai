@@ -1551,6 +1551,7 @@ async def run_chat_turn(
                 session_id=state.session_id,
                 patient_id=state.user_id,
             )
+            done_data["neurodevelopmental_matrix"] = es_doc.get("neurodevelopmental_matrix")
     except Exception:
         pass
     if image_search_payload:

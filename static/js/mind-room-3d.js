@@ -116,6 +116,31 @@
 
   MindRoom3DScene.prototype.setDiagnostic = function (data) {
     const doc = data || {};
+
+    // NeurodevelopmentalCognitiveMatrix contract
+    if (doc.three_d_room_fx) {
+      var fx = doc.three_d_room_fx;
+      var tex = fx.wall_texture || "rigid-grid";
+      if (tex === "rigid-grid") {
+        this.material.wireframe = false;
+        this.material.color.set("#e0ddd6");
+      } else if (tex === "wireframe-dissolve") {
+        this.material.wireframe = true;
+        this.material.color.set("#4a2c5e");
+      } else if (tex === "isolated-island") {
+        this.material.wireframe = false;
+        this.material.color.set("#0d1b2a");
+      }
+      this.material.needsUpdate = true;
+      var muffling = Number(fx.sound_muffling_factor) || 0;
+      this.pointLight.intensity = Math.max(0.05, 0.5 * (1.0 - muffling));
+      // Also update internal state for animation continuity
+      var sm = doc.spectrum_mapping || {};
+      this.schTotal = Math.min(1, ((Number(sm.cognitive_fragmentation) || 0) + (Number(sm.reality_detachment) || 0)) / 200);
+      this.internalizingFactor = Math.min(1, (Number(doc.cognitive_disorganization_score) || 0) / 100);
+      return;
+    }
+
     // Contract: either DSM5IntegratedDiagnostic or IntegratedDiagnosticModel
     if (doc.threeRenderMetrics && doc.clinicalProfile) {
       const cp = doc.clinicalProfile || {};

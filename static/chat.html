@@ -2309,6 +2309,7 @@
       <div id="mindRoom3dCanvas" style="width:100%;height:420px;border-radius:16px;overflow:hidden;background:#14161c;"></div>
       <div class="wc-actions">
         <span class="wc-count" id="mr3dStatus"></span>
+        <span class="wc-count" id="ndWallTextureLabel" style="margin-left:8px;font-size:11px;opacity:0.7;"></span>
         <div>
           <button type="button" class="wc-close" id="mr3dOpenNetwork">🕸️ 신경망 보기</button>
           <button type="button" class="wc-close" id="mr3dClose">닫기</button>
@@ -4534,6 +4535,11 @@
                 MindNetwork3DView.lastDiagnosticModel = data.dsm5_integrated_diagnostic;
                 if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.dsm5_integrated_diagnostic);
                 if (MindNetwork3DView.scene) MindNetwork3DView.scene.setDiagnostic(data.dsm5_integrated_diagnostic);
+              }
+              if (data.neurodevelopmental_matrix) {
+                if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.neurodevelopmental_matrix);
+                const wtLabel = document.getElementById('ndWallTextureLabel');
+                if (wtLabel) wtLabel.textContent = data.neurodevelopmental_matrix.three_d_room_fx?.wall_texture || '';
               }
               if (data.dsm5_integrated_diagnostic) MindRoom.applyDiagnostic(data.dsm5_integrated_diagnostic);
               else if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);

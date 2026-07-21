@@ -201,6 +201,7 @@ def compute_emotional_spectrum(
     result["behavioralMetrics"] = metrics
     result["approachLabelKo"] = APPROACH_LABELS_KO.get(result["suggested_approach"], "")
     result["mind_room"] = parse_clinical_state_to_room(result)
+    result["neurodevelopmental_matrix"] = to_neurodevelopmental_matrix(result)
     return result
 
 
@@ -392,6 +393,69 @@ def to_integrated_diagnostic_model(
             "backbone_tension": round(backbone_tension, 1),
             "cluster_density": round(cluster_density, 1),
         },
+    }
+
+
+def to_neurodevelopmental_matrix(
+    result: Optional[Mapping[str, Any]],
+    *,
+    session_id: str = "",
+    word_card_analysis: Optional[Mapping[str, Any]] = None,
+    mindmap: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """엔진 결과 → NeurodevelopmentalCognitiveMatrix TS 계약 직렬화 (비진단 웰니스 참고 지표)."""
+    doc = dict(result or {})
+    dims = doc.get("dimensions") or {}
+    sch = dims.get("schizophrenia_spectrum") or {}
+    behavioral = doc.get("behavioralMetrics") or {}
+
+    hesitation = float(behavioral.get("hesitation_index", 0.0) or 0.0)
+    sch_avg = (
+        float(sch.get("loose_association", 0.0) or 0.0)
+        + float(sch.get("ego_boundary_loss", 0.0) or 0.0)
+    ) / 200.0  # normalized 0-1
+
+    wc = dict(word_card_analysis or {})
+    boundary_score = float(wc.get("boundaryScore", 0.5) or 0.5)
+    mindmap_boundary = float((mindmap or {}).get("boundaryScore", boundary_score) or boundary_score)
+
+    # cognitive_disorganization_score: weighted combination
+    cds = min(100.0, max(0.0, (sch_avg * 50.0 + hesitation * 30.0 + (1.0 - boundary_score) * 20.0) * 2.0))
+
+    # spectrum_mapping
+    social_blindness = min(100.0, max(0.0, (1.0 - boundary_score) * 100.0))
+    rigid_fixation = min(100.0, max(0.0, float(dims.get("obsessive_compulsive", 0.0) or 0.0)))
+
+    ego_loss = float(sch.get("ego_boundary_loss", 0.0) or 0.0)
+    cognitive_fragmentation = min(100.0, max(0.0, (ego_loss + (1.0 - mindmap_boundary) * 100.0) / 2.0))
+
+    loose = float(sch.get("loose_association", 0.0) or 0.0)
+    delusional = float(sch.get("delusional_affinity", 0.0) or 0.0)
+    reality_detachment = min(100.0, max(0.0, (loose + delusional) / 2.0))
+
+    # three_d_room_fx
+    if rigid_fixation > 60 and social_blindness > 60:
+        wall_texture = "isolated-island"
+    elif cognitive_fragmentation > 60 or reality_detachment > 60:
+        wall_texture = "wireframe-dissolve"
+    else:
+        wall_texture = "rigid-grid"
+
+    sound_muffling_factor = min(1.0, (social_blindness + rigid_fixation) / 200.0)
+
+    return {
+        "cognitive_disorganization_score": round(cds, 1),
+        "spectrum_mapping": {
+            "social_blindness": round(social_blindness, 1),
+            "rigid_fixation": round(rigid_fixation, 1),
+            "cognitive_fragmentation": round(cognitive_fragmentation, 1),
+            "reality_detachment": round(reality_detachment, 1),
+        },
+        "three_d_room_fx": {
+            "wall_texture": wall_texture,
+            "sound_muffling_factor": round(sound_muffling_factor, 4),
+        },
+        "non_diagnostic": True,
     }
 
 
