@@ -2171,6 +2171,11 @@
             <span class="t-stat-value" id="dashMindmapValue">지금의 나</span>
             <span class="t-stat-sub" id="dashMindmapSub">낱말카드로 그려요</span>
           </button>
+          <button type="button" class="t-stat-card is-blue" id="dashMindNetwork">
+            <span class="t-stat-label">신경망</span>
+            <span class="t-stat-value">3D 그래프</span>
+            <span class="t-stat-sub">고착·와해 보기</span>
+          </button>
         </div>
       </section>
 
@@ -2289,6 +2294,7 @@
         <div>
           <button type="button" class="wc-close" id="mmClose">닫기</button>
           <button type="button" class="wc-close" id="mmOpen3d">🧊 3D 방 보기</button>
+          <button type="button" class="wc-close" id="mmOpenNetwork">🕸️ 신경망 보기</button>
           <button type="button" class="wc-send" id="mmOpenCards">낱말카드 다시 고르기</button>
         </div>
       </div>
@@ -2304,7 +2310,24 @@
       <div class="wc-actions">
         <span class="wc-count" id="mr3dStatus"></span>
         <div>
+          <button type="button" class="wc-close" id="mr3dOpenNetwork">🕸️ 신경망 보기</button>
           <button type="button" class="wc-close" id="mr3dClose">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 신경망 3D (MindNetwork3D) -->
+  <div class="wc-overlay" id="mindNetwork3dOverlay" role="dialog" aria-label="신경망 3D" hidden>
+    <div class="wc-panel mm-panel">
+      <h3>🕸️ 마음 신경망 3D</h3>
+      <p class="wc-guide" id="mn3dGuide">고착·와해 신호가 파티클 움직임으로 보여요. 드래그·줌으로 둘러보세요.</p>
+      <div id="mindNetwork3dCanvas" style="width:100%;height:420px;border-radius:16px;overflow:hidden;background:#0b0f19;"></div>
+      <div class="wc-actions">
+        <span class="wc-count" id="mn3dStatus"></span>
+        <div>
+          <button type="button" class="wc-close" id="mn3dOpenRoom">🧊 3D 방 보기</button>
+          <button type="button" class="wc-close" id="mn3dClose">닫기</button>
         </div>
       </div>
     </div>
@@ -3435,6 +3458,128 @@
     });
     document.getElementById("mr3dClose")?.addEventListener("click", () => MindRoom3DView.close());
 
+    // ── 신경망 3D (MindNetwork3D vanilla 런타임) ──
+    const MindNetwork3DView = {
+      scene: null,
+      lastDiagnosticModel: null,
+      overlay: document.getElementById("mindNetwork3dOverlay"),
+      _loading: null,
+      loadScript(src, fallback) {
+        return new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = src;
+          s.onload = () => resolve();
+          s.onerror = () => {
+            if (fallback) {
+              s.remove();
+              const f = document.createElement("script");
+              f.src = fallback;
+              f.onload = () => resolve();
+              f.onerror = reject;
+              document.head.appendChild(f);
+            } else reject(new Error("load fail " + src));
+          };
+          document.head.appendChild(s);
+        });
+      },
+      async ensureLoaded() {
+        if (window.MindNetwork3DScene && typeof THREE !== "undefined") return;
+        if (!this._loading) {
+          this._loading = (async () => {
+            if (typeof THREE === "undefined") {
+              await this.loadScript(
+                "/static/js/vendor/three.min.js",
+                "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+              );
+            }
+            if (!window.MindNetwork3DScene) {
+              await this.loadScript("/static/js/mind-network-3d.js");
+            }
+          })();
+        }
+        await this._loading;
+      },
+      _statusText(doc) {
+        if (!doc) return "아직 기록이 없어요. 대화를 나누면 신경망이 그려져요.";
+        if (doc.clinicalProfile) {
+          const cp = doc.clinicalProfile || {};
+          const tm = doc.threeRenderMetrics || {};
+          return `ASD ${cp.asd_stimming_index ?? tm.cluster_density ?? "-"} · SCH ${cp.schizophrenia_index ?? "-"}`;
+        }
+        const dims = doc.dimensions || {};
+        const sch = dims.schizophrenia_spectrum || {};
+        return `고착 ${dims.obsessive_compulsive ?? "-"} · 와해 ${sch.ego_boundary_loss ?? "-"}`;
+      },
+      async open() {
+        const status = document.getElementById("mn3dStatus");
+        if (this.overlay) {
+          this.overlay.hidden = false;
+          this.overlay.classList.add("show");
+        }
+        try {
+          if (status) status.textContent = "불러오는 중…";
+          await this.ensureLoaded();
+          if (!this.scene) {
+            const host = document.getElementById("mindNetwork3dCanvas");
+            this.scene = new MindNetwork3DScene(host);
+          }
+          this.scene.resize();
+          let doc = this.lastDiagnosticModel || MindRoom3DView.lastDiagnosticModel;
+          if (!doc) {
+            try {
+              const res = await fetch(
+                `/api/v1/users/${encodeURIComponent(userId)}/integrated-diagnostic?session_id=${encodeURIComponent(sessionId || "")}`
+              );
+              if (res.ok) {
+                const j = await res.json();
+                doc = j.integrated_diagnostic_model || null;
+              }
+            } catch (_) {}
+          }
+          if (!doc) {
+            try {
+              const res = await fetch(
+                `/api/v1/users/${encodeURIComponent(userId)}/emotional-spectrum`
+              );
+              if (res.ok) {
+                const j = await res.json();
+                doc = j.diagnostic || null;
+              }
+            } catch (_) {}
+          }
+          if (doc) {
+            this.scene.setDiagnostic(doc);
+            this.lastDiagnosticModel = doc;
+            if (status) status.textContent = this._statusText(doc);
+          } else if (status) {
+            status.textContent = this._statusText(null);
+          }
+        } catch (_) {
+          if (status) status.textContent = "신경망을 불러오지 못했어요.";
+        }
+      },
+      close() {
+        if (this.overlay) {
+          this.overlay.classList.remove("show");
+          this.overlay.hidden = true;
+        }
+      },
+    };
+    document.getElementById("mmOpenNetwork")?.addEventListener("click", () => {
+      MindmapView.close();
+      MindNetwork3DView.open();
+    });
+    document.getElementById("mr3dOpenNetwork")?.addEventListener("click", () => {
+      MindRoom3DView.close();
+      MindNetwork3DView.open();
+    });
+    document.getElementById("mn3dOpenRoom")?.addEventListener("click", () => {
+      MindNetwork3DView.close();
+      MindRoom3DView.open();
+    });
+    document.getElementById("mn3dClose")?.addEventListener("click", () => MindNetwork3DView.close());
+    document.getElementById("dashMindNetwork")?.addEventListener("click", () => MindNetwork3DView.open());
+
     // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
     const WordCardGame = {
       deck: null,
@@ -4381,10 +4526,14 @@
               if (data.mindmap) MindmapView.setData(data.mindmap);
               if (data.integrated_diagnostic_model) {
                 MindRoom3DView.lastDiagnosticModel = data.integrated_diagnostic_model;
+                MindNetwork3DView.lastDiagnosticModel = data.integrated_diagnostic_model;
                 if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.integrated_diagnostic_model);
+                if (MindNetwork3DView.scene) MindNetwork3DView.scene.setDiagnostic(data.integrated_diagnostic_model);
               } else if (data.dsm5_integrated_diagnostic) {
                 MindRoom3DView.lastDiagnosticModel = data.dsm5_integrated_diagnostic;
+                MindNetwork3DView.lastDiagnosticModel = data.dsm5_integrated_diagnostic;
                 if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.dsm5_integrated_diagnostic);
+                if (MindNetwork3DView.scene) MindNetwork3DView.scene.setDiagnostic(data.dsm5_integrated_diagnostic);
               }
               if (data.dsm5_integrated_diagnostic) MindRoom.applyDiagnostic(data.dsm5_integrated_diagnostic);
               else if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);
