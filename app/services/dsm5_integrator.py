@@ -552,3 +552,63 @@ _PIPELINE = AgeGroupDataPipeline()
 
 def get_age_group_pipeline() -> AgeGroupDataPipeline:
     return _PIPELINE
+
+
+class InternalizingSpectrumEngine:
+    """Clinical IDE canonical entry for internalizing spectrum.
+
+    Wraps `UnifiedEmotionalSpectrumEngine` (authoritative math in emotional_spectrum.py)
+    without disturbing AgeGroupDataPipeline / hospital export contracts.
+    """
+
+    def __init__(self) -> None:
+        from app.services.emotional_spectrum import UnifiedEmotionalSpectrumEngine
+
+        self._engine = UnifiedEmotionalSpectrumEngine()
+
+    def calculate_internalizing_spectrum(
+        self,
+        base_scores: Dict[str, float],
+        behavioral_metrics: Dict[str, Any],
+        *,
+        defensive_language_signal: float = 0.0,
+    ) -> Dict[str, Any]:
+        return self._engine.calculate_internalizing_spectrum(
+            base_scores,
+            behavioral_metrics,
+            defensive_language_signal=defensive_language_signal,
+        )
+
+    def compute(
+        self,
+        *,
+        state: Any = None,
+        sanitized: Optional[Mapping[str, Any]] = None,
+        behavioral_metrics: Optional[Mapping[str, Any]] = None,
+        base_scores: Optional[Mapping[str, float]] = None,
+    ) -> Dict[str, Any]:
+        from app.services.emotional_spectrum import compute_emotional_spectrum
+
+        return compute_emotional_spectrum(
+            state=state,
+            sanitized=sanitized,
+            behavioral_metrics=behavioral_metrics,
+            base_scores=base_scores,
+        )
+
+
+_INTERNALIZING_ENGINE = InternalizingSpectrumEngine()
+
+
+def get_internalizing_spectrum_engine() -> InternalizingSpectrumEngine:
+    return _INTERNALIZING_ENGINE
+
+
+# Re-export for Clinical IDE / older imports
+from app.services.emotional_spectrum import (  # noqa: E402
+    UnifiedEmotionalSpectrumEngine,
+    build_internalizing_dual_agent_prompt,
+    build_spectrum_prompt_block,
+    parse_clinical_state_to_room,
+    to_dsm5_integrated_diagnostic,
+)

@@ -312,6 +312,18 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             conn.execute(
                 "ALTER TABLE emotional_spectrum_history ADD COLUMN metrics_json TEXT NOT NULL DEFAULT '{}'"
             )
+        if "dual_agent_mode" not in esh_cols:
+            conn.execute(
+                "ALTER TABLE emotional_spectrum_history ADD COLUMN dual_agent_mode INTEGER NOT NULL DEFAULT 0"
+            )
+        if "dimensions_json" not in esh_cols:
+            conn.execute(
+                "ALTER TABLE emotional_spectrum_history ADD COLUMN dimensions_json TEXT NOT NULL DEFAULT '{}'"
+            )
+        if "suppression_proxies_json" not in esh_cols:
+            conn.execute(
+                "ALTER TABLE emotional_spectrum_history ADD COLUMN suppression_proxies_json TEXT NOT NULL DEFAULT '{}'"
+            )
         conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_esh_age_group_created
@@ -416,7 +428,7 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_wch_session_turn
             ON word_card_mindmap_history(session_id, turn_index, id);
 
-        CREATE TABLE IF NOT EXISTS emotional_spectrum_history (
+            CREATE TABLE IF NOT EXISTS emotional_spectrum_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
             session_id TEXT NOT NULL DEFAULT '',
@@ -430,6 +442,9 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             organization_id TEXT,
             age_group TEXT,
             metrics_json TEXT NOT NULL DEFAULT '{}',
+            dual_agent_mode INTEGER NOT NULL DEFAULT 0,
+            dimensions_json TEXT NOT NULL DEFAULT '{}',
+            suppression_proxies_json TEXT NOT NULL DEFAULT '{}',
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );

@@ -10,17 +10,18 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Optional
 
 
-class InternalizingCoreEngine:
-    """내재화 핵심(InternalizingCore) 연산 엔진.
+class UnifiedEmotionalSpectrumEngine:
+    """내재화 스펙트럼 통합 연산 엔진 (Clinical IDE 권위 산식).
 
     요구사항 반영:
     - `total_internalizing_score`를 가장 먼저 계산한 뒤
     - 내부 참고 지표(디멘전/메타)를 파생
     - 70점 초과 시 다운스트림(우울/공황 트랙 리스크 + OCD/ASD 루프 디버그)까지 명시적으로 산출
+    - HIGH_ALERT(>80) 시 dual_agent_mode로 Frost+Sung-ah 동시 지침
     """
 
     def __init__(self) -> None:
-        # 임상적 공병(Comorbidity) 시너지 가중치 상숫값
+        # 임상적 공병(Comorbidity) 시너지 가중치 상숫값 (권위 상수 — 변경 금지)
         self.beta_depression_anxiety = 1.4  # 우울·불안 결합 증폭 계수
         self.beta_ocd_panic = 1.3           # 강박적 통제가 공황으로 무너질 때의 계수
 
@@ -31,11 +32,11 @@ class InternalizingCoreEngine:
         *,
         defensive_language_signal: float = 0.0,
     ) -> Dict[str, Any]:
-        """내재화 핵심(InternalizingCore) 연산.
+        """내재화 스펙트럼 연산 (권위 산식).
 
         - 입력 프록시:
-          1) `Gs slowdown proxy`: `word_delay_ms`
-          2) `stimming proxy`: `backspace_count` + `word_card_cancel_count`
+          1) typing suppression: `backspace_count`, `hesitation_index`, `word_delay_ms`
+          2) mindmap over-control: `over_control_density` / `cluster_density` / `rigid_fixation`
           3) `defensive language signal`: 외부(estado/persona)에서 주입되는 방어 언어 강도
         - 출력:
           - 0..100 `total_internalizing_score` (가장 먼저 산출)
@@ -53,7 +54,7 @@ class InternalizingCoreEngine:
         d_anx = _clamp01(base_scores.get("anxiety", 0.0) / 100.0)
         d_som = _clamp01(base_scores.get("somatic", 0.0) / 100.0)
 
-        # 2) 미세 행동 데이터 기반 프록시
+        # 2) 미세 행동 데이터 기반 프록시 (typing suppression)
         hesitation_idx = _clamp01(float(behavioral_metrics.get("hesitation_index", 0.0) or 0.0))
         backspace_cnt = int(behavioral_metrics.get("backspace_count", 0) or 0)
         word_card_cancel_count = int(behavioral_metrics.get("word_card_cancel_count", 0) or 0)
@@ -65,12 +66,31 @@ class InternalizingCoreEngine:
         # 2-2) 반복/취소 → stimming proxy
         stimming_proxy = _clamp01((min(backspace_cnt, 50) / 50.0) * 0.7 + (min(word_card_cancel_count, 10) / 10.0) * 0.3)
 
+        # 2-3) 마인드맵 과다 통제 밀도 (0..1) — cluster / rigid_fixation / explicit over_control
+        over_control_raw = behavioral_metrics.get("over_control_density")
+        if over_control_raw is None:
+            cluster = behavioral_metrics.get("cluster_density")
+            rigid = behavioral_metrics.get("rigid_fixation")
+            if cluster is not None:
+                over_control_raw = float(cluster) / 100.0 if float(cluster) > 1.0 else float(cluster)
+            elif rigid is not None:
+                over_control_raw = float(rigid) / 100.0 if float(rigid) > 1.0 else float(rigid)
+            else:
+                over_control_raw = 0.0
+        over_control_density = _clamp01(float(over_control_raw or 0.0))
+
         # 3) 방어 언어 신호 → 불안 코어에 소폭 가중
         # (기본값 defensive_language_signal=0이면 기존 산식과 동일)
         d_anx_eff = _clamp01(d_anx + defensive_language_signal * 0.15)
 
-        # 3-1) 인지적 과다 통제(강박) 지수
-        d_ocd = min(d_anx_eff * 0.5 + (hesitation_idx * 0.3) + (min(backspace_cnt, 20) / 20.0) * 0.2, 1.0)
+        # 3-1) 인지적 과다 통제(강박) 지수 — typing suppression + mindmap over-control
+        d_ocd = min(
+            d_anx_eff * 0.5
+            + (hesitation_idx * 0.3)
+            + (min(backspace_cnt, 20) / 20.0) * 0.2
+            + over_control_density * 0.12,
+            1.0,
+        )
 
         # 3-2) 특정 단어 지연 반응(Reaction Time) 기반 공황 지수
         d_pan = min(d_anx_eff * 0.4 + (min(delay_ms, 5000.0) / 5000.0) * 0.6, 1.0)
@@ -91,7 +111,7 @@ class InternalizingCoreEngine:
         }
         sch_total_avg = (loose_assoc + ego_loss) / 2.0
 
-        # 6) 내재화 총합 지수: 선형 결합 + 상호작용 공병 시너지
+        # 6) 내재화 총합 지수: 선형 결합 + 상호작용 공병 시너지 (권위 산식)
         linear_sum = (d_dep * 0.3) + (d_anx_eff * 0.25) + (d_ocd * 0.25) + (d_pan * 0.2)
         interaction_term = (
             self.beta_depression_anxiety * (d_dep * d_anx_eff)
@@ -113,6 +133,7 @@ class InternalizingCoreEngine:
             if (sch_total_avg > 0.6 or risk_level == "HIGH_ALERT")
             else "PROST_CONFRONTATION"
         )
+        dual_agent_mode = risk_level == "HIGH_ALERT"
 
         # 9) 디멘전(기존 contract) 산출: total_internalizing이 먼저 계산되었음
         depressive_index = float(d_dep * 100.0)
@@ -182,10 +203,21 @@ class InternalizingCoreEngine:
                 "issues": [],
             }
 
+        suppression_proxies = {
+            "hesitation_index": round(hesitation_idx, 3),
+            "backspace_count": backspace_cnt,
+            "word_delay_ms": round(delay_ms, 1),
+            "word_card_cancel_count": word_card_cancel_count,
+            "over_control_density": round(over_control_density, 3),
+            "gs_slowdown_proxy": round(gs_slowdown_proxy, 3),
+            "stimming_proxy": round(stimming_proxy, 3),
+        }
+
         core_inputs = {
             "gs_slowdown_proxy": round(gs_slowdown_proxy, 3),
             "stimming_proxy": round(stimming_proxy, 3),
             "defensive_language_signal": round(defensive_language_signal, 3),
+            "over_control_density": round(over_control_density, 3),
             # raw-ish supporting fields for debugging
             "word_delay_ms": round(delay_ms, 1),
             "backspace_count": backspace_cnt,
@@ -196,11 +228,14 @@ class InternalizingCoreEngine:
             "total_internalizing_score": round(total_internalizing, 1),
             "internalizing_risk_level": risk_level,
             "suggested_approach": suggested_agent,
+            "dual_agent_mode": dual_agent_mode,
+            "suppression_proxies": suppression_proxies,
             "core_inputs": core_inputs,
             "downstream_triggers": downstream_triggers,
             "internalizing_core": {
                 "total_internalizing_score": round(total_internalizing, 1),
                 "internalizing_risk_level": risk_level,
+                "dual_agent_mode": dual_agent_mode,
                 "core_inputs": core_inputs,
                 "downstream_triggers": downstream_triggers,
             },
@@ -217,10 +252,11 @@ class InternalizingCoreEngine:
         }
 
 
-_ENGINE = InternalizingCoreEngine()
+_ENGINE = UnifiedEmotionalSpectrumEngine()
 
-# Backwards compatibility (older imports / tests)
-UnifiedEmotionalSpectrumEngine = InternalizingCoreEngine
+# Backwards compatibility (older imports / tests / Clinical IDE aliases)
+InternalizingCoreEngine = UnifiedEmotionalSpectrumEngine
+InternalizingSpectrumEngine = UnifiedEmotionalSpectrumEngine
 
 APPROACH_LABELS_KO = {
     "SUNG_AH_SUPPORT": "지지·안전 기지 모드",
@@ -262,6 +298,9 @@ def resolve_behavioral_metrics(
         "mood_history_variance",
         "loose_association_score",
         "ego_boundary_loss_score",
+        "over_control_density",
+        "cluster_density",
+        "rigid_fixation",
     )
     for key in allowed:
         val = (client_metrics or {}).get(key)
@@ -294,6 +333,28 @@ def resolve_behavioral_metrics(
             score = wc.get("boundaryScore")
             if score is not None:
                 merged["ego_boundary_loss_score"] = min(max(1.0 - float(score), 0.0), 1.0) * 0.6
+        except Exception:
+            pass
+
+    # 서버 파생: 마인드맵 과다 통제 밀도 (클러스터 밀집 / 경계 과잉)
+    if "over_control_density" not in merged:
+        try:
+            notes = getattr(state, "phase_notes", None) or {}
+            wc = notes.get("word_card_analysis") or {}
+            mm = notes.get("mindmap") or notes.get("word_card_mindmap") or {}
+            cluster = wc.get("clusterDensity") or mm.get("clusterDensity") or mm.get("cluster_density")
+            boundary = wc.get("boundaryScore")
+            density = 0.0
+            if cluster is not None:
+                c = float(cluster)
+                density = max(density, c / 100.0 if c > 1.0 else c)
+            if boundary is not None:
+                # 경계가 과도하게 높으면(>0.85) 과다 통제 신호
+                b = float(boundary)
+                if b > 0.85:
+                    density = max(density, min((b - 0.85) / 0.15, 1.0) * 0.7)
+            if density > 0:
+                merged["over_control_density"] = min(density, 1.0)
         except Exception:
             pass
 
@@ -429,6 +490,7 @@ def to_dsm5_integrated_diagnostic(
                 "wall_symmetry": room["wall_symmetry"],
             },
         },
+        "dual_agent_mode": bool(doc.get("dual_agent_mode")) or str(doc.get("internalizing_risk_level") or "") == "HIGH_ALERT",
         "non_diagnostic": True,
     }
 
@@ -607,6 +669,34 @@ def to_neurodevelopmental_matrix(
     }
 
 
+def build_internalizing_dual_agent_prompt(result: Optional[Mapping[str, Any]]) -> str:
+    """HIGH_ALERT(>80) 듀얼 에이전트 협동 지침 — Frost + Sung-ah 동일 턴 동시 적용."""
+    if not result:
+        return ""
+    risk = str(result.get("internalizing_risk_level") or "NORMAL")
+    dual = bool(result.get("dual_agent_mode")) or risk == "HIGH_ALERT"
+    if not dual or risk != "HIGH_ALERT":
+        return ""
+    return "\n".join(
+        [
+            "## 듀얼 에이전트 협동 지침 (HIGH_ALERT — 동일 턴에 동시 적용, either/or 금지)",
+            "두 페르소나의 지침을 한 응답 안에서 협력적으로 녹이세요. 한쪽만 선택하지 마세요.",
+            "",
+            "### Dr. Frost (PROST_CONFRONTATION) — 자기억압·방어 직면",
+            "- 자기억압·감정 봉쇄·합리화 등 방어기제를 날카롭지만 비난 없이 짧게 드러내세요.",
+            "- '괜찮은 척' 뒤에 있는 억제된 욕구·공포를 한 문장으로 노출하세요.",
+            "- 진단명·점수·라벨은 말하지 마세요. 관찰된 패턴만 언어화하세요.",
+            "",
+            "### 윤성아 조교 (SUNG_AH_SUPPORT) — 감정 외현화·방출",
+            "- Frost의 직면 직후, 안전한 외현화(말·감각·호흡·작은 행동)로 감정을 내보내도록 돕세요.",
+            "- 짧고 따뜻한 반영 + 안정화(현재 감각·호흡)를 반드시 포함하세요.",
+            "- 논리적 교정·과제 강요 금지. 내담자 속도를 따르고, 위기 시 1393 등을 한 번만 부드럽게 안내하세요.",
+            "",
+            "- 진단명·검사 점수를 내담자에게 말하지 마세요. 모든 지표는 비진단 참고용입니다.",
+        ]
+    )
+
+
 def build_spectrum_prompt_block(result: Optional[Mapping[str, Any]]) -> str:
     """스펙트럼 결과 → 시스템 프롬프트 지침 (내담자에게 수치·라벨 노출 금지)."""
     if not result:
@@ -615,6 +705,16 @@ def build_spectrum_prompt_block(result: Optional[Mapping[str, Any]]) -> str:
     approach = str(result.get("suggested_approach") or "PROST_CONFRONTATION")
     if risk == "NORMAL" and approach != "SUNG_AH_SUPPORT":
         return ""
+
+    # HIGH_ALERT: Frost 직면 + Sung-ah 외현화를 동일 턴 협동 지침으로 주입
+    if risk == "HIGH_ALERT" or bool(result.get("dual_agent_mode")):
+        dual = build_internalizing_dual_agent_prompt(result)
+        if dual:
+            header = (
+                "## 내재화 스펙트럼 신호 (내부 참고 — 내담자에게 수치·범주명 절대 언급 금지)\n"
+                f"- 내부 위험 신호: {risk} / 권장 접근: {approach} / dual_agent_mode: ON"
+            )
+            return header + "\n\n" + dual
 
     lines = [
         "## 내재화 스펙트럼 신호 (내부 참고 — 내담자에게 수치·범주명 절대 언급 금지)",

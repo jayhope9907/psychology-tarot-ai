@@ -91,6 +91,9 @@ export interface DSM5IntegratedDiagnostic {
     room_projection: RoomProjection;
   };
 
+  /** HIGH_ALERT dual Frost+Sung-ah cooperative mode (additive) */
+  dual_agent_mode?: boolean;
+
   // 웰니스 참고 지표 플래그 (진단 아님)
   non_diagnostic: true;
 }

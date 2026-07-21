@@ -41,10 +41,48 @@ def test_high_alert_and_clamp():
     )
     assert result["internalizing_risk_level"] == "HIGH_ALERT"
     assert result["suggested_approach"] == "SUNG_AH_SUPPORT"
+    assert result["dual_agent_mode"] is True
     assert result["total_internalizing_score"] <= 100.0
     dims = result["dimensions"]
     for key in ("depressive_index", "anxiety_index", "obsessive_compulsive", "panic_index"):
         assert 0 <= dims[key] <= 100
+    assert "hesitation_index" in (result.get("suppression_proxies") or {})
+
+
+def test_high_alert_dual_agent_prompt():
+    from app.services.emotional_spectrum import build_internalizing_dual_agent_prompt
+    from app.services.dsm5_integrator import InternalizingSpectrumEngine
+
+    result = ENGINE.calculate_internalizing_spectrum(
+        {"depressive": 100, "anxiety": 100, "somatic": 80},
+        {"hesitation_index": 1.0, "backspace_count": 40, "word_delay_ms": 8000},
+    )
+    assert result["internalizing_risk_level"] == "HIGH_ALERT"
+    dual = build_internalizing_dual_agent_prompt(result)
+    assert "PROST_CONFRONTATION" in dual
+    assert "SUNG_AH_SUPPORT" in dual
+    assert "Dr. Frost" in dual
+    assert "윤성아" in dual
+    block = build_spectrum_prompt_block(result)
+    assert "dual_agent_mode" in block
+    assert "PROST_CONFRONTATION" in block and "SUNG_AH_SUPPORT" in block
+
+    # Canonical entry via dsm5_integrator
+    wrapped = InternalizingSpectrumEngine().calculate_internalizing_spectrum(
+        {"depressive": 100, "anxiety": 100, "somatic": 80},
+        {"hesitation_index": 1.0, "backspace_count": 40, "word_delay_ms": 8000},
+    )
+    assert wrapped["dual_agent_mode"] is True
+    assert wrapped["total_internalizing_score"] == result["total_internalizing_score"]
+
+
+def test_unified_engine_alias_and_betas():
+    from app.services.emotional_spectrum import UnifiedEmotionalSpectrumEngine
+
+    eng = UnifiedEmotionalSpectrumEngine()
+    assert eng.beta_depression_anxiety == 1.4
+    assert eng.beta_ocd_panic == 1.3
+    assert UnifiedEmotionalSpectrumEngine is InternalizingCoreEngine
 
 
 def test_schizo_signal_forces_support_agent():
@@ -187,9 +225,11 @@ def test_compute_includes_room_and_prompt_gating():
         behavioral_metrics={"hesitation_index": 0.8, "backspace_count": 15, "word_delay_ms": 4000},
     )
     assert "mind_room" in result
-    assert result["mind_room"]["color_tone"] in ("dark-gray", "fractured-distorted", "warm-yellow")
+    assert result["mind_room"]["color_tone"] in ("dark-gray", "fractured-distorted", "warm-yellow", "cold-white")
     block = build_spectrum_prompt_block(result)
-    if result["internalizing_risk_level"] != "NORMAL":
+    if result["internalizing_risk_level"] == "HIGH_ALERT":
+        assert "PROST_CONFRONTATION" in block and "SUNG_AH_SUPPORT" in block
+    elif result["internalizing_risk_level"] != "NORMAL":
         assert "내담자에게 수치" in block
         assert "비진단" in block
     calm = compute_emotional_spectrum(

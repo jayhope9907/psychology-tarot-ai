@@ -62,6 +62,9 @@ def persist_spectrum_tick(
         "totalInternalizingScore": doc.get("total_internalizing_score"),
         "riskLevel": doc.get("internalizing_risk_level"),
         "suggestedApproach": doc.get("suggested_approach"),
+        "dualAgentMode": bool(doc.get("dual_agent_mode")),
+        "dimensions": doc.get("dimensions") or {},
+        "suppressionProxies": doc.get("suppression_proxies") or {},
         "result": doc,
         "licenseType": license_type or "B2C_personal",
         "organizationId": org,
@@ -78,8 +81,9 @@ def persist_spectrum_tick(
             INSERT INTO emotional_spectrum_history (
                 user_id, session_id, turn_index, source,
                 total_score, risk_level, suggested_approach, result_json,
-                license_type, organization_id, age_group, metrics_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                license_type, organization_id, age_group, metrics_json,
+                dual_agent_mode, dimensions_json, suppression_proxies_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id,
@@ -94,6 +98,9 @@ def persist_spectrum_tick(
                 org,
                 cohort,
                 json.dumps(metrics, ensure_ascii=False),
+                1 if doc.get("dual_agent_mode") else 0,
+                json.dumps(doc.get("dimensions") or {}, ensure_ascii=False),
+                json.dumps(doc.get("suppression_proxies") or {}, ensure_ascii=False),
                 when,
             ),
         )
@@ -188,7 +195,8 @@ def list_spectrum_history(
                 """
                 SELECT id, user_id, session_id, turn_index, source,
                        total_score, risk_level, suggested_approach, result_json,
-                       license_type, organization_id, age_group, metrics_json, created_at
+                       license_type, organization_id, age_group, metrics_json,
+                       dual_agent_mode, dimensions_json, suppression_proxies_json, created_at
                 FROM emotional_spectrum_history
                 WHERE user_id = ? AND session_id = ?
                 ORDER BY turn_index ASC, id ASC
@@ -201,7 +209,8 @@ def list_spectrum_history(
                 """
                 SELECT id, user_id, session_id, turn_index, source,
                        total_score, risk_level, suggested_approach, result_json,
-                       license_type, organization_id, age_group, metrics_json, created_at
+                       license_type, organization_id, age_group, metrics_json,
+                       dual_agent_mode, dimensions_json, suppression_proxies_json, created_at
                 FROM emotional_spectrum_history
                 WHERE user_id = ?
                 ORDER BY created_at DESC, id DESC
@@ -223,7 +232,8 @@ def list_org_spectrum_history(organization_id: str, *, limit: int = 100) -> List
             """
             SELECT id, user_id, session_id, turn_index, source,
                    total_score, risk_level, suggested_approach, result_json,
-                   license_type, organization_id, age_group, metrics_json, created_at
+                   license_type, organization_id, age_group, metrics_json,
+                   dual_agent_mode, dimensions_json, suppression_proxies_json, created_at
             FROM emotional_spectrum_history
             WHERE organization_id = ?
             ORDER BY created_at DESC, id DESC
@@ -269,6 +279,21 @@ def _row_to_public(row: Any) -> Dict[str, Any]:
             metrics = json.loads(row["metrics_json"] or "{}")
         except (TypeError, ValueError, json.JSONDecodeError):
             metrics = {}
+    dimensions = {}
+    if "dimensions_json" in keys and row["dimensions_json"]:
+        try:
+            dimensions = json.loads(row["dimensions_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            dimensions = {}
+    suppression = {}
+    if "suppression_proxies_json" in keys and row["suppression_proxies_json"]:
+        try:
+            suppression = json.loads(row["suppression_proxies_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            suppression = {}
+    dual = False
+    if "dual_agent_mode" in keys:
+        dual = bool(row["dual_agent_mode"])
     return {
         "id": row["id"],
         "userId": row["user_id"],
@@ -278,6 +303,9 @@ def _row_to_public(row: Any) -> Dict[str, Any]:
         "totalInternalizingScore": row["total_score"],
         "riskLevel": row["risk_level"],
         "suggestedApproach": row["suggested_approach"],
+        "dualAgentMode": dual,
+        "dimensions": dimensions,
+        "suppressionProxies": suppression,
         "result": json.loads(row["result_json"] or "{}"),
         "licenseType": row["license_type"],
         "organizationId": row["organization_id"],
