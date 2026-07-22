@@ -113,6 +113,11 @@ def test_card_image_endpoint_serves_original(monkeypatch, tmp_path):
     sample.write_bytes(b"\xff\xd8\xff" + b"0" * 1200)
 
     monkeypatch.setattr(tarot_svc, "resolve_card_image_file", lambda card_id: sample if card_id == "fool" else None)
+    monkeypatch.setattr(
+        tarot_svc,
+        "fetch_card_image_content",
+        lambda card_id: (sample.read_bytes(), "image/jpeg") if card_id == "fool" else None,
+    )
     response = client.get("/api/v1/tarot/card-image/fool")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("image/")
@@ -120,6 +125,24 @@ def test_card_image_endpoint_serves_original(monkeypatch, tmp_path):
 
     missing = client.get("/api/v1/tarot/card-image/not_a_card")
     assert missing.status_code == 404
+
+
+def test_fetch_card_image_content_downloads_when_cache_missing(monkeypatch, tmp_path):
+    from app.services import tarot as tarot_svc
+
+    cache_dir = tmp_path / "tarot_images"
+    monkeypatch.setattr(tarot_svc, "_image_cache_dir", lambda: cache_dir)
+    monkeypatch.setattr(
+        tarot_svc,
+        "_download_remote_image",
+        lambda remote: b"<svg xmlns='http://www.w3.org/2000/svg'></svg>" if "Wands01.svg" in remote else None,
+    )
+
+    payload = tarot_svc.fetch_card_image_content("wands_ace")
+    assert payload is not None
+    data, media_type = payload
+    assert media_type == "image/svg+xml"
+    assert b"svg" in data
 
 
 def test_build_draw_from_picks():

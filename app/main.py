@@ -1341,24 +1341,17 @@ async def tarot_deck_catalog_alias():
 @app.get("/api/v1/tarot/card-image/{card_id}")
 async def tarot_card_image(card_id: str):
     """Serve cached public-domain Rider–Waite (etc.) art same-origin for the 3D scene."""
-    from fastapi.responses import FileResponse
+    from fastapi.responses import Response
 
-    from app.services.tarot import resolve_card_image_file
+    from app.services.tarot import fetch_card_image_content
 
-    path = resolve_card_image_file(card_id)
-    if not path:
+    payload = fetch_card_image_content(card_id)
+    if not payload:
         raise HTTPException(status_code=404, detail="card image not found")
-    media = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".svg": "image/svg+xml",
-        ".gif": "image/gif",
-    }.get(path.suffix.lower(), "application/octet-stream")
-    return FileResponse(
-        path,
-        media_type=media,
+    data, media_type = payload
+    return Response(
+        content=data,
+        media_type=media_type,
         headers={"Cache-Control": "public, max-age=604800"},
     )
 

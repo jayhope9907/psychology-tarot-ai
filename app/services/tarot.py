@@ -4,8 +4,11 @@ import hashlib
 import json
 import os
 import random
+import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.tarot_rules import (
     DEFAULT_SPREAD,
@@ -55,8 +58,16 @@ _TAROT_IMAGE_PATHS: Dict[str, str] = {
 }
 
 
-_IMAGE_CACHE_DIR = Path(__file__).resolve().parents[2] / ".cache" / "tarot_images"
 _WIKIMEDIA_UA = "MaumShelterAI/1.0 (educational-wellness; contact=license@maum-shelter.example)"
+
+
+def _image_cache_dir() -> Path:
+    override = (os.getenv("TAROT_IMAGE_CACHE_DIR") or "").strip()
+    if override:
+        return Path(override)
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+        return Path(tempfile.gettempdir()) / "tarot_images"
+    return Path(__file__).resolve().parents[2] / ".cache" / "tarot_images"
 
 
 def remote_card_image_url(card_id: str, image_file: Optional[str] = None) -> str:
@@ -83,30 +94,77 @@ def _image_cache_meta(card_id: str, image_file: Optional[str] = None) -> tuple[P
     remote = remote_card_image_url(card_id, image_file)
     suffix = ".svg" if remote.lower().endswith(".svg") else ".jpg"
     # Versioned filename so we can bump remote art size without stale full-res caches.
-    return _IMAGE_CACHE_DIR / f"{card_id}_v2{suffix}", remote
+    return _image_cache_dir() / f"{card_id}_v2{suffix}", remote
 
 
-def resolve_card_image_file(card_id: str) -> Optional[Path]:
-    """Return a local cached original image path, downloading once if needed."""
+def _media_type_for_path(path: Path) -> str:
+    return {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".svg": "image/svg+xml",
+        ".gif": "image/gif",
+    }.get(path.suffix.lower(), "application/octet-stream")
+
+
+def _download_remote_image(remote: str) -> Optional[bytes]:
+    headers = {"User-Agent": _WIKIMEDIA_UA}
+    try:
+        import httpx
+
+        with httpx.Client(timeout=20.0, headers=headers, follow_redirects=True) as client:
+            response = client.get(remote)
+            response.raise_for_status()
+            if response.content:
+                return response.content
+    except Exception:
+        pass
+    try:
+        request = urllib.request.Request(remote, headers=headers)
+        with urllib.request.urlopen(request, timeout=20) as response:
+            data = response.read()
+            return data if data else None
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return None
+
+
+def _write_image_cache(cache_path: Path, data: bytes) -> None:
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_bytes(data)
+    except OSError:
+        pass
+
+
+def fetch_card_image_content(card_id: str) -> Optional[Tuple[bytes, str]]:
+    """Return card art bytes + media type (cache-first, then Wikimedia proxy)."""
     card = get_card_by_id(card_id)
     if not card:
         return None
     cache_path, remote = _image_cache_meta(card_id, card.get("image_file"))
     if not remote:
         return None
+    media_type = _media_type_for_path(cache_path)
     if cache_path.is_file() and cache_path.stat().st_size > 0:
-        return cache_path
-    try:
-        import httpx
-
-        _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        with httpx.Client(timeout=20.0, headers={"User-Agent": _WIKIMEDIA_UA}, follow_redirects=True) as client:
-            response = client.get(remote)
-            response.raise_for_status()
-            cache_path.write_bytes(response.content)
-        return cache_path if cache_path.is_file() and cache_path.stat().st_size > 0 else None
-    except Exception:
+        return cache_path.read_bytes(), media_type
+    data = _download_remote_image(remote)
+    if not data:
         return None
+    _write_image_cache(cache_path, data)
+    return data, media_type
+
+
+def resolve_card_image_file(card_id: str) -> Optional[Path]:
+    """Return a local cached original image path, downloading once if needed."""
+    payload = fetch_card_image_content(card_id)
+    if not payload:
+        return None
+    card = get_card_by_id(card_id)
+    if not card:
+        return None
+    cache_path, _remote = _image_cache_meta(card_id, card.get("image_file"))
+    return cache_path if cache_path.is_file() and cache_path.stat().st_size > 0 else None
 
 
 def _load_deck() -> Dict[str, Any]:
