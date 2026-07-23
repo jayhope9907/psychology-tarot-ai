@@ -1941,6 +1941,85 @@
     .wc-actions .wc-close { background: rgba(0,0,0,0.06); color: var(--text-soft); }
 
     .mm-panel { max-width: 640px; }
+    .mn-clinician-panel { max-width: 720px; background: #0f141f; color: #e2e8f0; }
+    .mn-clinician-panel h3 { color: #f8fafc; }
+    .mn-clinician-panel .wc-guide { color: #94a3b8; }
+    .mn-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 10px;
+    }
+    .mn-toolbar button {
+      border: 1px solid rgba(148,163,184,0.28);
+      background: rgba(30,41,59,0.9);
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .mn-toolbar button[aria-pressed="true"] {
+      background: #0ea5e9;
+      border-color: #38bdf8;
+      color: #0b1220;
+      font-weight: 600;
+    }
+    .mn-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: #86efac;
+      margin-left: auto;
+    }
+    .mn-live::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34,197,94,0.55);
+      animation: mnPulse 1.4s ease-out infinite;
+    }
+    @keyframes mnPulse {
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .mn-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      margin: 8px 0 0;
+      font-size: 0.7rem;
+      color: #94a3b8;
+    }
+    .mn-legend span::before {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 3px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border-radius: 2px;
+    }
+    .mn-legend .leg-self::before { background: #f8fafc; height: 8px; width: 8px; border-radius: 50%; }
+    .mn-legend .leg-solid::before { background: #06b6d4; }
+    .mn-legend .leg-dash::before {
+      background: repeating-linear-gradient(90deg, #a855f7 0 4px, transparent 4px 7px);
+    }
+    .mn-legend .leg-dense::before { background: #22d3ee; height: 6px; box-shadow: 2px 0 0 #22d3ee, 4px 0 0 #22d3ee; }
+    .mn-canvas-wrap {
+      width: 100%;
+      height: min(52vh, 480px);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #0b0f19;
+      border: 1px solid rgba(148,163,184,0.18);
+      touch-action: none;
+    }
     .mm-svg-wrap { width: 100%; overflow: hidden; border-radius: 16px; background: #fbf7ef; }
     .mm-svg-wrap svg { width: 100%; height: auto; display: block; }
     .mm-reflection {
@@ -2181,9 +2260,9 @@
             <span class="t-stat-sub" id="dashMindmapSub">낱말카드로 그려요</span>
           </button>
           <button type="button" class="t-stat-card is-blue" id="dashMindNetwork">
-            <span class="t-stat-label">신경망</span>
-            <span class="t-stat-value">3D 그래프</span>
-            <span class="t-stat-sub">고착·와해 보기</span>
+            <span class="t-stat-label">임상의 3D 뷰</span>
+            <span class="t-stat-value">무의식 도면</span>
+            <span class="t-stat-sub">원클릭 · 360° 회전</span>
           </button>
         </div>
       </section>
@@ -2327,17 +2406,28 @@
     </div>
   </div>
 
-  <!-- 신경망 3D (MindNetwork3D) -->
-  <div class="wc-overlay" id="mindNetwork3dOverlay" role="dialog" aria-label="신경망 3D" hidden>
-    <div class="wc-panel mm-panel">
-      <h3>🕸️ 마음 신경망 3D</h3>
-      <p class="wc-guide" id="mn3dGuide">고착·와해 신호가 파티클 움직임으로 보여요. 드래그·줌으로 둘러보세요.</p>
-      <div id="mindNetwork3dCanvas" style="width:100%;height:420px;border-radius:16px;overflow:hidden;background:#0b0f19;"></div>
+  <!-- 임상의 원클릭 3D 무의식 도면 (MindNetwork3D) -->
+  <div class="wc-overlay" id="mindNetwork3dOverlay" role="dialog" aria-label="임상의 3D 무의식 도면" hidden>
+    <div class="wc-panel mm-panel mn-clinician-panel">
+      <h3>임상의 3D 무의식 도면</h3>
+      <p class="wc-guide" id="mn3dGuide">대화마다 감정 명사가 자아(center_self)와 실시간으로 연결됩니다. 드래그로 360° 회전 · 휠로 줌.</p>
+      <div class="mn-toolbar">
+        <button type="button" id="mn3dResetOrbit">시점 리셋</button>
+        <button type="button" id="mn3dAutoRotate" aria-pressed="false">자동 회전</button>
+        <button type="button" id="mn3dOpenRoom">🧊 마음방</button>
+        <span class="mn-live" id="mn3dLiveBadge" hidden>실시간 드로잉</span>
+      </div>
+      <div class="mn-canvas-wrap" id="mindNetwork3dCanvas"></div>
+      <div class="mn-legend" aria-label="임상 범례">
+        <span class="leg-self">자아 center_self</span>
+        <span class="leg-solid">안정 연결</span>
+        <span class="leg-dash">와해 · 점선 분산</span>
+        <span class="leg-dense">ASD 고착 · 조밀</span>
+      </div>
       <div class="wc-actions">
-        <span class="wc-count" id="mn3dStatus"></span>
-        <span class="wc-count" id="blueprintStatus" style="margin-left:8px;font-size:11px;opacity:0.75;" title="3D Blueprint Builder"></span>
+        <span class="wc-count" id="mn3dStatus" style="color:#94a3b8;"></span>
+        <span class="wc-count" id="blueprintStatus" style="margin-left:8px;font-size:11px;opacity:0.75;color:#94a3b8;" title="3D Blueprint Builder"></span>
         <div>
-          <button type="button" class="wc-close" id="mn3dOpenRoom">🧊 3D 방 보기</button>
           <button type="button" class="wc-close" id="mn3dClose">닫기</button>
         </div>
       </div>
@@ -3029,7 +3119,9 @@
       lastBlueprintBehavior = null;
       if (window.BlueprintBuilder && typeof BlueprintBuilder.reset === "function") {
         BlueprintBuilder.reset();
+        BlueprintBuilder._lastIngestMsg = "";
         updateBlueprintStatus();
+        if (typeof syncMindNetworkGraph === "function") syncMindNetworkGraph({ flashLive: false });
       }
       syncTarotLink();
       loadMoodWelcome();
@@ -3334,7 +3426,7 @@
     const behaviorInput = document.getElementById("messageInput");
     if (behaviorInput) behaviorInput.addEventListener("keydown", (e) => BehaviorTracker.onKey(e));
 
-    // ── 3D Blueprint Builder (vanilla): grows graph from each user turn ──
+    // ── 3D Blueprint Builder: real-time emotion nouns → center_self edges ──
     function updateBlueprintStatus() {
       const el = document.getElementById("blueprintStatus");
       const chip = document.getElementById("blueprintChip");
@@ -3348,17 +3440,52 @@
         }
         return;
       }
-      const text = `Blueprint · ${st.label}${st.dashed ? " · dashed" : ""} · n${st.nodeCount}`;
+      const nouns = (st.labels && st.labels.length) ? st.labels.join("·") : st.label;
+      const text = `도면 · ${nouns}${st.dashed ? " · 와해점선" : ""} · n${st.nodeCount}/e${st.linkCount || 0}`;
       if (el) el.textContent = text;
       if (chip) {
         chip.hidden = false;
         chip.textContent = `${st.label}${st.dashed ? " · dashed" : ""}`;
       }
     }
-    function ingestBlueprintFromDone(data, userMessage) {
+
+    function syncMindNetworkGraph(opts) {
+      const flashLive = !!(opts && opts.flashLive);
+      if (!window.BlueprintBuilder || !MindNetwork3DView) return;
+      const graph = BlueprintBuilder.getGraph();
+      if (MindNetwork3DView.scene && typeof MindNetwork3DView.scene.setGraph === "function") {
+        MindNetwork3DView.scene.setGraph(graph);
+      }
+      MindNetwork3DView.refreshStatus();
+      const live = document.getElementById("mn3dLiveBadge");
+      if (live && flashLive) {
+        live.hidden = false;
+        clearTimeout(MindNetwork3DView._liveTimer);
+        MindNetwork3DView._liveTimer = setTimeout(() => {
+          live.hidden = true;
+        }, 2200);
+      }
+    }
+
+    function ingestBlueprintRealtime(message, diagnostic) {
       if (!window.BlueprintBuilder || typeof BlueprintBuilder.ingest !== "function") return;
-      const msg = (userMessage || lastBlueprintMessage || "").trim();
+      const msg = String(message || "").trim();
       if (!msg) return;
+      const doc =
+        diagnostic ||
+        MindNetwork3DView?.lastDiagnosticModel ||
+        MindRoom3DView?.lastDiagnosticModel ||
+        null;
+      try {
+        BlueprintBuilder.ingest(msg, doc, lastBlueprintBehavior);
+        updateBlueprintStatus();
+        syncMindNetworkGraph({ flashLive: true });
+      } catch (_) {}
+    }
+
+    function ingestBlueprintFromDone(data, userMessage) {
+      if (!window.BlueprintBuilder) return;
+      const msg = (userMessage || lastBlueprintMessage || "").trim();
       const diagnostic =
         data?.integrated_diagnostic_model ||
         data?.dsm5_integrated_diagnostic ||
@@ -3367,14 +3494,23 @@
         MindRoom3DView?.lastDiagnosticModel ||
         null;
       try {
-        BlueprintBuilder.ingest(msg, diagnostic, lastBlueprintBehavior);
+        const alreadyDrawn = msg && BlueprintBuilder._lastIngestMsg === msg;
+        if (alreadyDrawn && diagnostic && typeof BlueprintBuilder.applyClinicalEffects === "function") {
+          BlueprintBuilder.applyClinicalEffects(diagnostic);
+        } else if (msg && typeof BlueprintBuilder.ingest === "function") {
+          BlueprintBuilder.ingest(msg, diagnostic, lastBlueprintBehavior);
+          BlueprintBuilder._lastIngestMsg = msg;
+        } else if (diagnostic && typeof BlueprintBuilder.applyClinicalEffects === "function") {
+          BlueprintBuilder.applyClinicalEffects(diagnostic);
+        }
         updateBlueprintStatus();
-        // Soft hint into open MindNetwork status line when visible
+        syncMindNetworkGraph({ flashLive: true });
         const mnStatus = document.getElementById("mn3dStatus");
         const st = BlueprintBuilder.getLastStatus && BlueprintBuilder.getLastStatus();
         if (mnStatus && st && st.label && MindNetwork3DView?.overlay && !MindNetwork3DView.overlay.hidden) {
           const base = MindNetwork3DView._statusText(MindNetwork3DView.lastDiagnosticModel);
-          mnStatus.textContent = `${base} · ${st.label}${st.dashed ? " · dashed" : ""}`;
+          const nouns = (st.labels && st.labels.length) ? st.labels.join(" · ") : st.label;
+          mnStatus.textContent = `${base} · ${nouns}${st.dashed ? " · 와해점선" : ""}`;
         }
       } catch (_) {}
       lastBlueprintMessage = "";
@@ -3525,12 +3661,14 @@
     });
     document.getElementById("mr3dClose")?.addEventListener("click", () => MindRoom3DView.close());
 
-    // ── 신경망 3D (MindNetwork3D vanilla 런타임) ──
+    // ── 임상의 원클릭 3D 무의식 도면 (MindNetwork3D) ──
     const MindNetwork3DView = {
       scene: null,
       lastDiagnosticModel: null,
       overlay: document.getElementById("mindNetwork3dOverlay"),
       _loading: null,
+      _liveTimer: null,
+      _autoRotate: false,
       loadScript(src, fallback) {
         return new Promise((resolve, reject) => {
           const s = document.createElement("script");
@@ -3567,15 +3705,39 @@
         await this._loading;
       },
       _statusText(doc) {
-        if (!doc) return "아직 기록이 없어요. 대화를 나누면 신경망이 그려져요.";
+        if (!doc) {
+          const st = window.BlueprintBuilder && BlueprintBuilder.getLastStatus
+            ? BlueprintBuilder.getLastStatus()
+            : null;
+          if (st && st.nodeCount) {
+            return `노드 ${st.nodeCount} · 연결 ${st.linkCount || 0} · 드래그로 360°`;
+          }
+          return "대화를 보내면 감정 명사가 center_self와 실시간 연결됩니다.";
+        }
         if (doc.clinicalProfile) {
           const cp = doc.clinicalProfile || {};
           const tm = doc.threeRenderMetrics || {};
-          return `ASD ${cp.asd_stimming_index ?? tm.cluster_density ?? "-"} · SCH ${cp.schizophrenia_index ?? "-"}`;
+          const sch = cp.schizophrenia_index ?? "-";
+          const asd = cp.asd_stimming_index ?? tm.cluster_density ?? "-";
+          return `SCH 와해 ${sch} · ASD 고착 ${asd} · 드래그 360°`;
         }
         const dims = doc.dimensions || {};
         const sch = dims.schizophrenia_spectrum || {};
         return `고착 ${dims.obsessive_compulsive ?? "-"} · 와해 ${sch.ego_boundary_loss ?? "-"}`;
+      },
+      refreshStatus() {
+        const status = document.getElementById("mn3dStatus");
+        if (!status) return;
+        const st = window.BlueprintBuilder && BlueprintBuilder.getLastStatus
+          ? BlueprintBuilder.getLastStatus()
+          : null;
+        const base = this._statusText(this.lastDiagnosticModel);
+        if (st && st.label) {
+          const nouns = (st.labels && st.labels.length) ? st.labels.join(" · ") : st.label;
+          status.textContent = `${base} · ${nouns}${st.dashed ? " · 와해점선" : ""}`;
+        } else {
+          status.textContent = base;
+        }
       },
       async open() {
         const status = document.getElementById("mn3dStatus");
@@ -3617,12 +3779,16 @@
           if (doc) {
             this.scene.setDiagnostic(doc);
             this.lastDiagnosticModel = doc;
-            if (status) status.textContent = this._statusText(doc);
-          } else if (status) {
-            status.textContent = this._statusText(null);
+            if (window.BlueprintBuilder && typeof BlueprintBuilder.applyClinicalEffects === "function") {
+              BlueprintBuilder.applyClinicalEffects(doc);
+            }
           }
+          if (window.BlueprintBuilder && typeof BlueprintBuilder.getGraph === "function") {
+            this.scene.setGraph(BlueprintBuilder.getGraph());
+          }
+          this.refreshStatus();
         } catch (_) {
-          if (status) status.textContent = "신경망을 불러오지 못했어요.";
+          if (status) status.textContent = "3D 도면을 불러오지 못했어요.";
         }
       },
       close() {
@@ -3646,6 +3812,19 @@
     });
     document.getElementById("mn3dClose")?.addEventListener("click", () => MindNetwork3DView.close());
     document.getElementById("dashMindNetwork")?.addEventListener("click", () => MindNetwork3DView.open());
+    document.getElementById("mn3dResetOrbit")?.addEventListener("click", () => {
+      if (MindNetwork3DView.scene && typeof MindNetwork3DView.scene.resetOrbit === "function") {
+        MindNetwork3DView.scene.resetOrbit();
+      }
+    });
+    document.getElementById("mn3dAutoRotate")?.addEventListener("click", (e) => {
+      const btn = e.currentTarget;
+      MindNetwork3DView._autoRotate = !MindNetwork3DView._autoRotate;
+      btn.setAttribute("aria-pressed", MindNetwork3DView._autoRotate ? "true" : "false");
+      if (MindNetwork3DView.scene && typeof MindNetwork3DView.scene.setAutoRotate === "function") {
+        MindNetwork3DView.scene.setAutoRotate(MindNetwork3DView._autoRotate);
+      }
+    });
 
     // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
     const WordCardGame = {
@@ -4707,6 +4886,9 @@
       if (window.BlueprintBuilder && typeof BlueprintBuilder.rememberBehavior === "function") {
         BlueprintBuilder.rememberBehavior(behaviorSnap);
       }
+      // Real-time: draw emotion nouns → center_self edges as soon as user sends
+      ingestBlueprintRealtime(message, MindNetwork3DView?.lastDiagnosticModel || null);
+      if (window.BlueprintBuilder) BlueprintBuilder._lastIngestMsg = String(message || "").trim();
       await streamChat({
         user_id: userId,
         session_id: sessionId,

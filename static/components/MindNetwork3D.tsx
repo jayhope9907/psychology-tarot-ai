@@ -1,7 +1,10 @@
 /**
- * MindNetwork3D — DSM5 / IntegratedDiagnosticModel 기반 신경망 파티클 참조 구현.
+ * MindNetwork3D — DSM5 / IntegratedDiagnosticModel 기반 신경망 참조.
  *
  * 채팅 UI에서는 static/js/mind-network-3d.js (vanilla)가 실사용됩니다.
+ *   - setGraph(BlueprintBuilder.getGraph()) → center_self + emotion noun nodes/edges
+ *   - schFragmentation > 0.6 → dashed edges + scatter
+ *   - asdRigidity > 0.6 → dense cyan hub edges + compression
  * 이 파일은 React/Three 타입 계약을 고정하기 위한 참조 구현입니다.
  */
 import React, { useMemo, useRef } from "react";
