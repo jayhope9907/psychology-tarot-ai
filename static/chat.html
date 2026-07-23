@@ -2457,7 +2457,7 @@
   <script src="/static/js/maum-organism.js"></script>
   <script src="/static/js/voice-engine.js"></script>
   <script src="/static/js/chat-offline.js"></script>
-  <script src="/static/js/blueprint-builder.js"></script>
+  <script src="/static/js/blueprint-builder.js?v=2"></script>
   <script>
     let COUNSELOR_NAME = "이서연";
     const WELCOME_KEY = "psychology_ai_welcomed";
@@ -3517,6 +3517,43 @@
       lastBlueprintBehavior = null;
     }
 
+    function resolveRiskLevel(data) {
+      return (
+        data?.integrated_diagnostic_model?.internalizing_core?.internalizing_risk_level ||
+        data?.dsm5_integrated_diagnostic?.internalizing_risk_level ||
+        data?.emotional_spectrum?.internalizing_risk_level ||
+        ""
+      );
+    }
+
+    function maybeOfferClinicianMindNetwork(data) {
+      const risk = resolveRiskLevel(data);
+      const chip = document.getElementById("blueprintChip");
+      if (risk === "HIGH_ALERT" && chip) {
+        chip.hidden = false;
+        chip.textContent = "HIGH_ALERT · 3D 도면 열기";
+        chip.style.cursor = "pointer";
+        chip.onclick = () => MindNetwork3DView.open();
+      }
+      // Auto-open once per HIGH_ALERT streak if viewer not already visible
+      if (
+        risk === "HIGH_ALERT" &&
+        MindNetwork3DView &&
+        (!MindNetwork3DView.overlay || MindNetwork3DView.overlay.hidden) &&
+        !MindNetwork3DView._autoOpenedAlert
+      ) {
+        MindNetwork3DView._autoOpenedAlert = true;
+        setTimeout(() => {
+          try {
+            MindNetwork3DView.open();
+          } catch (_) {}
+        }, 600);
+      }
+      if (risk && risk !== "HIGH_ALERT" && MindNetwork3DView) {
+        MindNetwork3DView._autoOpenedAlert = false;
+      }
+    }
+
     // ── 마음의 방 (MindRoom): 스펙트럼 상태 → 공간 톤 시각화 ──
     // DSM5IntegratedDiagnostic.clinical_meta.room_projection 계약 소비
     const MindRoom = {
@@ -3698,7 +3735,7 @@
               );
             }
             if (!window.MindNetwork3DScene) {
-              await this.loadScript("/static/js/mind-network-3d.js");
+              await this.loadScript("/static/js/mind-network-3d.js?v=2");
             }
           })();
         }
@@ -3824,6 +3861,13 @@
       if (MindNetwork3DView.scene && typeof MindNetwork3DView.scene.setAutoRotate === "function") {
         MindNetwork3DView.scene.setAutoRotate(MindNetwork3DView._autoRotate);
       }
+    });
+    // Deep-link: /chat#mind-network opens clinician viewer
+    if (location.hash === "#mind-network") {
+      setTimeout(() => MindNetwork3DView.open(), 400);
+    }
+    window.addEventListener("hashchange", () => {
+      if (location.hash === "#mind-network") MindNetwork3DView.open();
     });
 
     // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
@@ -4800,6 +4844,7 @@
                 }
               }
               ingestBlueprintFromDone(data, lastBlueprintMessage);
+              maybeOfferClinicianMindNetwork(data);
               if (data.dsm5_integrated_diagnostic) MindRoom.applyDiagnostic(data.dsm5_integrated_diagnostic);
               else if (data.emotional_spectrum?.mind_room) MindRoom.apply(data.emotional_spectrum.mind_room);
               BehaviorTracker.markReplyShown();

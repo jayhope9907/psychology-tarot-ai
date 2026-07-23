@@ -177,6 +177,33 @@ def test_verify_research_access(monkeypatch):
     assert verify_research_access(research_token="secret-token", org_id=None) is True
 
 
+def test_verify_age_cohort_entitlement_license(monkeypatch):
+    from app.db.database import reset_db
+    from app.services.dsm5_integrator import verify_age_cohort_entitlement
+
+    monkeypatch.delenv("RESEARCH_EXPORT_TOKEN", raising=False)
+    monkeypatch.delenv("PURGE_AUDIT_TOKEN", raising=False)
+    reset_db()
+
+    denied = verify_age_cohort_entitlement(research_token=None, org_id=None, license_key=None)
+    assert denied["ok"] is False
+
+    org_ok = verify_age_cohort_entitlement(research_token=None, org_id="org-x", license_key=None)
+    assert org_ok["ok"] is True
+    assert org_ok["via"] == "org_id"
+
+    lic = verify_age_cohort_entitlement(
+        research_token=None, org_id=None, license_key="MSHT-PSYCH-DEMO-2026"
+    )
+    assert lic["ok"] is True
+    assert lic["via"] == "license"
+
+    monkeypatch.setenv("RESEARCH_EXPORT_TOKEN", "secret-token")
+    tok = verify_age_cohort_entitlement(research_token="secret-token", org_id=None, license_key=None)
+    assert tok["ok"] is True
+    assert tok["via"] == "research_token"
+
+
 def test_persist_stores_age_group_and_metrics(isolated_db):
     from app.services.emotional_spectrum import compute_emotional_spectrum
     from app.services.emotional_spectrum_store import list_spectrum_history, persist_spectrum_tick

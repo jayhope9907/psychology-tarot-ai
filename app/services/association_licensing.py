@@ -449,10 +449,26 @@ LICENSE_TIERS: Dict[str, Dict[str, Any]] = {
 }
 
 TIER_FEATURE_OVERRIDES: Dict[str, Dict[str, bool]] = {
-    LicenseTier.CHAPTER.value: {"b2b_export": False, "white_label": False},
-    LicenseTier.SOCIETY.value: {"b2b_export": True, "white_label": False},
-    LicenseTier.FEDERATION.value: {"b2b_export": True, "white_label": True},
-    LicenseTier.INSTITUTE.value: {"b2b_export": True, "white_label": True},
+    LicenseTier.CHAPTER.value: {
+        "b2b_export": False,
+        "white_label": False,
+        "age_cohort_export": False,
+    },
+    LicenseTier.SOCIETY.value: {
+        "b2b_export": True,
+        "white_label": False,
+        "age_cohort_export": True,
+    },
+    LicenseTier.FEDERATION.value: {
+        "b2b_export": True,
+        "white_label": True,
+        "age_cohort_export": True,
+    },
+    LicenseTier.INSTITUTE.value: {
+        "b2b_export": True,
+        "white_label": True,
+        "age_cohort_export": True,
+    },
 }
 
 
@@ -546,6 +562,11 @@ def resolve_entitlements(
     flags.setdefault("case_note_assistant", True)
     flags.setdefault("case_note_backdate", True)
     flags.setdefault("expressive_therapy", True)
+    # Clinical IDE / hospital surfaces (today's stack)
+    flags.setdefault("emotional_spectrum", True)
+    flags.setdefault("mind_network_3d", True)
+    flags.setdefault("age_cohort_export", bool(flags.get("b2b_export", False)))
+    flags.setdefault("integrated_diagnostic", bool(flags.get("dsm5_catalog", False)))
 
     instruments: Set[str]
     allowed = profile.get("allowed_instruments")

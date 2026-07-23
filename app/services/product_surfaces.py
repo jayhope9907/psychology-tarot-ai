@@ -22,6 +22,18 @@ def product_surfaces() -> Dict[str, Any]:
         {"id": "associations", "label_ko": "학회 라이선스", "route": "/associations"},
         {"id": "theories", "label_ko": "이론·학자·미술치료", "route": "/theories", "gate": "license_key"},
         {"id": "expressive", "label_ko": "표현·역할·미술", "route": "/expressive", "gate": "license_key"},
+        {
+            "id": "clinician_mind_network",
+            "label_ko": "임상의 3D 무의식 도면",
+            "route": "/chat#mind-network",
+            "gate": "mind_network_3d",
+        },
+        {
+            "id": "age_cohort_export",
+            "label_ko": "연령군 연구 익스포트",
+            "route": "/api/v1/research/age-cohorts/stats",
+            "gate": "age_cohort_export",
+        },
         {"id": "case_notes", "label_ko": "케이스 노트 AI", "route": "/case-notes", "status": "coming_soon"},
     ]
     disability = disability_product_manifest()
@@ -41,8 +53,15 @@ def product_surfaces() -> Dict[str, Any]:
                 "id": "license",
                 "title_ko": "기관용 · Association License",
                 "status": "live",
-                "description_ko": "학회 라이선스 · 이론·학자·미술치료 · 표현 도구",
+                "description_ko": "학회 라이선스 · 이론·표현 · 임상의 3D 도면 · 연령군 연구 익스포트",
                 "routes": license_routes,
+                "feature_flags": [
+                    "emotional_spectrum",
+                    "mind_network_3d",
+                    "integrated_diagnostic",
+                    "age_cohort_export",
+                    "b2b_export",
+                ],
                 "hidden_from_consumer": ["/theories", "/expressive", "/associations", "/case-notes"],
             },
             {

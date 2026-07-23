@@ -260,6 +260,7 @@ class AgeCohortExportRequest(BaseModel):
     organization_id: Optional[str] = None
     org_id: Optional[str] = None
     research_token: Optional[str] = None
+    license_key: Optional[str] = None
     limit: int = 200
 
 
@@ -1252,16 +1253,22 @@ async def research_age_cohort_stats(
     organization_id: Optional[str] = None,
     org_id: Optional[str] = None,
     research_token: Optional[str] = None,
+    license_key: Optional[str] = None,
     x_research_token: Optional[str] = Header(default=None, alias="X-Research-Token"),
+    x_license_key: Optional[str] = Header(default=None, alias="X-License-Key"),
 ):
     """Age-cohort mean/stddev for IntegratedDiagnosticModel metrics (hospital research)."""
-    from app.services.dsm5_integrator import get_age_group_pipeline, verify_research_access
+    from app.services.dsm5_integrator import get_age_group_pipeline, verify_age_cohort_entitlement
     from app.services.vault import write_audit_event
 
     org = (organization_id or org_id or "").strip() or None
     token = (research_token or x_research_token or "").strip() or None
-    if not verify_research_access(research_token=token, org_id=org):
-        raise HTTPException(status_code=401, detail="research_token_or_org_required")
+    lic_key = (license_key or x_license_key or "").strip() or None
+    gate = verify_age_cohort_entitlement(research_token=token, org_id=org, license_key=lic_key)
+    if not gate.get("ok"):
+        raise HTTPException(status_code=401, detail=gate.get("reason") or "research_token_or_license_required")
+    if gate.get("org_id") and not org:
+        org = gate["org_id"]
 
     pipeline = get_age_group_pipeline()
     payload = pipeline.aggregate_stats(
@@ -1277,6 +1284,7 @@ async def research_age_cohort_stats(
                 "age_group": age_group,
                 "risk_cohort": risk_cohort,
                 "organization_id": org,
+                "via": gate.get("via"),
             },
         )
     return payload
@@ -1285,12 +1293,19 @@ async def research_age_cohort_stats(
 @app.post("/api/v1/research/age-cohorts/export")
 async def research_age_cohort_export(request: AgeCohortExportRequest):
     """Anonymized hospital JSON package (no PII / no free-text chat)."""
-    from app.services.dsm5_integrator import get_age_group_pipeline, verify_research_access
+    from app.services.dsm5_integrator import get_age_group_pipeline, verify_age_cohort_entitlement
     from app.services.vault import write_audit_event
 
     org = (request.organization_id or request.org_id or "").strip() or None
-    if not verify_research_access(research_token=request.research_token, org_id=org):
-        raise HTTPException(status_code=401, detail="research_token_or_org_required")
+    gate = verify_age_cohort_entitlement(
+        research_token=request.research_token,
+        org_id=org,
+        license_key=request.license_key,
+    )
+    if not gate.get("ok"):
+        raise HTTPException(status_code=401, detail=gate.get("reason") or "research_token_or_license_required")
+    if gate.get("org_id") and not org:
+        org = gate["org_id"]
 
     pipeline = get_age_group_pipeline()
     payload = pipeline.export_package(
@@ -1308,6 +1323,7 @@ async def research_age_cohort_export(request: AgeCohortExportRequest):
                 "risk_cohort": request.risk_cohort,
                 "organization_id": org,
                 "sample_count": payload.get("sample_count", 0),
+                "via": gate.get("via"),
             },
         )
     return payload

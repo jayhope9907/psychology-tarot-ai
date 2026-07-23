@@ -126,6 +126,36 @@ INVENTION_IDS = [
         "claim_sketch": "동일 코어에서 소비자 개방 라우트와 라이선스 게이트를 권한으로 분리",
         "modules": ["product_surfaces", "consumer_access", "association_licensing"],
     },
+    {
+        "id": "INV-13",
+        "title_ko": "통합 내재화 스펙트럼·HIGH_ALERT 듀얼 에이전트 오케스트레이션",
+        "title_en": "Unified internalizing spectrum with HIGH_ALERT dual-agent orchestration",
+        "claim_sketch": (
+            "행동·텍스트 지표로 내재화 총합·위험도를 산출하고 HIGH_ALERT 시 "
+            "대면(Frost)·외재화(Sung-ah) 듀얼 에이전트 프롬프트를 조건부 주입하는 시스템"
+        ),
+        "modules": ["emotional_spectrum", "chat_stream", "dsm5_integrator"],
+    },
+    {
+        "id": "INV-14",
+        "title_ko": "실시간 감정명사→center_self 3D 무의식 도면 및 임상 에지 FX",
+        "title_en": "Real-time emotion-noun to center_self 3D blueprint with clinical edge FX",
+        "claim_sketch": (
+            "턴마다 감정 명사를 추출해 center_self와 에지를 그리고, "
+            "조현 와해 시 점선·산란, ASD 고착 시 조밀 에지로 변환하는 임상의 3D 뷰어"
+        ),
+        "modules": ["blueprint_builder", "mind_network_3d", "chat.html"],
+    },
+    {
+        "id": "INV-15",
+        "title_ko": "연령군 비식별 통합진단 지표 병원 연구 익스포트",
+        "title_en": "Age-cohort anonymized IntegratedDiagnosticModel hospital research export",
+        "claim_sketch": (
+            "연령 버킷·위험 코호트별 내재화·ASD·SCH·CHC 지표 평균/분산을 "
+            "라이선스·연구 토큰으로 게이트해 비식별 JSON으로 내보내는 파이프라인"
+        ),
+        "modules": ["dsm5_integrator", "age_group_pipeline", "association_licensing"],
+    },
 ]
 
 

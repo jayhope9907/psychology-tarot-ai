@@ -37,9 +37,26 @@ def test_trainee_licenses_entitlements():
     assert "tat" in clinical["allowed_projective"]
     assert clinical["feature_flags"]["dsm5_catalog"] is True
     assert clinical["feature_flags"]["tarot_bridge"] is False
+    assert clinical["feature_flags"]["emotional_spectrum"] is True
+    assert clinical["feature_flags"]["mind_network_3d"] is True
+    assert clinical["feature_flags"]["age_cohort_export"] is True
+    assert clinical["feature_flags"]["integrated_diagnostic"] is True
     assert "pcl5" in mhsw["allowed_instruments"]
     assert "rorschach" not in mhsw["allowed_projective"]
     assert mhsw["feature_flags"]["tarot_bridge"] is False
+
+
+def test_chapter_tier_disables_age_cohort_export():
+    chapter = resolve_entitlements(
+        AssociationDiscipline.PSYCHOLOGY.value, LicenseTier.CHAPTER.value
+    )
+    society = resolve_entitlements(
+        AssociationDiscipline.PSYCHOLOGY.value, LicenseTier.SOCIETY.value
+    )
+    assert chapter["feature_flags"]["age_cohort_export"] is False
+    assert chapter["feature_flags"]["b2b_export"] is False
+    assert society["feature_flags"]["age_cohort_export"] is True
+    assert society["feature_flags"]["mind_network_3d"] is True
 
 
 def test_demo_trainee_licenses_validate():

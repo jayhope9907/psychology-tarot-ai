@@ -228,6 +228,56 @@ def verify_research_access(
     return bool((org_id or "").strip())
 
 
+def verify_age_cohort_entitlement(
+    *,
+    research_token: Optional[str] = None,
+    org_id: Optional[str] = None,
+    license_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Gate age-cohort stats/export via research token or licensed age_cohort_export.
+
+    Returns ``{"ok": True, "via": ...}`` or ``{"ok": False, "reason": "..."}``.
+    """
+    expected = (
+        (os.getenv("RESEARCH_EXPORT_TOKEN") or "").strip()
+        or (os.getenv("PURGE_AUDIT_TOKEN") or "").strip()
+    )
+    token = (research_token or "").strip()
+    org = (org_id or "").strip()
+    key = (license_key or "").strip()
+
+    if expected and token and token == expected:
+        return {"ok": True, "via": "research_token"}
+
+    if key:
+        try:
+            from app.services.association_licensing import feature_enabled
+            from app.services.license_store import validate_license
+
+            lic = validate_license(key)
+            if not lic.get("valid"):
+                return {"ok": False, "reason": "license_invalid"}
+            ent = lic.get("entitlements") or {}
+            if feature_enabled("age_cohort_export", ent) or feature_enabled("b2b_export", ent):
+                return {
+                    "ok": True,
+                    "via": "license",
+                    "org_id": lic.get("org_id") or org or None,
+                    "discipline_id": ent.get("discipline_id"),
+                }
+            return {"ok": False, "reason": "age_cohort_export_not_entitled"}
+        except Exception:
+            return {"ok": False, "reason": "license_check_failed"}
+
+    # Local/dev: no server token configured → org_id is enough
+    if not expected and org:
+        return {"ok": True, "via": "org_id"}
+
+    if expected and not token:
+        return {"ok": False, "reason": "research_token_or_license_required"}
+    return {"ok": False, "reason": "research_token_or_license_required"}
+
+
 class AgeGroupDataPipeline:
     """Near-real-time age-cohort aggregates + anonymized hospital export."""
 

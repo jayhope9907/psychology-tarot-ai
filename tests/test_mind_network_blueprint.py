@@ -40,9 +40,12 @@ def test_chat_clinician_viewer_wired():
     assert "임상의 3D 무의식 도면" in text
     assert "ingestBlueprintRealtime" in text
     assert "syncMindNetworkGraph" in text
+    assert "maybeOfferClinicianMindNetwork" in text
     assert "mn3dResetOrbit" in text
     assert "mn3dAutoRotate" in text
     assert "mn-live" in text
+    assert "#mind-network" in text
+    assert "mind-network-3d.js?v=2" in text
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="node not available")
