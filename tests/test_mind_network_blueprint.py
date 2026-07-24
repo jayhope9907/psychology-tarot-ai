@@ -33,6 +33,11 @@ def test_mind_network_draws_graph_edges():
     assert "setAutoRotate" in text
     assert "schFragmentation" in text
     assert "fixation" in text
+    assert "playFutureProjection" in text
+    assert "enterMirrorPhase" in text
+    assert "flythrough" in text
+    assert "chc_g" in text
+    assert "GLASS_COUNT" in text
 
 
 def test_chat_clinician_viewer_wired():
@@ -43,9 +48,12 @@ def test_chat_clinician_viewer_wired():
     assert "maybeOfferClinicianMindNetwork" in text
     assert "mn3dResetOrbit" in text
     assert "mn3dAutoRotate" in text
+    assert "mn3dFutureLeap" in text
+    assert "mn3dEnterMirror" in text
+    assert "playFutureLeap" in text
     assert "mn-live" in text
     assert "#mind-network" in text
-    assert "mind-network-3d.js?v=2" in text
+    assert "mind-network-3d.js?v=3" in text
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="node not available")

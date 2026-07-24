@@ -1974,6 +1974,22 @@
       color: #86efac;
       margin-left: auto;
     }
+    .mn-phase {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.7rem;
+      color: #fde68a;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.28);
+    }
+    .mn-toolbar button#mn3dFutureLeap {
+      background: linear-gradient(135deg, #059669, #ca8a04);
+      border-color: transparent;
+      color: #0b1220;
+      font-weight: 700;
+    }
     .mn-live::before {
       content: "";
       width: 7px;
@@ -2414,8 +2430,11 @@
       <div class="mn-toolbar">
         <button type="button" id="mn3dResetOrbit">시점 리셋</button>
         <button type="button" id="mn3dAutoRotate" aria-pressed="false">자동 회전</button>
+        <button type="button" id="mn3dEnterMirror" title="직면 거울 Phase">직면 거울</button>
+        <button type="button" id="mn3dFutureLeap" title="직면 세션 완료 → 미래 자아 도약">미래 도약 ▶</button>
         <button type="button" id="mn3dOpenRoom">🧊 마음방</button>
         <span class="mn-live" id="mn3dLiveBadge" hidden>실시간 드로잉</span>
+        <span class="mn-phase" id="mn3dPhaseBadge" hidden></span>
       </div>
       <div class="mn-canvas-wrap" id="mindNetwork3dCanvas"></div>
       <div class="mn-legend" aria-label="임상 범례">
@@ -3735,7 +3754,7 @@
               );
             }
             if (!window.MindNetwork3DScene) {
-              await this.loadScript("/static/js/mind-network-3d.js?v=2");
+              await this.loadScript("/static/js/mind-network-3d.js?v=3");
             }
           })();
         }
@@ -3762,18 +3781,77 @@
         const sch = dims.schizophrenia_spectrum || {};
         return `고착 ${dims.obsessive_compulsive ?? "-"} · 와해 ${sch.ego_boundary_loss ?? "-"}`;
       },
+      _phaseLabel(phase) {
+        return (
+          {
+            mirror: "직면 거울",
+            shatter: "유리 파열",
+            freeze: "타임 프리즈",
+            morph: "미래 재조립",
+            flythrough: "카메라 진입",
+            future: "미래 신경망",
+          }[phase] || phase
+        );
+      },
+      bindPhaseWatcher() {
+        if (!this.scene || typeof this.scene.onPhaseChange !== "function") return;
+        this.scene.onPhaseChange((phase) => {
+          const badge = document.getElementById("mn3dPhaseBadge");
+          const guide = document.getElementById("mn3dGuide");
+          if (badge) {
+            badge.hidden = !phase || phase === "mirror";
+            badge.textContent = this._phaseLabel(phase);
+          }
+          if (guide) {
+            if (phase === "shatter") guide.textContent = "거울에 균열이 번지며 유리 파편이 흩어집니다…";
+            else if (phase === "freeze") guide.textContent = "시간이 멈춘 듯 파편이 공중에 정지합니다.";
+            else if (phase === "morph") guide.textContent = "CHC 인지 축으로 에메랄드·골드 미래 신경망이 재조립됩니다.";
+            else if (phase === "flythrough") guide.textContent = "어두운 거울을 뚫고 미래 도면 안으로 진입합니다…";
+            else if (phase === "future") guide.textContent = "성장된 미래 자아 신경망입니다. 드래그로 둘러보세요.";
+            else guide.textContent = "직면 거울: 고착·파편 노드가 거울 안에 비칩니다. 「미래 도약」으로 연출을 재생하세요.";
+          }
+          this.refreshStatus();
+        });
+      },
+      playFutureLeap() {
+        if (!this.scene) return;
+        const doc = this.lastDiagnosticModel || MindRoom3DView.lastDiagnosticModel || null;
+        if (typeof this.scene.playFutureProjection === "function") {
+          this.scene.playFutureProjection(doc);
+        } else if (typeof this.scene.onConfrontationComplete === "function") {
+          this.scene.onConfrontationComplete(doc);
+        }
+      },
+      enterMirror() {
+        if (this.scene && typeof this.scene.enterMirrorPhase === "function") {
+          this.scene.enterMirrorPhase();
+          if (window.BlueprintBuilder && typeof BlueprintBuilder.getGraph === "function") {
+            this.scene.setGraph(BlueprintBuilder.getGraph());
+          }
+          if (this.lastDiagnosticModel) this.scene.setDiagnostic(this.lastDiagnosticModel);
+        }
+        const badge = document.getElementById("mn3dPhaseBadge");
+        if (badge) badge.hidden = true;
+        const guide = document.getElementById("mn3dGuide");
+        if (guide) {
+          guide.textContent = "직면 거울: 고착·파편 노드가 거울 안에 비칩니다. 「미래 도약」으로 연출을 재생하세요.";
+        }
+      },
       refreshStatus() {
         const status = document.getElementById("mn3dStatus");
         if (!status) return;
         const st = window.BlueprintBuilder && BlueprintBuilder.getLastStatus
           ? BlueprintBuilder.getLastStatus()
           : null;
+        const phase =
+          this.scene && typeof this.scene.getPhase === "function" ? this.scene.getPhase() : "mirror";
         const base = this._statusText(this.lastDiagnosticModel);
+        const phaseBit = phase && phase !== "mirror" ? ` · ${this._phaseLabel(phase)}` : "";
         if (st && st.label) {
           const nouns = (st.labels && st.labels.length) ? st.labels.join(" · ") : st.label;
-          status.textContent = `${base} · ${nouns}${st.dashed ? " · 와해점선" : ""}`;
+          status.textContent = `${base} · ${nouns}${st.dashed ? " · 와해점선" : ""}${phaseBit}`;
         } else {
-          status.textContent = base;
+          status.textContent = `${base}${phaseBit}`;
         }
       },
       async open() {
@@ -3788,6 +3866,7 @@
           if (!this.scene) {
             const host = document.getElementById("mindNetwork3dCanvas");
             this.scene = new MindNetwork3DScene(host);
+            this.bindPhaseWatcher();
           }
           this.scene.resize();
           let doc = this.lastDiagnosticModel || MindRoom3DView.lastDiagnosticModel;
@@ -3822,6 +3901,9 @@
           }
           if (window.BlueprintBuilder && typeof BlueprintBuilder.getGraph === "function") {
             this.scene.setGraph(BlueprintBuilder.getGraph());
+          }
+          if (typeof this.scene.enterMirrorPhase === "function") {
+            this.scene.enterMirrorPhase();
           }
           this.refreshStatus();
         } catch (_) {
@@ -3861,6 +3943,14 @@
       if (MindNetwork3DView.scene && typeof MindNetwork3DView.scene.setAutoRotate === "function") {
         MindNetwork3DView.scene.setAutoRotate(MindNetwork3DView._autoRotate);
       }
+    });
+    document.getElementById("mn3dEnterMirror")?.addEventListener("click", () => {
+      MindNetwork3DView.enterMirror();
+    });
+    document.getElementById("mn3dFutureLeap")?.addEventListener("click", async () => {
+      await MindNetwork3DView.ensureLoaded();
+      if (!MindNetwork3DView.scene) await MindNetwork3DView.open();
+      MindNetwork3DView.playFutureLeap();
     });
     // Deep-link: /chat#mind-network opens clinician viewer
     if (location.hash === "#mind-network") {

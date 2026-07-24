@@ -156,6 +156,16 @@ INVENTION_IDS = [
         ),
         "modules": ["dsm5_integrator", "age_group_pipeline", "association_licensing"],
     },
+    {
+        "id": "INV-16",
+        "title_ko": "직면 거울 Future Projection Morphing 3D 연출",
+        "title_en": "Confrontation-mirror Future Projection Morphing cinematic",
+        "claim_sketch": (
+            "임상 상태 기반 직면 거울 신경망을 유리 파열·타임프리즈 후 "
+            "CHC 인지축 건강 신경망으로 재조립하고 카메라 플라이스루로 진입하는 방법"
+        ),
+        "modules": ["mind_network_3d", "MindNetwork3D.tsx", "chat.html"],
+    },
 ]
 
 
