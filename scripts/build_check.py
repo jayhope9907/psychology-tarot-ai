@@ -45,6 +45,7 @@ def main() -> int:
             "clinical_adaptive_history",
             "word_card_mindmap_history",
             "emotional_spectrum_history",
+            "stealth_unconscious_history",
             "user_emotional_patterns",
             "psych_timeline_events",
         }
@@ -53,7 +54,7 @@ def main() -> int:
             print("FAIL missing tables:", missing)
             return 1
         user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
-        for col in ("last_sanitized_json", "consultation_mode", "last_stress_json", "last_clinical_adaptive_json", "last_mindmap_json", "last_spectrum_json"):
+        for col in ("last_sanitized_json", "consultation_mode", "last_stress_json", "last_clinical_adaptive_json", "last_mindmap_json", "last_spectrum_json", "last_stealth_unconscious_json"):
             if col not in user_cols:
                 print("FAIL users missing", col)
                 return 1
@@ -90,6 +91,8 @@ def main() -> int:
     importlib.import_module("app.services.word_card_store")
     importlib.import_module("app.services.emotional_spectrum")
     importlib.import_module("app.services.emotional_spectrum_store")
+    importlib.import_module("app.services.stealth_unconscious_engine")
+    importlib.import_module("app.services.stealth_unconscious_store")
     main_mod = importlib.import_module("app.main")
     assert getattr(main_mod, "app", None) is not None
     routes = {getattr(r, "path", None) for r in main_mod.app.routes}
@@ -113,6 +116,11 @@ def main() -> int:
         "/api/v1/orgs/{org_id}/emotional-spectrum/history",
         "/api/v1/research/age-cohorts/stats",
         "/api/v1/research/age-cohorts/export",
+        "/api/v1/stealth-unconscious/props",
+        "/api/v1/users/{user_id}/stealth-unconscious",
+        "/api/v1/users/{user_id}/stealth-unconscious/ingest",
+        "/api/v1/users/{user_id}/stealth-unconscious/history",
+        "/api/v1/orgs/{org_id}/stealth-unconscious/history",
     ):
         if path not in routes:
             print("FAIL missing route", path)
@@ -238,6 +246,48 @@ def main() -> int:
         print("FAIL export missing IntegratedDiagnosticModel keys", sample)
         return 1
     print("OK age cohort pipeline")
+
+    from app.services.stealth_unconscious_engine import (
+        evaluate_biomarker_stream,
+        to_integrated_diagnostic_model_from_persona,
+    )
+    from app.services.stealth_unconscious_store import (
+        list_stealth_history,
+        persist_stealth_assessment,
+    )
+
+    stealth = evaluate_biomarker_stream(
+        [
+            {"prop": "RAIN_DROP", "timestampMs": 10, "strobePrecisionDeltaPx": 1.2},
+            {"prop": "HOLOGRAM_REALITY", "timestampMs": 20, "perceptualRealityTestingScore": 95},
+            {"prop": "CARD_STEALTH", "timestampMs": 30, "stealthPassLatencyMs": 180, "trajectoryAccuracyRatio": 0.95},
+        ]
+    )
+    if stealth.get("persona") not in {
+        "DANIEL_ATLAS",
+        "MERRITT_MCKINNEY",
+        "JACK_WILDER",
+        "HENLEY_REEVES",
+    }:
+        print("FAIL stealth persona", stealth.get("persona"))
+        return 1
+    stealth_model = to_integrated_diagnostic_model_from_persona(stealth, patient_id="build-check-user")
+    if "g_factor" not in (stealth_model.get("cognitiveProfile") or {}):
+        print("FAIL stealth bridge", stealth_model)
+        return 1
+    stealth["integrated_diagnostic_model"] = stealth_model
+    persist_stealth_assessment(
+        user_id="build-check-user",
+        session_id="build-check-sess",
+        turn_index=5,
+        result=stealth,
+        organization_id="org-build-check",
+    )
+    su_history = list_stealth_history("build-check-user", session_id="build-check-sess")
+    if len(su_history) != 1 or not su_history[0].get("persona"):
+        print("FAIL stealth persist", su_history)
+        return 1
+    print("OK stealth unconscious engine persist")
     print("BUILD CHECK PASSED")
     try:
         db_path.unlink(missing_ok=True)

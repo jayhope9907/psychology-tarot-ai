@@ -254,6 +254,19 @@ class SpectrumComputeRequest(BaseModel):
     age_years: Optional[int] = None
 
 
+class StealthBiomarkerIngestRequest(BaseModel):
+    """11-프롭 raw 바이오마커 스트림 (Now You See Me 스텔스 엔진)."""
+
+    payloads: List[Dict[str, Any]] = []
+    session_id: Optional[str] = None
+    turn_index: int = 0
+    source: Optional[str] = "prop_game"
+    persist: bool = True
+    resume_last: bool = True
+    chc_profile: Optional[Dict[str, float]] = None
+    clinical_profile: Optional[Dict[str, float]] = None
+
+
 class AgeCohortExportRequest(BaseModel):
     age_group: Optional[str] = None
     risk_cohort: str = "any"
@@ -2313,6 +2326,136 @@ async def org_emotional_spectrum_history(org_id: str, limit: int = 100):
     from app.services.emotional_spectrum_store import list_org_spectrum_history
 
     history = list_org_spectrum_history(org_id, limit=limit)
+    return {
+        "organizationId": org_id,
+        "count": len(history),
+        "history": history,
+        "pii_policy": "user_id_hashed",
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/stealth-unconscious/props")
+async def stealth_unconscious_props():
+    """11-프롭 카탈로그 (게임 UI / 임상 IDE 툴바)."""
+    from app.services.stealth_unconscious_engine import get_prop_catalog
+
+    return get_prop_catalog()
+
+
+@app.post("/api/v1/users/{user_id}/stealth-unconscious/ingest")
+async def ingest_stealth_unconscious(user_id: str, request: StealthBiomarkerIngestRequest):
+    """11-프롭 raw 바이오마커 → CHC/임상 집계 + 호스멘 페르소나 (비진단 참고 지표)."""
+    from app.services.stealth_unconscious_engine import (
+        evaluate_biomarker_stream,
+        to_integrated_diagnostic_model_from_persona,
+    )
+    from app.services.stealth_unconscious_store import (
+        get_user_last_stealth,
+        persist_stealth_assessment,
+    )
+
+    chc = request.chc_profile
+    clinical = request.clinical_profile
+    ingested: List[str] = []
+    if request.resume_last and not (chc or clinical):
+        previous = get_user_last_stealth(user_id) or {}
+        snapshot = dict(previous.get("snapshot") or {})
+        chc = snapshot.get("chcProfile") or previous.get("chcProfile")
+        clinical = snapshot.get("clinicalProfile") or previous.get("clinicalProfile")
+        ingested = list(snapshot.get("ingestedProps") or [])
+
+    result = evaluate_biomarker_stream(
+        request.payloads or [],
+        chc=chc,
+        clinical=clinical,
+        ingested_props=ingested,
+    )
+    model = to_integrated_diagnostic_model_from_persona(
+        result,
+        session_id=request.session_id or "",
+        patient_id=user_id,
+    )
+    result["integrated_diagnostic_model"] = model
+
+    record_id = None
+    if request.persist:
+        record = persist_stealth_assessment(
+            user_id=user_id,
+            session_id=request.session_id or "",
+            turn_index=int(request.turn_index or 0),
+            source=request.source or "prop_game",
+            result=result,
+        )
+        record_id = record.get("id")
+
+    return {
+        "user_id": user_id,
+        "record_id": record_id,
+        "session_id": request.session_id or "",
+        "persona": result.get("persona"),
+        "title": result.get("title"),
+        "awakening_quote": result.get("awakeningQuote"),
+        "stats": result.get("stats"),
+        "chc_profile": result.get("chcProfile"),
+        "clinical_profile": result.get("clinicalProfile"),
+        "progress": result.get("progress"),
+        "clinical_ide_output": result.get("clinicalIDEOutput"),
+        "integrated_diagnostic_model": model,
+        "intake": result.get("intake"),
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/stealth-unconscious")
+async def user_stealth_unconscious_latest(user_id: str, session_id: Optional[str] = None):
+    """최신 11-프롭 페르소나 결과 + MindNetwork3D 브리지."""
+    from app.services.stealth_unconscious_engine import (
+        to_integrated_diagnostic_model_from_persona,
+    )
+    from app.services.stealth_unconscious_store import get_user_last_stealth
+
+    latest = get_user_last_stealth(user_id)
+    return {
+        "user_id": user_id,
+        "session_id": session_id or "",
+        "latest": latest,
+        "integrated_diagnostic_model": (
+            to_integrated_diagnostic_model_from_persona(
+                latest,
+                session_id=session_id or "",
+                patient_id=user_id,
+            )
+            if latest
+            else None
+        ),
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/users/{user_id}/stealth-unconscious/history")
+async def user_stealth_unconscious_history(
+    user_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+):
+    from app.services.stealth_unconscious_store import list_stealth_history
+
+    history = list_stealth_history(user_id, session_id=session_id, limit=limit)
+    return {
+        "user_id": user_id,
+        "session_id": session_id,
+        "count": len(history),
+        "history": history,
+        "non_diagnostic": True,
+    }
+
+
+@app.get("/api/v1/orgs/{org_id}/stealth-unconscious/history")
+async def org_stealth_unconscious_history(org_id: str, limit: int = 100):
+    from app.services.stealth_unconscious_store import list_org_stealth_history
+
+    history = list_org_stealth_history(org_id, limit=limit)
     return {
         "organizationId": org_id,
         "count": len(history),

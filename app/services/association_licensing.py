@@ -567,6 +567,8 @@ def resolve_entitlements(
     flags.setdefault("mind_network_3d", True)
     flags.setdefault("age_cohort_export", bool(flags.get("b2b_export", False)))
     flags.setdefault("integrated_diagnostic", bool(flags.get("dsm5_catalog", False)))
+    # 11-프롭 스텔스 무의식 매핑(게임형 바이오마커) — 3D 도면과 동일 게이트
+    flags.setdefault("stealth_unconscious_engine", bool(flags.get("mind_network_3d", False)))
 
     instruments: Set[str]
     allowed = profile.get("allowed_instruments")

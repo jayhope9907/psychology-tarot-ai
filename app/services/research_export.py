@@ -166,6 +166,22 @@ INVENTION_IDS = [
         ),
         "modules": ["mind_network_3d", "MindNetwork3D.tsx", "chat.html"],
     },
+    {
+        "id": "INV-17",
+        "title_ko": "11종 마술 소품 게임형 스텔스 무의식 매핑 → CHC·임상 지표 변환",
+        "title_en": "11-prop gamified stealth unconscious mapping to CHC and clinical proxies",
+        "claim_sketch": (
+            "물방울·수조·카드·상자·미러·루렛·마스크·손놀림·멘탈리즘·홀로그램·"
+            "인터랙션 동기화 11종 소품의 미세 행동/생체 프록시를 CHC 4축과 "
+            "12개 임상 지표로 환산하고 4인 페르소나·3D 미래 도면으로 브리지하는 시스템"
+        ),
+        "modules": [
+            "stealth_unconscious_engine",
+            "stealth_unconscious_store",
+            "CompleteStealthUnconsciousEngine.ts",
+            "mind_network_3d",
+        ],
+    },
 ]
 
 

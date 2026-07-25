@@ -34,6 +34,12 @@ def product_surfaces() -> Dict[str, Any]:
             "route": "/api/v1/research/age-cohorts/stats",
             "gate": "age_cohort_export",
         },
+        {
+            "id": "stealth_unconscious_engine",
+            "label_ko": "11종 소품 무의식 매핑",
+            "route": "/api/v1/stealth-unconscious/props",
+            "gate": "stealth_unconscious_engine",
+        },
         {"id": "case_notes", "label_ko": "케이스 노트 AI", "route": "/case-notes", "status": "coming_soon"},
     ]
     disability = disability_product_manifest()
@@ -60,6 +66,7 @@ def product_surfaces() -> Dict[str, Any]:
                     "mind_network_3d",
                     "integrated_diagnostic",
                     "age_cohort_export",
+                    "stealth_unconscious_engine",
                     "b2b_export",
                 ],
                 "hidden_from_consumer": ["/theories", "/expressive", "/associations", "/case-notes"],

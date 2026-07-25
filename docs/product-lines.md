@@ -7,6 +7,7 @@
 | **장애인용** | AAC·접근성 | 보관(별도 제품) | `/disability`, `/disability/picto` |
 
 - API 매니페스트: `GET /api/v1/product/surfaces`
-- 라이선스 플래그: `emotional_spectrum`, `mind_network_3d`, `integrated_diagnostic`, `age_cohort_export`, `b2b_export`
+- 라이선스 플래그: `emotional_spectrum`, `mind_network_3d`, `integrated_diagnostic`, `age_cohort_export`, `stealth_unconscious_engine`, `b2b_export`
+- 11종 소품 무의식 매핑(스텔스 엔진): `GET /api/v1/stealth-unconscious/props`, `POST /api/v1/users/{user_id}/stealth-unconscious/ingest` — 결과는 `integrated_diagnostic_model`로 임상의 3D 도면에 그대로 투입
 - 장애인용 자산: `docs/disability-product.md`
 - 유저 앱에서 숨김: `/picto`(안내), `/theories`, `/expressive`, 통합앱 picto 탭

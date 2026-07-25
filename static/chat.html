@@ -3760,6 +3760,34 @@
         }
         await this._loading;
       },
+      async loadStealthPersona() {
+        try {
+          const res = await fetch(
+            `/api/v1/users/${encodeURIComponent(userId)}/stealth-unconscious?session_id=${encodeURIComponent(sessionId || "")}`
+          );
+          if (!res.ok) return null;
+          const j = await res.json();
+          if (!j.latest) return null;
+          this.lastPersona = {
+            persona: j.latest.persona || "",
+            title: j.latest.title || "",
+            quote: j.latest.awakeningQuote || "",
+            progress: j.latest.progress || null,
+            model: j.integrated_diagnostic_model || null,
+          };
+          return this.lastPersona;
+        } catch (_) {
+          return null;
+        }
+      },
+      _personaText() {
+        const p = this.lastPersona;
+        if (!p || !p.title) return "";
+        const ratio = p.progress && typeof p.progress.completionRatio === "number"
+          ? ` ${Math.round(p.progress.completionRatio * 100)}%`
+          : "";
+        return ` · ${p.title}${ratio}`;
+      },
       _statusText(doc) {
         if (!doc) {
           const st = window.BlueprintBuilder && BlueprintBuilder.getLastStatus
@@ -3847,11 +3875,12 @@
           this.scene && typeof this.scene.getPhase === "function" ? this.scene.getPhase() : "mirror";
         const base = this._statusText(this.lastDiagnosticModel);
         const phaseBit = phase && phase !== "mirror" ? ` · ${this._phaseLabel(phase)}` : "";
+        const personaBit = this._personaText();
         if (st && st.label) {
           const nouns = (st.labels && st.labels.length) ? st.labels.join(" · ") : st.label;
-          status.textContent = `${base} · ${nouns}${st.dashed ? " · 와해점선" : ""}${phaseBit}`;
+          status.textContent = `${base} · ${nouns}${st.dashed ? " · 와해점선" : ""}${personaBit}${phaseBit}`;
         } else {
-          status.textContent = `${base}${phaseBit}`;
+          status.textContent = `${base}${personaBit}${phaseBit}`;
         }
       },
       async open() {
@@ -3892,6 +3921,9 @@
               }
             } catch (_) {}
           }
+          // 11종 소품 게임(스텔스 무의식 매핑) 결과가 있으면 CHC 축 도면으로 보강
+          const persona = await this.loadStealthPersona();
+          if (!doc && persona && persona.model) doc = persona.model;
           if (doc) {
             this.scene.setDiagnostic(doc);
             this.lastDiagnosticModel = doc;
