@@ -376,6 +376,7 @@ class CheckinRequest(BaseModel):
     mood_score: Optional[int] = None
     note: str = ""
     dimensions: Optional[Dict[str, int]] = None
+    expression_id: Optional[str] = None
 
 
 class PictoCheckinRequest(BaseModel):
@@ -1481,12 +1482,27 @@ async def chat_mood_context(user_id: str):
     }
 
 
+@app.get("/api/v1/mood/expressions")
+async def mood_expressions_deck():
+    from app.services.mood_expressions import expression_deck_payload
+
+    return expression_deck_payload()
+
+
 @app.post("/api/v1/checkin")
 async def mood_checkin(request: CheckinRequest):
-    if not request.dimensions and request.mood_score is None:
-        raise HTTPException(status_code=400, detail="mood_score or dimensions required")
+    if not request.dimensions and request.mood_score is None and not request.expression_id:
+        raise HTTPException(
+            status_code=400,
+            detail="mood_score, dimensions, or expression_id required",
+        )
     if request.mood_score is not None and (request.mood_score < 1 or request.mood_score > 5):
         raise HTTPException(status_code=400, detail="mood_score must be 1-5")
+    if request.expression_id:
+        from app.services.mood_expressions import get_expression
+
+        if get_expression(request.expression_id) is None:
+            raise HTTPException(status_code=400, detail="unknown expression_id")
     if request.dimensions:
         from app.services.mood_dimensions import normalize_dimensions
 
@@ -1494,7 +1510,13 @@ async def mood_checkin(request: CheckinRequest):
         for key, value in dims.items():
             if value < 1 or value > 5:
                 raise HTTPException(status_code=400, detail=f"dimension {key} must be 1-5")
-    result = record_checkin(request.user_id, request.mood_score, request.note, request.dimensions)
+    result = record_checkin(
+        request.user_id,
+        request.mood_score,
+        request.note,
+        request.dimensions,
+        expression_id=request.expression_id,
+    )
     _organism_after_checkin(request.user_id, result)
     return result
 

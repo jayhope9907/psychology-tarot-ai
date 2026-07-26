@@ -251,6 +251,8 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE mood_checkins ADD COLUMN dimensions_json TEXT NOT NULL DEFAULT '{}'"
         )
+    if "expression_id" not in cols:
+        conn.execute("ALTER TABLE mood_checkins ADD COLUMN expression_id TEXT")
 
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
     if "last_sanitized_json" not in user_cols:

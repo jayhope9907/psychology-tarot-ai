@@ -17,6 +17,11 @@ from app.services.mood_dimensions import (
     dimensions_to_json,
     normalize_dimensions,
 )
+from app.services.mood_expressions import (
+    enrich_checkin_with_expression,
+    get_expression,
+    infer_mood_from_expression,
+)
 from app.services.persistence import ensure_user
 
 
@@ -42,11 +47,12 @@ def _checkin_payload(
     note: str,
     checkin_date: str,
     dimensions: Dict[str, int],
+    expression_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     dims = normalize_dimensions(dimensions)
     agent = build_mood_agent_profile(dims, mood_score)
     portrait = build_mood_portrait(dims)
-    return {
+    payload = {
         "mood_score": mood_score,
         "mood_label": MOOD_LABELS.get(mood_score, "보통"),
         "note": note,
@@ -56,7 +62,9 @@ def _checkin_payload(
         "mood_portrait": portrait,
         "agent": agent.to_dict(),
         "sphere": build_sphere_visual(dims),
+        "expression_id": expression_id,
     }
+    return enrich_checkin_with_expression(payload, expression_id)
 
 
 def record_checkin(
@@ -64,11 +72,20 @@ def record_checkin(
     mood_score: Optional[int] = None,
     note: str = "",
     dimensions: Optional[Dict[str, int]] = None,
+    expression_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     init_db()
     ensure_user(user_id)
+    expr_id = (expression_id or "").strip() or None
+    if expr_id and get_expression(expr_id) is None:
+        expr_id = None
+
     dims = normalize_dimensions(dimensions) if dimensions else None
-    if dims:
+    if expr_id and not dims:
+        inferred = infer_mood_from_expression(expr_id)
+        dims = inferred["dimensions"]
+        mood_score = inferred["mood_score"]
+    elif dims:
         mood_score = composite_mood_score(dims)
     elif mood_score is not None:
         mood_score = max(1, min(5, int(mood_score)))
@@ -81,21 +98,22 @@ def record_checkin(
     try:
         conn.execute(
             """
-            INSERT INTO mood_checkins (user_id, mood_score, note, checkin_date, dimensions_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO mood_checkins (user_id, mood_score, note, checkin_date, dimensions_json, expression_id)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, checkin_date) DO UPDATE SET
                 mood_score = excluded.mood_score,
                 note = excluded.note,
                 dimensions_json = excluded.dimensions_json,
+                expression_id = excluded.expression_id,
                 created_at = datetime('now')
             """,
-            (user_id, mood_score, (note or "").strip(), today, dimensions_to_json(dims)),
+            (user_id, mood_score, (note or "").strip(), today, dimensions_to_json(dims), expr_id),
         )
         conn.commit()
     finally:
         conn.close()
     streak = compute_streak(user_id)
-    payload = _checkin_payload(mood_score, note, today, dims)
+    payload = _checkin_payload(mood_score, note, today, dims, expr_id)
     payload.update({"user_id": user_id, "streak_days": streak["current_streak"]})
     return payload
 
@@ -151,7 +169,7 @@ def recent_checkins(user_id: str, days: int = 7) -> List[Dict[str, Any]]:
     try:
         rows = conn.execute(
             """
-            SELECT mood_score, note, checkin_date, created_at, dimensions_json
+            SELECT mood_score, note, checkin_date, created_at, dimensions_json, expression_id
             FROM mood_checkins
             WHERE user_id = ?
             ORDER BY checkin_date DESC
@@ -166,8 +184,11 @@ def recent_checkins(user_id: str, days: int = 7) -> List[Dict[str, Any]]:
                 dims = dimensions_from_json(str(raw_json))
             else:
                 dims = default_dimensions_from_score(row["mood_score"])
+            expr = None
+            if "expression_id" in row.keys() and row["expression_id"]:
+                expr = str(row["expression_id"])
             result.append(
-                _checkin_payload(row["mood_score"], row["note"], row["checkin_date"], dims)
+                _checkin_payload(row["mood_score"], row["note"], row["checkin_date"], dims, expr)
             )
         return result
     finally:
@@ -181,7 +202,7 @@ def today_checkin(user_id: str) -> Optional[Dict[str, Any]]:
     try:
         row = conn.execute(
             """
-            SELECT mood_score, note, checkin_date, dimensions_json FROM mood_checkins
+            SELECT mood_score, note, checkin_date, dimensions_json, expression_id FROM mood_checkins
             WHERE user_id = ? AND checkin_date = ?
             """,
             (user_id, today),
@@ -193,7 +214,10 @@ def today_checkin(user_id: str) -> Optional[Dict[str, Any]]:
             dims = dimensions_from_json(str(dims_raw))
         else:
             dims = default_dimensions_from_score(row["mood_score"])
-        return _checkin_payload(row["mood_score"], row["note"], row["checkin_date"], dims)
+        expr = None
+        if "expression_id" in row.keys() and row["expression_id"]:
+            expr = str(row["expression_id"])
+        return _checkin_payload(row["mood_score"], row["note"], row["checkin_date"], dims, expr)
     finally:
         conn.close()
 
@@ -214,7 +238,10 @@ def build_dashboard(user_id: str) -> Dict[str, Any]:
     if today:
         agent_label = (today.get("agent") or {}).get("label", "")
         portrait = today.get("mood_portrait") or {}
-        if portrait.get("narrative"):
+        expr = today.get("expression") or {}
+        if expr.get("guess_ko"):
+            greeting = f"{expr.get('emoji', '')} {expr['guess_ko']}".strip()
+        elif portrait.get("narrative"):
             greeting = portrait["narrative"].replace("**", "")
         elif today["mood_score"] <= 2:
             greeting = f"힘든 하루일 수 있어요. {agent_label or '위로'} 모드로 천천히 함께해요."
@@ -222,6 +249,8 @@ def build_dashboard(user_id: str) -> Dict[str, Any]:
             greeting = f"오늘 마음이 조금 가벼워 보여요. {agent_label or '성장'} 모드로 이어가 봐요."
         elif agent_label:
             greeting = f"오늘은 {agent_label} 모드로 맞춰 드릴게요."
+
+    from app.services.mood_expressions import expression_deck_payload
 
     return {
         "user_id": user_id,
@@ -231,6 +260,7 @@ def build_dashboard(user_id: str) -> Dict[str, Any]:
         "recent_checkins": checkins,
         "dimension_meta": dimension_meta_for_client(),
         "dimension_trends": dimension_trends,
+        "mood_expressions": expression_deck_payload(),
         "session_id": session.session_id if session else None,
         "counseling_phase": session.counseling_phase if session else None,
         "homework_pending": bool(session and session.pending_homework),
@@ -249,6 +279,12 @@ def build_daily_context_block(user_id: str) -> str:
             f"- 오늘 입체 체크인: {today.get('dimension_summary') or today['mood_score']}"
             + (f" — \"{today['note']}\"" if today.get("note") else "")
         )
+        expr = today.get("expression") or {}
+        if expr.get("label_ko"):
+            lines.append(
+                f"- 표정 선택: {expr.get('emoji', '')} {expr['label_ko']}"
+                + (f" → 추측: {expr['guess_ko']}" if expr.get("guess_ko") else "")
+            )
         portrait = today.get("mood_portrait") or {}
         if portrait.get("narrative"):
             lines.append(f"- 마음 초상: {portrait['narrative'].replace('**', '')}")
