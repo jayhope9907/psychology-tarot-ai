@@ -121,6 +121,7 @@ def main() -> int:
         "/api/v1/users/{user_id}/stealth-unconscious/ingest",
         "/api/v1/users/{user_id}/stealth-unconscious/history",
         "/api/v1/orgs/{org_id}/stealth-unconscious/history",
+        "/stealth-props",
     ):
         if path not in routes:
             print("FAIL missing route", path)

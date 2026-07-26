@@ -36,6 +36,9 @@ HORSEMEN_PERSONAS: List[str] = [
     "HENLEY_REEVES",
 ]
 
+# 고유 프롭 N개 이상이어야 각성(페르소나)을 final로 확정. 미만은 provisional.
+FINAL_MIN_PROPS = 8
+
 PROP_CATALOG: List[Dict[str, Any]] = [
     {
         "prop": "RAIN_DROP",
@@ -393,11 +396,17 @@ class FullUnconsciousEngine:
     def get_progress(self) -> Dict[str, Any]:
         ingested = [p for p in PROP_TYPES if p in self.ingested_props]
         remaining = [p for p in PROP_TYPES if p not in self.ingested_props]
+        unique = len(ingested)
+        is_final = unique >= FINAL_MIN_PROPS
         return {
             "ingested": ingested,
             "remaining": remaining,
             "ingestCount": self.ingest_count,
-            "completionRatio": round(len(ingested) / len(PROP_TYPES), 4),
+            "uniquePropCount": unique,
+            "requiredForFinal": FINAL_MIN_PROPS,
+            "completionRatio": round(unique / len(PROP_TYPES), 4),
+            "assessmentStatus": "final" if is_final else "provisional",
+            "awakeningLocked": not is_final,
         }
 
     def snapshot(self) -> Dict[str, Any]:
@@ -414,6 +423,8 @@ class FullUnconsciousEngine:
         gwm = self.chc["Gwm"]
         gc = self.chc["Gc"]
         cli = self.clinical
+        progress = self.get_progress()
+        is_final = not progress.get("awakeningLocked", True)
 
         persona = "DANIEL_ATLAS"
         title = "환영의 통제자 (Illusion Architect)"
@@ -436,12 +447,26 @@ class FullUnconsciousEngine:
             title = "탈출의 아티스트 (Escape Artist)"
             quote = "가장 깊은 압박 속에서도 스스로 빠져나올 열쇠를 찾아냅니다."
 
-        clinical_ide_output = _render_clinical_ide(persona, title, self.chc, cli)
+        if not is_final:
+            remaining = int(progress.get("requiredForFinal") or FINAL_MIN_PROPS) - int(
+                progress.get("uniquePropCount") or 0
+            )
+            title = f"잠정 · {title}"
+            quote = (
+                f"아직 {max(0, remaining)}개 소품이 더 필요합니다. "
+                f"잠정 페르소나 후보: {persona}. " + quote
+            )
+
+        clinical_ide_output = _render_clinical_ide(
+            persona, title, self.chc, cli, progress=progress
+        )
 
         result: Dict[str, Any] = {
             "persona": persona,
             "title": title,
             "awakeningQuote": quote,
+            "assessmentStatus": progress.get("assessmentStatus"),
+            "awakeningLocked": bool(progress.get("awakeningLocked")),
             "stats": {
                 "spatialControl": round(gv),
                 "sleightSpeed": round(gs),
@@ -462,7 +487,7 @@ class FullUnconsciousEngine:
             },
             "clinicalProfile": {k: round(v, 2) for k, v in cli.items()},
             "clinicalIDEOutput": clinical_ide_output,
-            "progress": self.get_progress(),
+            "progress": progress,
             "non_diagnostic": True,
         }
         return result
@@ -477,16 +502,22 @@ def _render_clinical_ide(
     title: str,
     chc: Mapping[str, float],
     cli: Mapping[str, float],
+    progress: Optional[Mapping[str, Any]] = None,
 ) -> str:
     gv = float(chc["Gv"])
     gs = float(chc["Gs"])
     gwm = float(chc["Gwm"])
     gc = float(chc["Gc"])
+    prog = dict(progress or {})
+    status = str(prog.get("assessmentStatus") or "provisional").upper()
+    unique = int(prog.get("uniquePropCount") or 0)
+    needed = int(prog.get("requiredForFinal") or FINAL_MIN_PROPS)
     return f"""
 [CLINICAL IDE :: STEALTH PARSING REPORT]
 ------------------------------------------------------------------
 TIMESTAMP           : {datetime.now(timezone.utc).isoformat()}
 SESSION TARGET      : USER_UNCONSCIOUS_VECTOR
+ASSESSMENT STATUS   : {status} ({unique}/{needed} props for final awakening)
 ASSIGNED PERSONA    : {persona} ({title})
 ------------------------------------------------------------------
 [CHC INTELLIGENCE PROFILE]
@@ -597,5 +628,46 @@ def get_prop_catalog() -> Dict[str, Any]:
         "props": [dict(item) for item in PROP_CATALOG],
         "personas": list(HORSEMEN_PERSONAS),
         "chc_axes": ["Gv", "Gs", "Gwm", "Gc"],
+        "final_min_props": FINAL_MIN_PROPS,
+        "game_route": "/stealth-props",
         "non_diagnostic": True,
     }
+
+
+def verify_stealth_entitlement(
+    *,
+    license_key: Optional[str] = None,
+    require_license: bool = False,
+) -> Dict[str, Any]:
+    """라이선스 게이트. 키가 없으면 B2C 개방(ok), 키가 있으면 feature 검증.
+
+    ``require_license=True``(기관 이력 등)일 때는 키가 필수.
+    """
+    key = (license_key or "").strip()
+    if not key:
+        if require_license:
+            return {"ok": False, "reason": "license_required"}
+        return {"ok": True, "via": "consumer_open"}
+
+    try:
+        from app.services.association_licensing import feature_enabled
+        from app.services.license_store import validate_license
+
+        lic = validate_license(key)
+        if not lic.get("valid"):
+            return {"ok": False, "reason": "license_invalid"}
+        ent = lic.get("entitlements") or {}
+        if not (
+            feature_enabled("stealth_unconscious_engine", ent)
+            or feature_enabled("mind_network_3d", ent)
+        ):
+            return {"ok": False, "reason": "stealth_unconscious_not_entitled"}
+        return {
+            "ok": True,
+            "via": "license",
+            "org_id": lic.get("org_id"),
+            "license_type": (ent.get("tier_id") or "B2B_licensed"),
+            "entitlements": ent,
+        }
+    except Exception:
+        return {"ok": False, "reason": "license_check_failed"}

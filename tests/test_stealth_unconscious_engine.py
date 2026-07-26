@@ -112,10 +112,14 @@ def test_full_engine_reality_architect_persona():
 
     result = engine.finalize_persona_assessment()
     assert result["persona"] == "DANIEL_ATLAS"
-    assert result["title"].startswith("현실 검증의 설계자")
+    assert "현실 검증의 설계자" in result["title"]
+    assert result["awakeningLocked"] is True  # unique props < 8
+    assert result["assessmentStatus"] == "provisional"
+    assert result["title"].startswith("잠정")
     assert result["stats"]["perceptualRealityTesting"] > 75
     assert result["chcProfile"]["Gv"] > 80
     assert "CLINICAL IDE :: STEALTH PARSING REPORT" in result["clinicalIDEOutput"]
+    assert "PROVISIONAL" in result["clinicalIDEOutput"]
     assert "non-diagnostic" in result["clinicalIDEOutput"]
     assert result["non_diagnostic"] is True
 
@@ -141,8 +145,49 @@ def test_full_engine_synchro_mentalist_persona():
     )
     assert result["persona"] == "MERRITT_MCKINNEY"
     assert result["stats"]["interpersonalSynergy"] >= 75
+    assert result["assessmentStatus"] == "provisional"
+    assert result["awakeningLocked"] is True
     assert result["intake"]["accepted"] == ["INTERPERSONAL_SYNC", "PERSONA_MASK"]
     assert result["intake"]["rejected"] == []
+
+
+def test_final_awakening_requires_eight_unique_props():
+    from app.services.stealth_unconscious_engine import FINAL_MIN_PROPS, PROP_TYPES, FullUnconsciousEngine
+
+    assert FINAL_MIN_PROPS == 8
+    engine = FullUnconsciousEngine()
+    # 8개 고유 프롭을 중간 성과로 채우면 final
+    payloads = [
+        {"prop": "RAIN_DROP", "timestampMs": 1, "strobePrecisionDeltaPx": 2},
+        {"prop": "WATER_TANK", "timestampMs": 2, "qteLatencyMs": 200, "panicStimmingCount": 0},
+        {"prop": "CARD_STEALTH", "timestampMs": 3, "stealthPassLatencyMs": 150, "trajectoryAccuracyRatio": 0.9},
+        {"prop": "CHAMBER_BOX", "timestampMs": 4, "rigidPatternRepeatCount": 0, "dimensionReconstructTimeSec": 8},
+        {"prop": "MIRROR_SHADOW", "timestampMs": 5, "illusionChasingClicks": 0, "idleAcceptanceDurationMs": 3000},
+        {"prop": "ROULETTE_DIAL", "timestampMs": 6, "misdirectionBaitClicks": 0, "entropyRandomnessIndex": 0.9},
+        {"prop": "PERSONA_MASK", "timestampMs": 7, "microExpressionScanLatencyMs": 220, "maskMatchAccuracyRatio": 0.9},
+        {"prop": "SLEIGHT_PALMING", "timestampMs": 8, "gestureCurvatureVariance": 0.1, "touchPressureInstability": 0.05},
+    ]
+    for p in payloads:
+        engine.ingest_biomarker(p)
+    result = engine.finalize_persona_assessment()
+    assert result["progress"]["uniquePropCount"] == 8
+    assert result["assessmentStatus"] == "final"
+    assert result["awakeningLocked"] is False
+    assert not result["title"].startswith("잠정")
+    assert len(PROP_TYPES) == 11
+
+
+def test_org_history_requires_license(isolated_db):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    res = client.get("/api/v1/orgs/org-x/stealth-unconscious/history")
+    assert res.status_code == 403
+    body = res.json()
+    msg = body.get("detail") or (body.get("error") or {}).get("message")
+    assert msg == "license_required"
 
 
 def test_full_engine_escape_artist_default_and_progress():
@@ -184,6 +229,8 @@ def test_engine_resume_from_snapshot():
     )
     result = second.finalize_persona_assessment()
     assert result["persona"] == "JACK_WILDER"
+    assert "초감각 손놀림" in result["title"]
+    assert result["awakeningLocked"] is True
     assert result["progress"]["ingested"] == ["CARD_STEALTH", "SLEIGHT_PALMING"]
     assert result["clinicalProfile"]["fineMotorControlIndex"] > 80
 
@@ -369,6 +416,22 @@ def test_chat_viewer_consumes_stealth_persona():
     assert "stealth-unconscious?session_id=" in html
     assert "loadStealthPersona" in html
     assert "_personaText" in html
+    assert "_mergeStealthDiagnostic" in html
+    assert 'id="mn3dOpenProps"' in html
+    assert "/stealth-props" in html
+
+
+def test_stealth_props_game_page_exists():
+    page = ROOT / "static" / "stealth-props.html"
+    assert page.exists()
+    src = page.read_text(encoding="utf-8")
+    for prop in (
+        "RAIN_DROP",
+        "HOLOGRAM_REALITY",
+        "INTERPERSONAL_SYNC",
+        "stealth-unconscious/ingest",
+    ):
+        assert prop in src
 
 
 def test_license_and_invention_registry():

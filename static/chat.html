@@ -2432,6 +2432,7 @@
         <button type="button" id="mn3dAutoRotate" aria-pressed="false">자동 회전</button>
         <button type="button" id="mn3dEnterMirror" title="직면 거울 Phase">직면 거울</button>
         <button type="button" id="mn3dFutureLeap" title="직면 세션 완료 → 미래 자아 도약">미래 도약 ▶</button>
+        <button type="button" id="mn3dOpenProps" title="11종 소품 스텔스 매핑">소품 게임</button>
         <button type="button" id="mn3dOpenRoom">🧊 마음방</button>
         <span class="mn-live" id="mn3dLiveBadge" hidden>실시간 드로잉</span>
         <span class="mn-phase" id="mn3dPhaseBadge" hidden></span>
@@ -3773,6 +3774,8 @@
             title: j.latest.title || "",
             quote: j.latest.awakeningQuote || "",
             progress: j.latest.progress || null,
+            assessmentStatus: j.assessment_status || j.latest.assessmentStatus || "",
+            awakeningLocked: !!(j.awakening_locked ?? j.latest.awakeningLocked),
             model: j.integrated_diagnostic_model || null,
           };
           return this.lastPersona;
@@ -3786,7 +3789,33 @@
         const ratio = p.progress && typeof p.progress.completionRatio === "number"
           ? ` ${Math.round(p.progress.completionRatio * 100)}%`
           : "";
-        return ` · ${p.title}${ratio}`;
+        const lock = p.awakeningLocked ? " · 잠정" : " · 확정";
+        return ` · ${p.title}${ratio}${lock}`;
+      },
+      _mergeStealthDiagnostic(baseDoc, persona) {
+        // 스펙트럼 진단이 있어도 스텔스 CHC/임상 브리지를 우선 병합해 Future Leap에 투입
+        if (!persona || !persona.model) return baseDoc || null;
+        if (!baseDoc) return persona.model;
+        const stealth = persona.model;
+        return {
+          ...baseDoc,
+          ...stealth,
+          sessionId: stealth.sessionId || baseDoc.sessionId || "",
+          patientId: stealth.patientId || baseDoc.patientId || "",
+          cognitiveProfile: {
+            ...(baseDoc.cognitiveProfile || {}),
+            ...(stealth.cognitiveProfile || {}),
+          },
+          clinicalProfile: {
+            ...(baseDoc.clinicalProfile || {}),
+            ...(stealth.clinicalProfile || {}),
+          },
+          threeRenderMetrics: {
+            ...(baseDoc.threeRenderMetrics || {}),
+            ...(stealth.threeRenderMetrics || {}),
+          },
+          source: "stealth_merged",
+        };
       },
       _statusText(doc) {
         if (!doc) {
@@ -3843,7 +3872,12 @@
       },
       playFutureLeap() {
         if (!this.scene) return;
-        const doc = this.lastDiagnosticModel || MindRoom3DView.lastDiagnosticModel || null;
+        const base = this.lastDiagnosticModel || MindRoom3DView.lastDiagnosticModel || null;
+        const doc = this._mergeStealthDiagnostic(base, this.lastPersona) || base;
+        if (doc) {
+          this.lastDiagnosticModel = doc;
+          if (typeof this.scene.setDiagnostic === "function") this.scene.setDiagnostic(doc);
+        }
         if (typeof this.scene.playFutureProjection === "function") {
           this.scene.playFutureProjection(doc);
         } else if (typeof this.scene.onConfrontationComplete === "function") {
@@ -3921,9 +3955,9 @@
               }
             } catch (_) {}
           }
-          // 11종 소품 게임(스텔스 무의식 매핑) 결과가 있으면 CHC 축 도면으로 보강
+          // 11종 소품 게임 결과는 CHC/임상 브리지로 병합해 Future Leap에 우선 투입
           const persona = await this.loadStealthPersona();
-          if (!doc && persona && persona.model) doc = persona.model;
+          doc = this._mergeStealthDiagnostic(doc, persona);
           if (doc) {
             this.scene.setDiagnostic(doc);
             this.lastDiagnosticModel = doc;
@@ -3983,6 +4017,9 @@
       await MindNetwork3DView.ensureLoaded();
       if (!MindNetwork3DView.scene) await MindNetwork3DView.open();
       MindNetwork3DView.playFutureLeap();
+    });
+    document.getElementById("mn3dOpenProps")?.addEventListener("click", () => {
+      location.href = "/stealth-props";
     });
     // Deep-link: /chat#mind-network opens clinician viewer
     if (location.hash === "#mind-network") {

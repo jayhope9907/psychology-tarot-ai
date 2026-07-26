@@ -37,7 +37,7 @@ def product_surfaces() -> Dict[str, Any]:
         {
             "id": "stealth_unconscious_engine",
             "label_ko": "11종 소품 무의식 매핑",
-            "route": "/api/v1/stealth-unconscious/props",
+            "route": "/stealth-props",
             "gate": "stealth_unconscious_engine",
         },
         {"id": "case_notes", "label_ko": "케이스 노트 AI", "route": "/case-notes", "status": "coming_soon"},

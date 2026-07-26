@@ -122,6 +122,8 @@ export interface HorsemenPersonaResult {
   persona: HorsemenPersona;
   title: string;
   awakeningQuote: string;
+  assessmentStatus?: 'provisional' | 'final';
+  awakeningLocked?: boolean;
   stats: {
     spatialControl: number;
     mindReading: number;
@@ -135,6 +137,15 @@ export interface HorsemenPersonaResult {
   chcProfile: CHCProfile;
   clinicalProfile: ClinicalBiomarkerProfile;
   clinicalIDEOutput: string;
+  progress?: {
+    ingested: PropType[];
+    remaining: PropType[];
+    completionRatio: number;
+    uniquePropCount: number;
+    requiredForFinal: number;
+    assessmentStatus: 'provisional' | 'final';
+    awakeningLocked: boolean;
+  };
   /** MindNetwork3D Future Projection 브리지 (백엔드가 함께 반환) */
   integrated_diagnostic_model?: IntegratedDiagnosticModel;
   non_diagnostic?: true;
@@ -358,19 +369,37 @@ export class FullUnconsciousEngine {
     }
   }
 
-  public getProgress(): { ingested: PropType[]; remaining: PropType[]; completionRatio: number } {
+  public getProgress(): {
+    ingested: PropType[];
+    remaining: PropType[];
+    completionRatio: number;
+    uniquePropCount: number;
+    requiredForFinal: number;
+    assessmentStatus: 'provisional' | 'final';
+    awakeningLocked: boolean;
+    ingestCount?: number;
+  } {
     const ingested = PROP_TYPES.filter((p) => this.ingestedProps.has(p));
     const remaining = PROP_TYPES.filter((p) => !this.ingestedProps.has(p));
+    const uniquePropCount = ingested.length;
+    const requiredForFinal = 8;
+    const assessmentStatus = uniquePropCount >= requiredForFinal ? 'final' : 'provisional';
     return {
       ingested,
       remaining,
-      completionRatio: ingested.length / PROP_TYPES.length,
+      uniquePropCount,
+      requiredForFinal,
+      completionRatio: uniquePropCount / PROP_TYPES.length,
+      assessmentStatus,
+      awakeningLocked: assessmentStatus !== 'final',
     };
   }
 
   public finalizePersonaAssessment(): HorsemenPersonaResult {
     const { Gv, Gs, Gwm, Gc } = this.aggregateCHC;
     const cli = this.aggregateClinical;
+    const progress = this.getProgress();
+    const isFinal = !progress.awakeningLocked;
 
     let persona: HorsemenPersona = 'DANIEL_ATLAS';
     let title = '환영의 통제자 (Illusion Architect)';
@@ -394,11 +423,18 @@ export class FullUnconsciousEngine {
       awakeningQuote = '가장 깊은 압박 속에서도 스스로 빠져나올 열쇠를 찾아냅니다.';
     }
 
+    if (!isFinal) {
+      const remaining = progress.requiredForFinal - progress.uniquePropCount;
+      title = `잠정 · ${title}`;
+      awakeningQuote = `아직 ${Math.max(0, remaining)}개 소품이 더 필요합니다. 잠정 페르소나 후보: ${persona}. ${awakeningQuote}`;
+    }
+
     const clinicalIDEOutput = `
 [CLINICAL IDE :: STEALTH PARSING REPORT]
 ------------------------------------------------------------------
 TIMESTAMP           : ${new Date().toISOString()}
 SESSION TARGET      : USER_UNCONSCIOUS_VECTOR
+ASSESSMENT STATUS   : ${progress.assessmentStatus.toUpperCase()} (${progress.uniquePropCount}/${progress.requiredForFinal} props for final awakening)
 ASSIGNED PERSONA    : ${persona} (${title})
 ------------------------------------------------------------------
 [CHC INTELLIGENCE PROFILE]
@@ -417,12 +453,16 @@ ASSIGNED PERSONA    : ${persona} (${title})
 - Hypnotic Suggestibility         : ${cli.hypnoticSuggestibility.toFixed(2)} [PRIMING_BIAS]
 - Perceptual Reality Testing      : ${cli.perceptualDefusionIndex.toFixed(2)} [${cli.perceptualDefusionIndex > 70 ? 'HIGH_REALITY_TESTING' : 'SUSCEPTIBLE'}]
 - Interpersonal Synchrony Rate    : ${cli.interpersonalSynchrony.toFixed(2)} [COGNITIVE_SYNCHRONY]
+------------------------------------------------------------------
+[DISCLAIMER] non-diagnostic wellness proxy — 의료 진단 대체 아님.
 ------------------------------------------------------------------`;
 
     return {
       persona,
       title,
       awakeningQuote,
+      assessmentStatus: progress.assessmentStatus,
+      awakeningLocked: progress.awakeningLocked,
       stats: {
         spatialControl: Math.round(Gv),
         sleightSpeed: Math.round(Gs),
@@ -441,6 +481,7 @@ ASSIGNED PERSONA    : ${persona} (${title})
       },
       clinicalProfile: cli,
       clinicalIDEOutput,
+      progress,
       non_diagnostic: true
     };
   }

@@ -74,5 +74,9 @@ def build_platform_ip_map() -> Dict[str, Any]:
             {"feature": "Mood 5-axis gating", "inv": ["INV-10"]},
             {"feature": "Offline counsel/tarot", "inv": ["INV-11"]},
             {"feature": "Consumer vs B2B surfaces", "inv": ["INV-12"]},
+            {"feature": "Emotional spectrum / dual agent", "inv": ["INV-13"]},
+            {"feature": "3D mind-network blueprint", "inv": ["INV-14", "INV-16"]},
+            {"feature": "Age-cohort research export", "inv": ["INV-15"]},
+            {"feature": "11-prop stealth unconscious mapping", "inv": ["INV-17"]},
         ],
     }
