@@ -17,6 +17,7 @@ def product_surfaces() -> Dict[str, Any]:
         {"id": "clinical", "label_ko": "마음 돌보기", "route": "/clinical"},
         {"id": "psychometrics", "label_ko": "MBTI·탐색", "route": "/psychometrics"},
         {"id": "picture_assessment", "label_ko": "그림·이야기 표현", "route": "/picture-assessment"},
+        {"id": "stealth_props", "label_ko": "11종 소품 무의식 게임", "route": "/stealth-props"},
     ]
     license_routes: List[Dict[str, str]] = [
         {"id": "associations", "label_ko": "학회 라이선스", "route": "/associations"},
@@ -36,8 +37,8 @@ def product_surfaces() -> Dict[str, Any]:
         },
         {
             "id": "stealth_unconscious_engine",
-            "label_ko": "11종 소품 무의식 매핑",
-            "route": "/stealth-props",
+            "label_ko": "11종 소품 무의식 매핑 (기관 이력)",
+            "route": "/api/v1/orgs/{org_id}/stealth-unconscious/history",
             "gate": "stealth_unconscious_engine",
         },
         {"id": "case_notes", "label_ko": "케이스 노트 AI", "route": "/case-notes", "status": "coming_soon"},

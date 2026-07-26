@@ -17,6 +17,7 @@ def test_product_surfaces_api():
     routes = {r["route"] for r in consumer["routes"]}
     assert "/home" in routes
     assert "/picto" not in routes
+    assert "/stealth-props" in routes
     license = next(l for l in data["lines"] if l["id"] == "license")
     assert any(r["route"] == "/theories" for r in license["routes"])
     disability = next(l for l in data["lines"] if l["id"] == "disability")
@@ -31,6 +32,20 @@ def test_health_includes_product_lines():
     assert "학회 라이선스" in body["share_links"]
     assert "장애인용(보관)" in body["share_links"]
     assert "그림 마음" not in body["share_links"]
+    assert body["urls"].get("stealth_props") == "/stealth-props"
+    assert "소품 무의식 게임" in body["share_links"]
+
+
+def test_stealth_props_page_served():
+    res = client.get("/stealth-props")
+    assert res.status_code == 200
+    assert "stealth-unconscious/ingest" in res.text
+
+
+def test_home_has_stealth_game_entry():
+    res = client.get("/home")
+    assert res.status_code == 200
+    assert "/stealth-props" in res.text
 
 
 def test_theories_license_gate_without_key():
