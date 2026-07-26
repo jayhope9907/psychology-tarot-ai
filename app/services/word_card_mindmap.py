@@ -14,43 +14,125 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
-DECK_VERSION = "1.0"
-MAX_SELECTED_CARDS = 8
+DECK_VERSION = "2.0"
+MAX_SELECTED_CARDS = 10
 
 # awareness_bias: 0.0 = 깊은 곳(무의식 쪽), 1.0 = 스스로 잘 아는 마음(의식 쪽)
+# valence: -1 부정 / 0 중성 / 1 긍정 (웰니스 참고용, 비진단)
 WORD_CARD_DECK: List[Dict[str, Any]] = [
-    # 감정 (feelings)
+    # ── 감정 (feelings) — 기존 + 세분화 ──
     {"id": "joy", "label_ko": "기쁨", "category": "감정", "awareness_bias": 0.85, "valence": 1},
+    {"id": "relief", "label_ko": "안도", "category": "감정", "awareness_bias": 0.8, "valence": 1},
+    {"id": "hope", "label_ko": "희망", "category": "감정", "awareness_bias": 0.7, "valence": 1},
+    {"id": "gratitude_feel", "label_ko": "감사함", "category": "감정", "awareness_bias": 0.75, "valence": 1},
+    {"id": "pride", "label_ko": "뿌듯함", "category": "감정", "awareness_bias": 0.8, "valence": 1},
     {"id": "calm", "label_ko": "차분함", "category": "감정", "awareness_bias": 0.8, "valence": 1},
+    {"id": "warmth", "label_ko": "따뜻함", "category": "감정", "awareness_bias": 0.7, "valence": 1},
+    {"id": "curious", "label_ko": "호기심", "category": "감정", "awareness_bias": 0.75, "valence": 1},
     {"id": "anxious", "label_ko": "불안", "category": "감정", "awareness_bias": 0.6, "valence": -1},
+    {"id": "worry", "label_ko": "걱정", "category": "감정", "awareness_bias": 0.7, "valence": -1},
+    {"id": "fear", "label_ko": "두려움", "category": "감정", "awareness_bias": 0.45, "valence": -1},
+    {"id": "panic_feel", "label_ko": "초조함", "category": "감정", "awareness_bias": 0.55, "valence": -1},
     {"id": "sadness", "label_ko": "슬픔", "category": "감정", "awareness_bias": 0.55, "valence": -1},
+    {"id": "tearful", "label_ko": "울컥함", "category": "감정", "awareness_bias": 0.4, "valence": -1},
+    {"id": "lonely_feel", "label_ko": "쓸쓸함", "category": "감정", "awareness_bias": 0.4, "valence": -1},
     {"id": "anger", "label_ko": "화남", "category": "감정", "awareness_bias": 0.65, "valence": -1},
+    {"id": "irritation", "label_ko": "짜증", "category": "감정", "awareness_bias": 0.7, "valence": -1},
+    {"id": "resentment", "label_ko": "억울함", "category": "감정", "awareness_bias": 0.35, "valence": -1},
     {"id": "emptiness", "label_ko": "공허함", "category": "감정", "awareness_bias": 0.25, "valence": -1},
+    {"id": "numb_feel", "label_ko": "멍함", "category": "감정", "awareness_bias": 0.25, "valence": -1},
     {"id": "longing", "label_ko": "그리움", "category": "감정", "awareness_bias": 0.3, "valence": 0},
     {"id": "guilt", "label_ko": "미안함", "category": "감정", "awareness_bias": 0.35, "valence": -1},
-    # 몸·상태 (body / state)
+    {"id": "shame", "label_ko": "수치심", "category": "감정", "awareness_bias": 0.2, "valence": -1},
+    {"id": "envy", "label_ko": "부러움", "category": "감정", "awareness_bias": 0.35, "valence": -1},
+    {"id": "jealousy", "label_ko": "질투", "category": "감정", "awareness_bias": 0.25, "valence": -1},
+    {"id": "confusion", "label_ko": "혼란", "category": "감정", "awareness_bias": 0.5, "valence": -1},
+    {"id": "overwhelm", "label_ko": "벅참", "category": "감정", "awareness_bias": 0.45, "valence": -1},
+    {"id": "ambivalence", "label_ko": "양가감정", "category": "감정", "awareness_bias": 0.3, "valence": 0},
+    # ── 몸·상태 ──
     {"id": "tired", "label_ko": "지침", "category": "몸", "awareness_bias": 0.8, "valence": -1},
+    {"id": "exhausted", "label_ko": "탈진", "category": "몸", "awareness_bias": 0.7, "valence": -1},
     {"id": "tense", "label_ko": "긴장됨", "category": "몸", "awareness_bias": 0.6, "valence": -1},
+    {"id": "shoulder_tight", "label_ko": "어깨 뭉침", "category": "몸", "awareness_bias": 0.75, "valence": -1},
     {"id": "heavy_chest", "label_ko": "가슴 답답", "category": "몸", "awareness_bias": 0.45, "valence": -1},
+    {"id": "heart_race", "label_ko": "심장 두근거림", "category": "몸", "awareness_bias": 0.55, "valence": -1},
+    {"id": "stomach_knot", "label_ko": "속이 불편", "category": "몸", "awareness_bias": 0.5, "valence": -1},
+    {"id": "headache", "label_ko": "두통", "category": "몸", "awareness_bias": 0.75, "valence": -1},
     {"id": "sleepless", "label_ko": "잠 설침", "category": "몸", "awareness_bias": 0.7, "valence": -1},
+    {"id": "oversleep", "label_ko": "너무 잠", "category": "몸", "awareness_bias": 0.65, "valence": -1},
+    {"id": "appetite_down", "label_ko": "입맛 없음", "category": "몸", "awareness_bias": 0.7, "valence": -1},
     {"id": "numb", "label_ko": "무감각", "category": "몸", "awareness_bias": 0.2, "valence": -1},
     {"id": "light_body", "label_ko": "몸 가벼움", "category": "몸", "awareness_bias": 0.8, "valence": 1},
-    # 관계 (relations)
+    {"id": "energized", "label_ko": "활력", "category": "몸", "awareness_bias": 0.85, "valence": 1},
+    {"id": "rested", "label_ko": "개운함", "category": "몸", "awareness_bias": 0.85, "valence": 1},
+    {"id": "breath_shallow", "label_ko": "숨이 얕음", "category": "몸", "awareness_bias": 0.4, "valence": -1},
+    # ── 관계 ──
     {"id": "lonely", "label_ko": "외로움", "category": "관계", "awareness_bias": 0.4, "valence": -1},
     {"id": "pressure", "label_ko": "눈치 보임", "category": "관계", "awareness_bias": 0.45, "valence": -1},
+    {"id": "people_pleasing", "label_ko": "맞춰주는 나", "category": "관계", "awareness_bias": 0.3, "valence": -1},
     {"id": "grateful", "label_ko": "고마움", "category": "관계", "awareness_bias": 0.75, "valence": 1},
+    {"id": "connected", "label_ko": "연결감", "category": "관계", "awareness_bias": 0.7, "valence": 1},
     {"id": "distant", "label_ko": "멀어진 느낌", "category": "관계", "awareness_bias": 0.3, "valence": -1},
+    {"id": "rejected", "label_ko": "거절당한 느낌", "category": "관계", "awareness_bias": 0.35, "valence": -1},
+    {"id": "abandoned", "label_ko": "버려진 느낌", "category": "관계", "awareness_bias": 0.2, "valence": -1},
     {"id": "mask", "label_ko": "괜찮은 척", "category": "관계", "awareness_bias": 0.2, "valence": -1},
     {"id": "wanted_talk", "label_ko": "말하고 싶음", "category": "관계", "awareness_bias": 0.55, "valence": 0},
-    # 바람 (wishes)
+    {"id": "avoid_talk", "label_ko": "말하기 싫음", "category": "관계", "awareness_bias": 0.45, "valence": -1},
+    {"id": "conflict", "label_ko": "갈등", "category": "관계", "awareness_bias": 0.6, "valence": -1},
+    {"id": "misunderstood", "label_ko": "오해받음", "category": "관계", "awareness_bias": 0.5, "valence": -1},
+    {"id": "supported", "label_ko": "지지받음", "category": "관계", "awareness_bias": 0.75, "valence": 1},
+    {"id": "compared", "label_ko": "비교당함", "category": "관계", "awareness_bias": 0.4, "valence": -1},
+    {"id": "boundary_need", "label_ko": "선 긋고 싶음", "category": "관계", "awareness_bias": 0.55, "valence": 0},
+    # ── 생각·인지 ──
+    {"id": "rumination", "label_ko": "되뇌임", "category": "생각", "awareness_bias": 0.45, "valence": -1},
+    {"id": "overthink", "label_ko": "과한 생각", "category": "생각", "awareness_bias": 0.55, "valence": -1},
+    {"id": "self_blame", "label_ko": "자책", "category": "생각", "awareness_bias": 0.35, "valence": -1},
+    {"id": "catastrophize", "label_ko": "최악의 상상", "category": "생각", "awareness_bias": 0.4, "valence": -1},
+    {"id": "perfection", "label_ko": "완벽해야 함", "category": "생각", "awareness_bias": 0.35, "valence": -1},
+    {"id": "should", "label_ko": "해야 한다는 압박", "category": "생각", "awareness_bias": 0.5, "valence": -1},
+    {"id": "doubt_self", "label_ko": "자신 의심", "category": "생각", "awareness_bias": 0.4, "valence": -1},
+    {"id": "clarity", "label_ko": "정리됨", "category": "생각", "awareness_bias": 0.8, "valence": 1},
+    {"id": "insight", "label_ko": "깨달음", "category": "생각", "awareness_bias": 0.65, "valence": 1},
+    {"id": "blank_mind", "label_ko": "머리가 빔", "category": "생각", "awareness_bias": 0.35, "valence": -1},
+    {"id": "focus_hard", "label_ko": "집중 안 됨", "category": "생각", "awareness_bias": 0.7, "valence": -1},
+    {"id": "decision_stuck", "label_ko": "결정 못함", "category": "생각", "awareness_bias": 0.55, "valence": -1},
+    # ── 상황·역할 ──
+    {"id": "work_load", "label_ko": "일 과부하", "category": "상황", "awareness_bias": 0.75, "valence": -1},
+    {"id": "study_pressure", "label_ko": "공부 압박", "category": "상황", "awareness_bias": 0.75, "valence": -1},
+    {"id": "money_worry", "label_ko": "돈 걱정", "category": "상황", "awareness_bias": 0.7, "valence": -1},
+    {"id": "family_tension", "label_ko": "가족 긴장", "category": "상황", "awareness_bias": 0.5, "valence": -1},
+    {"id": "school_stress", "label_ko": "학교 스트레스", "category": "상황", "awareness_bias": 0.7, "valence": -1},
+    {"id": "deadline", "label_ko": "마감 압박", "category": "상황", "awareness_bias": 0.8, "valence": -1},
+    {"id": "role_parent", "label_ko": "부모 역할", "category": "상황", "awareness_bias": 0.65, "valence": 0},
+    {"id": "role_child", "label_ko": "자녀 자리", "category": "상황", "awareness_bias": 0.45, "valence": 0},
+    {"id": "role_partner", "label_ko": "연인/배우자", "category": "상황", "awareness_bias": 0.55, "valence": 0},
+    {"id": "role_coworker", "label_ko": "직장 사람", "category": "상황", "awareness_bias": 0.7, "valence": 0},
+    {"id": "change", "label_ko": "변화 중", "category": "상황", "awareness_bias": 0.55, "valence": 0},
+    {"id": "loss", "label_ko": "상실", "category": "상황", "awareness_bias": 0.35, "valence": -1},
+    {"id": "success", "label_ko": "성취", "category": "상황", "awareness_bias": 0.8, "valence": 1},
+    {"id": "failure_feel", "label_ko": "실패감", "category": "상황", "awareness_bias": 0.45, "valence": -1},
+    # ── 바람·욕구 ──
     {"id": "rest", "label_ko": "쉬고 싶음", "category": "바람", "awareness_bias": 0.75, "valence": 0},
     {"id": "escape", "label_ko": "떠나고 싶음", "category": "바람", "awareness_bias": 0.35, "valence": 0},
     {"id": "recognition", "label_ko": "인정받고 싶음", "category": "바람", "awareness_bias": 0.3, "valence": 0},
     {"id": "hug", "label_ko": "위로받고 싶음", "category": "바람", "awareness_bias": 0.4, "valence": 0},
+    {"id": "be_alone", "label_ko": "혼자 있고 싶음", "category": "바람", "awareness_bias": 0.55, "valence": 0},
+    {"id": "be_with", "label_ko": "함께 있고 싶음", "category": "바람", "awareness_bias": 0.55, "valence": 0},
+    {"id": "understood", "label_ko": "이해받고 싶음", "category": "바람", "awareness_bias": 0.4, "valence": 0},
+    {"id": "safe", "label_ko": "안전하고 싶음", "category": "바람", "awareness_bias": 0.35, "valence": 0},
+    {"id": "control", "label_ko": "통제하고 싶음", "category": "바람", "awareness_bias": 0.3, "valence": 0},
+    {"id": "let_go", "label_ko": "놓고 싶음", "category": "바람", "awareness_bias": 0.4, "valence": 0},
+    {"id": "grow", "label_ko": "성장하고 싶음", "category": "바람", "awareness_bias": 0.7, "valence": 1},
+    {"id": "play", "label_ko": "놀고 싶음", "category": "바람", "awareness_bias": 0.75, "valence": 1},
+    {"id": "create", "label_ko": "만들고 싶음", "category": "바람", "awareness_bias": 0.7, "valence": 1},
+    {"id": "forgive", "label_ko": "용서하고 싶음", "category": "바람", "awareness_bias": 0.35, "valence": 0},
+    {"id": "start_over", "label_ko": "다시 시작하고 싶음", "category": "바람", "awareness_bias": 0.45, "valence": 0},
 ]
 
 _DECK_BY_ID: Dict[str, Dict[str, Any]] = {card["id"]: card for card in WORD_CARD_DECK}
 _DECK_BY_LABEL: Dict[str, Dict[str, Any]] = {card["label_ko"]: card for card in WORD_CARD_DECK}
+
+CATEGORY_ORDER = ("감정", "몸", "관계", "생각", "상황", "바람")
 
 CONSCIOUS_THRESHOLD = 0.6
 UNCONSCIOUS_THRESHOLD = 0.4
@@ -67,15 +149,28 @@ def get_word_card_deck() -> Dict[str, Any]:
     categories: Dict[str, List[Dict[str, Any]]] = {}
     for card in WORD_CARD_DECK:
         categories.setdefault(card["category"], []).append(
-            {"id": card["id"], "label_ko": card["label_ko"], "category": card["category"]}
+            {
+                "id": card["id"],
+                "label_ko": card["label_ko"],
+                "category": card["category"],
+                "valence": card.get("valence", 0),
+            }
         )
+    ordered = []
+    for cat in CATEGORY_ORDER:
+        if cat in categories:
+            ordered.append({"category": cat, "cards": categories.pop(cat)})
+    for cat, cards in categories.items():
+        ordered.append({"category": cat, "cards": cards})
     return {
         "deckVersion": DECK_VERSION,
         "maxSelect": MAX_SELECTED_CARDS,
-        "categories": [
-            {"category": cat, "cards": cards} for cat, cards in categories.items()
-        ],
-        "guide_ko": "마음에 와닿는 낱말을 편하게 골라 주세요. 정답은 없어요.",
+        "totalCards": len(WORD_CARD_DECK),
+        "categories": ordered,
+        "guide_ko": (
+            "마음에 와닿는 낱말을 편하게 골라 주세요. "
+            f"감정·몸·관계·생각·상황·바람 {len(WORD_CARD_DECK)}장 · 최대 {MAX_SELECTED_CARDS}개. 정답은 없어요."
+        ),
         "non_diagnostic": True,
     }
 

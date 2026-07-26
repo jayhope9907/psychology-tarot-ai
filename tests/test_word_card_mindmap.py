@@ -14,9 +14,31 @@ def test_deck_payload_shape():
     deck = get_word_card_deck()
     assert deck["maxSelect"] == MAX_SELECTED_CARDS
     assert deck["non_diagnostic"] is True
+    assert deck["deckVersion"] == "2.0"
+    assert deck["totalCards"] >= 90
     all_cards = [c for cat in deck["categories"] for c in cat["cards"]]
-    assert len(all_cards) >= 20
+    assert len(all_cards) == deck["totalCards"]
     assert all("id" in c and "label_ko" in c for c in all_cards)
+    cats = [c["category"] for c in deck["categories"]]
+    assert cats == ["감정", "몸", "관계", "생각", "상황", "바람"]
+    # legacy cards still present for backward compatibility
+    ids = {c["id"] for c in all_cards}
+    for legacy in ("joy", "emptiness", "mask", "rest", "heavy_chest"):
+        assert legacy in ids
+    # refined examples
+    for refined in ("shame", "rumination", "work_load", "understood", "heart_race"):
+        assert refined in ids
+
+
+def test_chat_word_card_ui_has_search_tabs():
+    from pathlib import Path
+
+    html = (Path(__file__).resolve().parents[1] / "static" / "chat.html").read_text(encoding="utf-8")
+    assert 'id="wcSearch"' in html
+    assert 'id="wcTabs"' in html
+    assert "applyFilter" in html
+    assert "activeCategory" in html
+
 
 
 def test_sanitize_allowlist_drops_free_text():
