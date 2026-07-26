@@ -7,6 +7,7 @@ DEFAULT_SPREAD = "five_card"
 THREE_CARD_COUNT = 3
 FIVE_CARD_COUNT = 5
 SEVEN_CARD_COUNT = 7
+CELTIC_CROSS_COUNT = 10
 REVERSE_CHANCE = 0.5
 
 THREE_CARD_POSITIONS: List[Dict[str, str]] = [
@@ -108,6 +109,70 @@ SEVEN_CARD_POSITIONS: List[Dict[str, str]] = [
     },
 ]
 
+# Classic Rider–Waite Celtic Cross (10) — A.E. Waite tradition
+CELTIC_CROSS_POSITIONS: List[Dict[str, str]] = [
+    {
+        "id": "present",
+        "label_ko": "1 현재",
+        "guide_ko": "지금 상황의 중심·현재의 나",
+        "ask_ko": "지금 나는 어디에 서 있나요?",
+    },
+    {
+        "id": "challenge",
+        "label_ko": "2 교차·도전",
+        "guide_ko": "가로지르는 도전·긴장·기회",
+        "ask_ko": "무엇이 가로막고 있나요?",
+    },
+    {
+        "id": "foundation",
+        "label_ko": "3 기반",
+        "guide_ko": "뿌리·무의식·상황을 받치는 바탕",
+        "ask_ko": "맨 아래에는 무엇이 있나요?",
+    },
+    {
+        "id": "recent_past",
+        "label_ko": "4 가까운 과거",
+        "guide_ko": "바로 직전·아직 영향이 남은 흐름",
+        "ask_ko": "방금 지나온 것은?",
+    },
+    {
+        "id": "crown",
+        "label_ko": "5 가능·목표",
+        "guide_ko": "의식적 목표·최선의 가능성 (예언 아님)",
+        "ask_ko": "무엇을 향해 열려 있나요?",
+    },
+    {
+        "id": "near_future",
+        "label_ko": "6 가까운 미래",
+        "guide_ko": "곧 다가올 수 있는 흐름·가능성",
+        "ask_ko": "곧 어떤 결이 다가올까요?",
+    },
+    {
+        "id": "self",
+        "label_ko": "7 나",
+        "guide_ko": "지금 나의 태도·자기상",
+        "ask_ko": "나는 어떤 자세로 있나요?",
+    },
+    {
+        "id": "environment",
+        "label_ko": "8 환경",
+        "guide_ko": "주변 사람·장소·상황의 영향",
+        "ask_ko": "주변은 어떻게 작용하나요?",
+    },
+    {
+        "id": "hopes_fears",
+        "label_ko": "9 희망·두려움",
+        "guide_ko": "바라는 것과 걱정이 겹치는 자리",
+        "ask_ko": "무엇을 바라고 두려워하나요?",
+    },
+    {
+        "id": "outcome",
+        "label_ko": "10 결과·방향",
+        "guide_ko": "열어둘 결과의 방향 — 확정 예언 금지",
+        "ask_ko": "어떤 방향을 열어둘까요?",
+    },
+]
+
 SPREAD_DEFS: Dict[str, Dict[str, Any]] = {
     "three_card": {
         "label_ko": "3카드 · 과거·현재·미래",
@@ -124,12 +189,20 @@ SPREAD_DEFS: Dict[str, Dict[str, Any]] = {
         "count": SEVEN_CARD_COUNT,
         "positions": SEVEN_CARD_POSITIONS,
     },
+    "celtic_cross": {
+        "label_ko": "10카드 · 켈틱 크로스 (클래식)",
+        "count": CELTIC_CROSS_COUNT,
+        "positions": CELTIC_CROSS_POSITIONS,
+    },
 }
 
 ALLOWED_SPREADS = tuple(SPREAD_DEFS.keys())
 
 _ALL_POSITIONS: List[Dict[str, str]] = (
-    THREE_CARD_POSITIONS + FIVE_CARD_POSITIONS + SEVEN_CARD_POSITIONS
+    THREE_CARD_POSITIONS
+    + FIVE_CARD_POSITIONS
+    + SEVEN_CARD_POSITIONS
+    + CELTIC_CROSS_POSITIONS
 )
 _POSITION_BY_LABEL: Dict[str, Dict[str, str]] = {
     pos["label_ko"]: pos for pos in _ALL_POSITIONS
@@ -202,7 +275,7 @@ ARCANA_RULES = {
 }
 
 PRACTICE_RULES_KO = [
-    "스프레드는 3·5·7장 중 고릅니다. 각 카드는 자기 위치로만 읽습니다.",
+    "스프레드는 3·5·7·10장(켈틱 크로스) 중 고릅니다. 각 카드는 자기 위치로만 읽습니다.",
     "덱은 78장(메이저 22 + 마이너 56)이며, 중복 없이 뽑습니다.",
     "섞은 뒤 뒷면만 보고 직감으로 고릅니다. 앞면을 보고 고르지 않습니다.",
     "정방향/역방향은 카드마다 독립적으로 공정하게 결정됩니다.",
@@ -228,6 +301,8 @@ def normalize_spread(
             key = "seven_card"
         elif count == FIVE_CARD_COUNT:
             key = "five_card"
+        elif count == CELTIC_CROSS_COUNT:
+            key = "celtic_cross"
         else:
             key = DEFAULT_SPREAD
     return key, int(SPREAD_DEFS[key]["count"])

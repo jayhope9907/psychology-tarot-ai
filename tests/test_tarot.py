@@ -64,6 +64,7 @@ def test_list_deck_catalog_endpoint():
     assert "three_card" in payload["spreads"]
     assert "five_card" in payload["spreads"]
     assert "seven_card" in payload["spreads"]
+    assert "celtic_cross" in payload["spreads"]
     assert payload["cards"][0]["image_url"].startswith("/api/v1/tarot/card-image/")
     assert "upright_ko" in payload["cards"][0]
     assert payload.get("ui", {}).get("show_hover_hints") is True
@@ -122,6 +123,23 @@ def test_pick_endpoint_seven_card():
     assert len(response.json()["cards"]) == 7
 
 
+def test_pick_endpoint_celtic_cross():
+    ids = [
+        "fool", "magician", "high_priestess", "empress", "emperor",
+        "hierophant", "lovers", "chariot", "strength", "hermit",
+    ]
+    response = client.post(
+        "/api/v1/tarot/pick",
+        json={"spread": "celtic_cross", "card_ids": ids},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["cards"]) == 10
+    assert payload["spread"] == "celtic_cross"
+    assert payload["positions"][0] == "1 현재"
+    assert payload["positions"][-1] == "10 결과·방향"
+
+
 def test_pick_endpoint_user_selected_cards():
     response = client.post(
         "/api/v1/tarot/pick",
@@ -168,7 +186,9 @@ def test_tarot_ui_offers_multi_spreads():
     assert "5카드" in response.text
     assert "7카드" in response.text
     assert "3카드" in response.text
+    assert "켈틱" in response.text or "10카드" in response.text
     assert 'data-count="5"' in response.text
+    assert 'data-count="10"' in response.text
 
 
 def test_draw_three_cards_with_positions():
