@@ -892,27 +892,94 @@
 
     _spreadSlots(count) {
       const y = TABLE_TOP_Y + CARD_DEPTH / 2 + 0.02;
-      if (count <= 1) return [{ x: 0, y, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: 0 }];
+      const z = TABLE_CENTER_Z;
+      const faceDown = this._faceDownRx();
+      if (count <= 1) return [{ x: 0, y, z, ry: 0, rx: faceDown, rz: 0 }];
       if (count === 2) {
         return [
-          { x: -0.55, y, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: 0.04 },
-          { x: 0.55, y, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: -0.04 },
+          { x: -0.55, y, z, ry: 0, rx: faceDown, rz: 0.04 },
+          { x: 0.55, y, z, ry: 0, rx: faceDown, rz: -0.04 },
         ];
       }
-      return [
-        { x: -0.78, y, z: TABLE_CENTER_Z + 0.08, ry: 0, rx: this._faceDownRx(), rz: 0.06 },
-        { x: 0, y, z: TABLE_CENTER_Z - 0.05, ry: 0, rx: this._faceDownRx(), rz: 0 },
-        { x: 0.78, y, z: TABLE_CENTER_Z + 0.08, ry: 0, rx: this._faceDownRx(), rz: -0.06 },
-      ];
+      if (count === 3) {
+        return [
+          { x: -0.78, y, z: z + 0.08, ry: 0, rx: faceDown, rz: 0.06 },
+          { x: 0, y, z: z - 0.05, ry: 0, rx: faceDown, rz: 0 },
+          { x: 0.78, y, z: z + 0.08, ry: 0, rx: faceDown, rz: -0.06 },
+        ];
+      }
+      if (count === 5) {
+        return [
+          { x: -1.05, y, z: z + 0.12, ry: 0, rx: faceDown, rz: 0.08 },
+          { x: -0.52, y, z: z + 0.02, ry: 0, rx: faceDown, rz: 0.03 },
+          { x: 0, y, z: z - 0.06, ry: 0, rx: faceDown, rz: 0 },
+          { x: 0.52, y, z: z + 0.02, ry: 0, rx: faceDown, rz: -0.03 },
+          { x: 1.05, y, z: z + 0.12, ry: 0, rx: faceDown, rz: -0.08 },
+        ];
+      }
+      if (count === 7) {
+        return [
+          { x: -1.15, y, z: z + 0.18, ry: 0, rx: faceDown, rz: 0.1 },
+          { x: -0.76, y, z: z + 0.06, ry: 0, rx: faceDown, rz: 0.06 },
+          { x: -0.38, y, z: z - 0.02, ry: 0, rx: faceDown, rz: 0.02 },
+          { x: 0, y, z: z - 0.08, ry: 0, rx: faceDown, rz: 0 },
+          { x: 0.38, y, z: z - 0.02, ry: 0, rx: faceDown, rz: -0.02 },
+          { x: 0.76, y, z: z + 0.06, ry: 0, rx: faceDown, rz: -0.06 },
+          { x: 1.15, y, z: z + 0.18, ry: 0, rx: faceDown, rz: -0.1 },
+        ];
+      }
+      // Celtic Cross-ish layout (10): cross + staff
+      if (count >= 10) {
+        return [
+          { x: 0, y, z: z + 0.05, ry: 0, rx: faceDown, rz: 0 }, // 1 present
+          { x: 0, y: y + 0.01, z: z + 0.05, ry: 0, rx: faceDown, rz: Math.PI / 2 }, // 2 cross
+          { x: 0, y, z: z + 0.72, ry: 0, rx: faceDown, rz: 0 }, // 3 foundation
+          { x: -0.72, y, z: z + 0.05, ry: 0, rx: faceDown, rz: 0.04 }, // 4 past
+          { x: 0, y, z: z - 0.62, ry: 0, rx: faceDown, rz: 0 }, // 5 crown
+          { x: 0.72, y, z: z + 0.05, ry: 0, rx: faceDown, rz: -0.04 }, // 6 near future
+          { x: 1.35, y, z: z + 0.85, ry: 0, rx: faceDown, rz: -0.02 }, // 7 self
+          { x: 1.35, y, z: z + 0.42, ry: 0, rx: faceDown, rz: -0.02 }, // 8 env
+          { x: 1.35, y, z: z - 0.02, ry: 0, rx: faceDown, rz: -0.02 }, // 9 hopes
+          { x: 1.35, y, z: z - 0.46, ry: 0, rx: faceDown, rz: -0.02 }, // 10 outcome
+        ].slice(0, count);
+      }
+      // Generic arc for other counts
+      const slots = [];
+      const span = Math.min(2.4, 0.42 * (count - 1));
+      for (let i = 0; i < count; i += 1) {
+        const t = count === 1 ? 0.5 : i / (count - 1);
+        const x = -span / 2 + span * t;
+        const zOff = Math.abs(t - 0.5) * 0.28;
+        slots.push({
+          x,
+          y,
+          z: z + zOff,
+          ry: 0,
+          rx: faceDown,
+          rz: (0.5 - t) * 0.16,
+        });
+      }
+      return slots;
     }
 
     _drawHoldPose(pickIndex) {
-      const slots = [
-        { x: 0, y: TABLE_TOP_Y + 0.08, z: TABLE_CENTER_Z, ry: 0, rx: this._faceDownRx(), rz: 0 },
-        { x: -0.42, y: TABLE_TOP_Y + 0.08, z: TABLE_CENTER_Z + 0.12, ry: 0, rx: this._faceDownRx(), rz: 0.05 },
-        { x: 0.42, y: TABLE_TOP_Y + 0.08, z: TABLE_CENTER_Z + 0.12, ry: 0, rx: this._faceDownRx(), rz: -0.05 },
-      ];
-      return slots[pickIndex] || slots[0];
+      const faceDown = this._faceDownRx();
+      const y = TABLE_TOP_Y + 0.08;
+      const z = TABLE_CENTER_Z;
+      // Fan of up to 10 hold poses while picking
+      const maxFan = 10;
+      const i = Math.min(pickIndex, maxFan - 1);
+      const t = maxFan === 1 ? 0.5 : i / (maxFan - 1);
+      const span = 1.8;
+      const x = -span / 2 + span * t;
+      return {
+        x,
+        y,
+        z: z + 0.08 + Math.abs(t - 0.5) * 0.1,
+        ry: 0,
+        rx: faceDown,
+        rz: (0.5 - t) * 0.12,
+      };
     }
 
     startPickMode(maxPicks) {
@@ -1120,7 +1187,15 @@
 
       const anims = this.selectedMeshes.map((mesh, i) => {
         mesh.userData.drawPose = null;
-        mesh.userData.slot = slots[i];
+        const slot = slots[i] || slots[slots.length - 1] || {
+          x: 0,
+          y: TABLE_TOP_Y + CARD_DEPTH / 2 + 0.02,
+          z: TABLE_CENTER_Z,
+          ry: 0,
+          rx: this._faceDownRx(),
+          rz: 0,
+        };
+        mesh.userData.slot = slot;
         mesh.userData.index = i;
         mesh.userData.card = this.drawnCards[i] || mesh.userData.card;
         mesh.userData.dimmed = false;
@@ -1130,7 +1205,6 @@
         });
         mesh.scale.set(1, 1, 1);
         this._applyFrontTexture(mesh, mesh.userData.card);
-        const slot = slots[i];
         return this._animateMeshTo(mesh, {
           x: slot.x,
           y: slot.y + 0.03,
