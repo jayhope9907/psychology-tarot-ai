@@ -12,12 +12,17 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.tarot_rules import (
     DEFAULT_SPREAD,
+    FIVE_CARD_COUNT,
     REVERSE_CHANCE,
+    SPREAD_DEFS,
     THREE_CARD_COUNT,
     THREE_CARD_POSITIONS,
     enrich_card_rules,
     narrative_rules_block,
+    normalize_spread,
+    normalize_three_card_spread,
     position_summary_lines,
+    positions_for_spread,
     rules_manifest,
 )
 
@@ -278,20 +283,33 @@ def list_deck_catalog() -> Dict[str, Any]:
     }
 
 
-def normalize_three_card_spread(spread: Optional[str] = None, count: Optional[int] = None) -> tuple[str, int]:
-    """Consumer tarot is locked to the classic 3-card spread."""
-    return DEFAULT_SPREAD, THREE_CARD_COUNT
-
-
 def _is_reversed(rng: random.Random | None = None) -> bool:
     if rng is None:
         return random.random() < REVERSE_CHANCE
     return rng.random() < REVERSE_CHANCE
 
 
+def _spread_meta(spread: str) -> Dict[str, Any]:
+    key, _ = normalize_spread(spread)
+    deck_spreads = _load_deck().get("spreads") or {}
+    if key in deck_spreads:
+        meta = dict(deck_spreads[key])
+        meta.setdefault("label_ko", SPREAD_DEFS[key]["label_ko"])
+        meta["positions"] = [
+            p["label_ko"] if isinstance(p, dict) else p
+            for p in (meta.get("positions") or [p["label_ko"] for p in SPREAD_DEFS[key]["positions"]])
+        ]
+        return meta
+    defs = SPREAD_DEFS[key]
+    return {
+        "label_ko": defs["label_ko"],
+        "positions": [p["label_ko"] for p in defs["positions"]],
+    }
+
+
 def _finalize_draw(spread: str, spread_meta: Dict[str, Any], drawn: List[Dict[str, Any]]) -> Dict[str, Any]:
     cards = [enrich_card_rules(card) for card in drawn]
-    manifest = rules_manifest()
+    manifest = rules_manifest(spread)
     return {
         "spread": spread,
         "spread_label_ko": spread_meta["label_ko"],
@@ -307,8 +325,8 @@ def build_draw_from_picks(
     spread: str = DEFAULT_SPREAD,
     reversed_flags: Optional[List[bool]] = None,
 ) -> Dict[str, Any]:
-    spread, _ = normalize_three_card_spread(spread, len(card_ids))
-    spread_meta = _load_deck()["spreads"].get(spread) or _load_deck()["spreads"][DEFAULT_SPREAD]
+    spread, draw_count = normalize_spread(spread, len(card_ids))
+    spread_meta = _spread_meta(spread)
     positions = spread_meta["positions"]
     drawn: List[Dict[str, Any]] = []
 
@@ -321,7 +339,7 @@ def build_draw_from_picks(
         seen.add(card_id)
         ordered_ids.append(card_id)
 
-    for index, card_id in enumerate(ordered_ids[:THREE_CARD_COUNT]):
+    for index, card_id in enumerate(ordered_ids[:draw_count]):
         card = get_card_by_id(card_id)
         if not card:
             continue
@@ -356,13 +374,13 @@ def build_draw_from_picks(
 
 
 def draw_cards(
-    count: int = THREE_CARD_COUNT,
+    count: int = FIVE_CARD_COUNT,
     spread: str = DEFAULT_SPREAD,
     seed: Optional[int] = None,
 ) -> Dict[str, Any]:
     deck = get_full_deck()
-    spread, draw_count = normalize_three_card_spread(spread, count)
-    spread_meta = _load_deck()["spreads"].get(spread) or _load_deck()["spreads"][DEFAULT_SPREAD]
+    spread, draw_count = normalize_spread(spread, count)
+    spread_meta = _spread_meta(spread)
     positions = spread_meta["positions"]
     draw_count = min(draw_count, len(deck), len(positions))
 
@@ -424,22 +442,28 @@ def build_local_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[st
         if card.get("psychology_theme"):
             themes.append(card["psychology_theme"])
 
+    spread_key = draw_result.get("spread") or DEFAULT_SPREAD
+    spread_key, spread_count = normalize_spread(spread_key, len(cards))
+    spread_label = (draw_result.get("spread_label_ko")
+                    or SPREAD_DEFS.get(spread_key, {}).get("label_ko", f"{spread_count}카드"))
+    pos_defs = positions_for_spread(spread_key)
+
     summary_parts = [
-        "클래식 3카드(과거·현재·미래) · 78장 · 정/역 공정 · 위치·수트·아르카나 규칙으로 읽어요.",
+        f"{spread_label} · 78장 · 정/역 공정 · 위치·수트·아르카나 규칙으로 읽어요.",
     ]
     if user_story.strip():
         summary_parts.append("적어 주신 상황을 바탕으로, 부담 없이 읽을 수 있게 정리했어요.")
     summary_parts.extend(position_summary_lines(cards))
 
     cbt_actions = [
-        "과거·뿌리 카드가 건드린 배경을 한 줄로 적어 보세요.",
-        "현재·핵심에서 오늘 할 수 있는 작은 행동 하나만 정해 보세요.",
-        "미래·방향은 확정이 아니라 가능성 — 부담 없는 다음 한 걸음만 열어 두세요.",
+        f"{pos_defs[0]['label_ko']} 카드가 건드린 장면을 한 줄로 적어 보세요." if pos_defs else "떠오른 장면을 한 줄로 적어 보세요.",
+        f"{pos_defs[min(1, len(pos_defs)-1)]['label_ko']}에서 오늘 할 수 있는 작은 행동 하나만 정해 보세요." if pos_defs else "오늘 할 수 있는 작은 행동 하나만 정해 보세요.",
+        "흐름·방향은 확정이 아니라 가능성 — 부담 없는 다음 한 걸음만 열어 두세요.",
     ]
     if "직장" in user_story or "회사" in user_story:
         cbt_actions[1] = "직장에서 통제 가능한 작은 한 가지를 정해 실천해 보세요."
 
-    primary = cards[1] if len(cards) > 1 else (cards[0] if cards else {})
+    primary = cards[min(1, len(cards) - 1)] if cards else {}
 
     return {
         "summary": " ".join(summary_parts),
@@ -447,17 +471,20 @@ def build_local_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[st
         "psychology_themes": themes,
         "cbt_actions": cbt_actions,
         "primary_card": primary.get("name_en", "The Fool"),
-        "reading_tone": "three_card_classic",
-        "spread_rules_ko": [f"{p['label_ko']}: {p['guide_ko']}" for p in THREE_CARD_POSITIONS],
-        "practice_rules_ko": rules_manifest()["practice_ko"],
+        "reading_tone": f"{spread_key}_classic",
+        "spread_rules_ko": [f"{p['label_ko']}: {p['guide_ko']}" for p in pos_defs],
+        "practice_rules_ko": rules_manifest(spread_key)["practice_ko"],
     }
 
 
 def format_draw_for_prompt(draw_result: Dict[str, Any]) -> str:
+    spread_key = draw_result.get("spread") or DEFAULT_SPREAD
+    spread_key, spread_count = normalize_spread(spread_key)
+    spread_label = draw_result.get("spread_label_ko") or SPREAD_DEFS[spread_key]["label_ko"]
     lines: List[str] = [
-        narrative_rules_block(),
+        narrative_rules_block(spread_key),
         "",
-        "스프레드: 3카드 (과거·뿌리 → 현재·핵심 → 미래·방향)",
+        f"스프레드: {spread_label} ({spread_count}장)",
     ]
     for card in draw_result.get("cards") or []:
         enriched = enrich_card_rules(card)

@@ -369,9 +369,11 @@
           <textarea id="userStory" placeholder="예: 요즘 직장이 막막해요. 지금 제 마음이 어떤 쪽인지 가볍게 보고 싶어요."></textarea>
           <label>스프레드</label>
           <div class="spread-options">
-            <button type="button" class="spread-btn active" data-spread="three_card" data-count="3" disabled>3카드 · 과거 · 현재 · 미래</button>
+            <button type="button" class="spread-btn" data-spread="three_card" data-count="3">3카드 · 과거·현재·미래</button>
+            <button type="button" class="spread-btn active" data-spread="five_card" data-count="5">5카드 · 상황·도전·숨은 마음·조언·흐름</button>
+            <button type="button" class="spread-btn" data-spread="seven_card" data-count="7">7카드 · 깊은 성찰</button>
           </div>
-          <p class="step-desc" style="margin-top:4px;font-size:0.78rem">클래식 규칙: 정확히 3장 · 정/역방향 공정 · 위치별 의미로 읽어요.</p>
+          <p class="step-desc" style="margin-top:4px;font-size:0.78rem">기본 5장 · 정/역방향 공정 · 위치별 의미로 읽어요. 더 깊게 보고 싶으면 7장도 가능해요.</p>
           <label>덱 범위</label>
           <div class="deck-toggle" id="deckToggle">
             <button type="button" data-deck="major" class="active">메이저만 · 22장</button>
@@ -516,8 +518,8 @@
     let deckMode = localStorage.getItem("psychology_ai_tarot_deck_mode") || "major";
     let currentDraw = null;
     let currentReading = null;
-    let selectedSpread = "three_card";
-    let selectedCount = 3;
+    let selectedSpread = "five_card";
+    let selectedCount = 5;
     let deckReady = false;
     let use3d = true;
     let pickFinalizing = false;
@@ -643,10 +645,12 @@
     syncDeckToggleUI();
 
     document.querySelectorAll(".spread-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        selectedSpread = "three_card";
-        selectedCount = 3;
+      btn.addEventListener("click", () => {
+        selectedSpread = btn.dataset.spread || "five_card";
+        selectedCount = Number(btn.dataset.count) || 5;
+        document.querySelectorAll(".spread-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        setStatus(`${selectedCount}장 스프레드로 바꿀게요. 섞기를 눌러 주세요.`);
       });
     });
 
@@ -934,7 +938,7 @@
         const offlineNote = navigator.onLine === false ? " (오프라인)" : "";
         setStatus(
           (deckMode === "major" ? `메이저 ${n}장` : `전체 ${n}장`) +
-            ` 준비. 핀치·기울기·+/-로 보고, 직감으로 3장을 골라 주세요.${offlineNote}`
+            ` 준비. 핀치·기울기·+/-로 보고, 직감으로 ${selectedCount}장을 골라 주세요.${offlineNote}`
         );
       } catch (err) {
         setStatus("덱을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");

@@ -126,8 +126,8 @@ def build_tarot_reading_user_prompt(user_story: str, cards_block: str) -> str:
     story = (user_story or "").strip() or "특별히 적지 않았지만, 지금 마음이 궁금해요."
     return (
         f"질문·상황: {story}\n\n"
-        f"뽑힌 카드 (3카드 규칙):\n{cards_block}\n\n"
-        "위 카드를 **과거 → 현재 → 미래**로, **가벼운 거울**로만 이야기해 주세요. "
+        f"뽑힌 카드:\n{cards_block}\n\n"
+        "위 카드를 **각 위치 의미에 맞게**, **가벼운 거울**로만 이야기해 주세요. "
         "확정적 예언·챗봇식 요약 목록은 피해 주세요. "
         "마지막 줄에는 OUTPUT FORMAT RULE의 JSON만 정확히 한 줄로 붙이세요."
     )

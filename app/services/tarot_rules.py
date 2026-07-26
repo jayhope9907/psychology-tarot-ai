@@ -1,10 +1,12 @@
-"""Classic Rider–Waite tarot rules for the locked 3-card spread."""
+"""Classic Rider–Waite tarot rules for multi-card spreads."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-DEFAULT_SPREAD = "three_card"
+DEFAULT_SPREAD = "five_card"
 THREE_CARD_COUNT = 3
+FIVE_CARD_COUNT = 5
+SEVEN_CARD_COUNT = 7
 REVERSE_CHANCE = 0.5
 
 THREE_CARD_POSITIONS: List[Dict[str, str]] = [
@@ -27,6 +29,111 @@ THREE_CARD_POSITIONS: List[Dict[str, str]] = [
         "ask_ko": "열어둘 다음 한 걸음은?",
     },
 ]
+
+FIVE_CARD_POSITIONS: List[Dict[str, str]] = [
+    {
+        "id": "situation",
+        "label_ko": "상황",
+        "guide_ko": "지금 마주한 장면·맥락",
+        "ask_ko": "지금 어떤 장면 안에 있나요?",
+    },
+    {
+        "id": "challenge",
+        "label_ko": "도전",
+        "guide_ko": "가로막는 긴장·마찰·부담",
+        "ask_ko": "무엇이 가장 걸리나요?",
+    },
+    {
+        "id": "hidden",
+        "label_ko": "숨은 마음",
+        "guide_ko": "아직 말로 안 나온 마음·무의식의 결",
+        "ask_ko": "겉으로 안 보이는 마음은?",
+    },
+    {
+        "id": "advice",
+        "label_ko": "조언",
+        "guide_ko": "부담 없이 시도할 수 있는 태도·작은 선택",
+        "ask_ko": "오늘 가능한 작은 선택은?",
+    },
+    {
+        "id": "flow",
+        "label_ko": "흐름",
+        "guide_ko": "열어둘 가능성·에너지의 방향 (예언 아님)",
+        "ask_ko": "어떤 흐름을 열어둘까요?",
+    },
+]
+
+SEVEN_CARD_POSITIONS: List[Dict[str, str]] = [
+    {
+        "id": "past",
+        "label_ko": "과거·뿌리",
+        "guide_ko": "지금의 마음을 만든 경험·배경",
+        "ask_ko": "무엇이 여기까지 이끌었나요?",
+    },
+    {
+        "id": "present",
+        "label_ko": "현재·핵심",
+        "guide_ko": "지금 가장 또렷한 감정·상황",
+        "ask_ko": "지금 가장 크게 느껴지는 것은?",
+    },
+    {
+        "id": "hidden",
+        "label_ko": "숨은 영향",
+        "guide_ko": "잘 안 보이지만 영향을 주는 결",
+        "ask_ko": "보이지 않는 영향은?",
+    },
+    {
+        "id": "advice",
+        "label_ko": "조언",
+        "guide_ko": "지금 도움이 되는 태도·작은 행동",
+        "ask_ko": "무엇을 가볍게 시도해볼까요?",
+    },
+    {
+        "id": "environment",
+        "label_ko": "환경·관계",
+        "guide_ko": "주변 사람·상황·지지 또는 압력",
+        "ask_ko": "주변은 어떻게 작용하나요?",
+    },
+    {
+        "id": "hope_fear",
+        "label_ko": "희망·두려움",
+        "guide_ko": "바라는 것과 걱정이 만나는 자리",
+        "ask_ko": "무엇을 바라고, 무엇을 두려워하나요?",
+    },
+    {
+        "id": "direction",
+        "label_ko": "방향",
+        "guide_ko": "열어둘 다음 한 걸음의 가능성",
+        "ask_ko": "다음으로 열어둘 방향은?",
+    },
+]
+
+SPREAD_DEFS: Dict[str, Dict[str, Any]] = {
+    "three_card": {
+        "label_ko": "3카드 · 과거·현재·미래",
+        "count": THREE_CARD_COUNT,
+        "positions": THREE_CARD_POSITIONS,
+    },
+    "five_card": {
+        "label_ko": "5카드 · 상황·도전·숨은 마음·조언·흐름",
+        "count": FIVE_CARD_COUNT,
+        "positions": FIVE_CARD_POSITIONS,
+    },
+    "seven_card": {
+        "label_ko": "7카드 · 깊은 자기성찰",
+        "count": SEVEN_CARD_COUNT,
+        "positions": SEVEN_CARD_POSITIONS,
+    },
+}
+
+ALLOWED_SPREADS = tuple(SPREAD_DEFS.keys())
+
+_ALL_POSITIONS: List[Dict[str, str]] = (
+    THREE_CARD_POSITIONS + FIVE_CARD_POSITIONS + SEVEN_CARD_POSITIONS
+)
+_POSITION_BY_LABEL: Dict[str, Dict[str, str]] = {
+    pos["label_ko"]: pos for pos in _ALL_POSITIONS
+}
 
 SUIT_RULES: Dict[str, Dict[str, str]] = {
     "wands": {
@@ -95,16 +202,48 @@ ARCANA_RULES = {
 }
 
 PRACTICE_RULES_KO = [
-    "질문 하나에 3장만 뽑습니다. (과거·현재·미래)",
+    "스프레드는 3·5·7장 중 고릅니다. 각 카드는 자기 위치로만 읽습니다.",
     "덱은 78장(메이저 22 + 마이너 56)이며, 중복 없이 뽑습니다.",
     "섞은 뒤 뒷면만 보고 직감으로 고릅니다. 앞면을 보고 고르지 않습니다.",
     "정방향/역방향은 카드마다 독립적으로 공정하게 결정됩니다.",
-    "각 카드는 자기 위치(과거/현재/미래)로만 읽습니다.",
-    "미래는 예언이 아니라 가능성·방향입니다.",
+    "미래·흐름·방향은 예언이 아니라 가능성입니다.",
     "메이저는 큰 테마, 마이너(수트·원소)는 일상의 결로 읽습니다.",
     "궁정 카드(시종·기사·여왕·왕)는 사람·태도·접근 방식으로 가볍게 봅니다.",
     "진단·운명·확정 예언으로 쓰지 않습니다. 자기성찰 거울입니다.",
 ]
+
+
+def normalize_spread(
+    spread: Optional[str] = None,
+    count: Optional[int] = None,
+) -> Tuple[str, int]:
+    """Resolve spread id + card count. Defaults to five_card."""
+    key = (spread or "").strip() or DEFAULT_SPREAD
+    if key == "single":
+        key = "three_card"
+    if key not in SPREAD_DEFS:
+        if count == THREE_CARD_COUNT:
+            key = "three_card"
+        elif count == SEVEN_CARD_COUNT:
+            key = "seven_card"
+        elif count == FIVE_CARD_COUNT:
+            key = "five_card"
+        else:
+            key = DEFAULT_SPREAD
+    return key, int(SPREAD_DEFS[key]["count"])
+
+
+def normalize_three_card_spread(
+    spread: Optional[str] = None,
+    count: Optional[int] = None,
+) -> Tuple[str, int]:
+    """Backward-compatible alias — now resolves any allowed spread."""
+    return normalize_spread(spread, count)
+
+
+def positions_for_spread(spread: str) -> List[Dict[str, str]]:
+    key, _ = normalize_spread(spread)
+    return list(SPREAD_DEFS[key]["positions"])
 
 
 def enrich_card_rules(card: Dict[str, Any]) -> Dict[str, Any]:
@@ -126,23 +265,33 @@ def enrich_card_rules(card: Dict[str, Any]) -> Dict[str, Any]:
         out["rank_rule"] = RANK_RULES[rank]
 
     position = out.get("position") or ""
-    for pos in THREE_CARD_POSITIONS:
-        if pos["label_ko"] == position:
-            out["position_id"] = pos["id"]
-            out["position_guide"] = pos["guide_ko"]
-            out["position_ask"] = pos["ask_ko"]
-            break
+    pos = _POSITION_BY_LABEL.get(position)
+    if pos:
+        out["position_id"] = pos["id"]
+        out["position_guide"] = pos["guide_ko"]
+        out["position_ask"] = pos["ask_ko"]
     return out
 
 
-def rules_manifest() -> Dict[str, Any]:
+def rules_manifest(spread: Optional[str] = None) -> Dict[str, Any]:
+    key, count = normalize_spread(spread)
+    positions = positions_for_spread(key)
     return {
         "system": "rider_waite",
-        "spread": DEFAULT_SPREAD,
-        "count": THREE_CARD_COUNT,
+        "spread": key,
+        "count": count,
+        "default_spread": DEFAULT_SPREAD,
+        "available_spreads": {
+            sid: {
+                "label_ko": meta["label_ko"],
+                "count": meta["count"],
+                "positions": meta["positions"],
+            }
+            for sid, meta in SPREAD_DEFS.items()
+        },
         "reverse_chance": REVERSE_CHANCE,
         "deck": {"total": 78, "major": 22, "minor": 56},
-        "positions": THREE_CARD_POSITIONS,
+        "positions": positions,
         "suits": SUIT_RULES,
         "ranks": RANK_RULES,
         "orientations": ORIENTATION_RULES,
@@ -152,8 +301,10 @@ def rules_manifest() -> Dict[str, Any]:
     }
 
 
-def narrative_rules_block() -> str:
-    lines = ["## 클래식 타로 규칙 (필수)"]
+def narrative_rules_block(spread: Optional[str] = None) -> str:
+    key, count = normalize_spread(spread)
+    label = SPREAD_DEFS[key]["label_ko"]
+    lines = [f"## 클래식 타로 규칙 (필수) · {label} ({count}장)"]
     for item in PRACTICE_RULES_KO:
         lines.append(f"- {item}")
     lines.append("- 수트: 지팡이(불)·컵(물)·검(공기)·펜타클(흙)")

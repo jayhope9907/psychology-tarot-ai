@@ -355,13 +355,13 @@ class CheckoutRequest(BaseModel):
 
 
 class TarotDrawRequest(BaseModel):
-    count: int = 3
-    spread: str = "three_card"
+    count: int = 5
+    spread: str = "five_card"
     seed: Optional[int] = None
 
 
 class TarotPickRequest(BaseModel):
-    spread: str = "three_card"
+    spread: str = "five_card"
     card_ids: List[str]
     reversed_flags: Optional[List[bool]] = None
     user_id: str = "anonymous"
@@ -467,8 +467,8 @@ class CounselingStyleRequest(BaseModel):
 class TarotReadingRequest(BaseModel):
     user_id: str = "anonymous"
     user_story: str = ""
-    spread: str = "three_card"
-    count: int = 3
+    spread: str = "five_card"
+    count: int = 5
     cards: Optional[List[Dict[str, Any]]] = None
     plan: str = "FREE"
     preferred_school: Optional[ClinicalSchool] = ClinicalSchool.ROGERIAN
@@ -1401,22 +1401,25 @@ async def tarot_rules_api():
 
 @app.post("/api/v1/tarot/draw")
 async def tarot_draw(request: TarotDrawRequest):
-    from app.services.tarot import normalize_three_card_spread
+    from app.services.tarot import normalize_spread
 
-    spread, count = normalize_three_card_spread(request.spread, request.count)
+    spread, count = normalize_spread(request.spread, request.count)
     return draw_cards(count=count, spread=spread, seed=request.seed)
 
 
 @app.post("/api/v1/tarot/pick")
 async def tarot_pick(request: TarotPickRequest):
-    from app.services.tarot import THREE_CARD_COUNT, normalize_three_card_spread
+    from app.services.tarot import normalize_spread
 
     if not request.card_ids:
         raise HTTPException(status_code=400, detail="card_ids required")
     unique_ids = list(dict.fromkeys(request.card_ids))
-    if len(unique_ids) != THREE_CARD_COUNT:
-        raise HTTPException(status_code=400, detail="exactly 3 unique cards required")
-    spread, _ = normalize_three_card_spread(request.spread, len(unique_ids))
+    spread, expected = normalize_spread(request.spread, len(unique_ids))
+    if len(unique_ids) != expected:
+        raise HTTPException(
+            status_code=400,
+            detail=f"exactly {expected} unique cards required for {spread}",
+        )
     result = build_draw_from_picks(
         card_ids=unique_ids,
         spread=spread,
@@ -1808,9 +1811,9 @@ async def voice_presets(query: str = "", gender: Optional[str] = None, counselor
 
 @app.post("/api/v1/tarot/reading")
 async def tarot_reading(request: TarotReadingRequest):
-    from app.services.tarot import normalize_three_card_spread
+    from app.services.tarot import normalize_spread
 
-    spread, count = normalize_three_card_spread(request.spread, request.count)
+    spread, count = normalize_spread(request.spread, request.count)
     draw_result = (
         {"spread": spread, "cards": request.cards}
         if request.cards

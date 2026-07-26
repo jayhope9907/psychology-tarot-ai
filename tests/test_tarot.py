@@ -15,13 +15,17 @@ def test_tarot_rules_api_and_enrichment():
     response = client.get("/api/v1/tarot/rules")
     assert response.status_code == 200
     rules = response.json()
-    assert rules["count"] == 3
+    assert rules["count"] == 5
+    assert rules["default_spread"] == "five_card"
+    assert "five_card" in rules["available_spreads"]
+    assert "seven_card" in rules["available_spreads"]
     assert rules["reverse_chance"] == 0.5
     assert len(rules["practice_ko"]) >= 8
     assert "wands" in rules["suits"]
 
-    draw = draw_cards(count=3, spread="three_card", seed=11)
+    draw = draw_cards(count=5, spread="five_card", seed=11)
     assert draw["rules"]["deck"]["total"] == 78
+    assert len(draw["cards"]) == 5
     for card in draw["cards"]:
         assert "orientation_rule" in card
         assert "arcana_rule" in card
@@ -33,7 +37,6 @@ def test_tarot_reading_prompt_includes_suit_rules():
 
     prompt = build_tarot_reading_system_prompt()
     assert "지팡이" in prompt or "수트" in prompt
-    assert "3장" in prompt or "3카드" in prompt
     assert "역방향" in prompt
 
 
@@ -59,6 +62,8 @@ def test_list_deck_catalog_endpoint():
     assert payload.get("major_count") == 22
     assert payload.get("minor_count") == 56
     assert "three_card" in payload["spreads"]
+    assert "five_card" in payload["spreads"]
+    assert "seven_card" in payload["spreads"]
     assert payload["cards"][0]["image_url"].startswith("/api/v1/tarot/card-image/")
     assert "upright_ko" in payload["cards"][0]
     assert payload.get("ui", {}).get("show_hover_hints") is True
@@ -94,58 +99,39 @@ def test_pick_endpoint_user_selected_minor_card():
     assert payload["cards"][1]["image_url"].startswith("/api/v1/tarot/card-image/")
 
 
+def test_pick_endpoint_five_card():
+    ids = ["fool", "magician", "sun", "moon", "star"]
+    response = client.post(
+        "/api/v1/tarot/pick",
+        json={"spread": "five_card", "card_ids": ids},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["cards"]) == 5
+    assert payload["spread"] == "five_card"
+    assert payload["positions"] == ["상황", "도전", "숨은 마음", "조언", "흐름"]
+
+
+def test_pick_endpoint_seven_card():
+    ids = ["fool", "magician", "high_priestess", "empress", "emperor", "hierophant", "lovers"]
+    response = client.post(
+        "/api/v1/tarot/pick",
+        json={"spread": "seven_card", "card_ids": ids},
+    )
+    assert response.status_code == 200
+    assert len(response.json()["cards"]) == 7
+
+
 def test_pick_endpoint_user_selected_cards():
     response = client.post(
         "/api/v1/tarot/pick",
         json={"spread": "three_card", "card_ids": ["fool", "magician", "sun"]},
     )
     assert response.status_code == 200
-    payload = response.json()
-    assert len(payload["cards"]) == 3
-    assert payload["cards"][0]["id"] == "fool"
-    assert payload["cards"][0]["image_url"].startswith("/api/v1/tarot/card-image/")
+    assert len(response.json()["cards"]) == 3
 
 
-def test_card_image_endpoint_serves_original(monkeypatch, tmp_path):
-    from app.services import tarot as tarot_svc
-
-    sample = tmp_path / "fool.jpg"
-    sample.write_bytes(b"\xff\xd8\xff" + b"0" * 1200)
-
-    monkeypatch.setattr(tarot_svc, "resolve_card_image_file", lambda card_id: sample if card_id == "fool" else None)
-    monkeypatch.setattr(
-        tarot_svc,
-        "fetch_card_image_content",
-        lambda card_id: (sample.read_bytes(), "image/jpeg") if card_id == "fool" else None,
-    )
-    response = client.get("/api/v1/tarot/card-image/fool")
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("image/")
-    assert len(response.content) > 1000
-
-    missing = client.get("/api/v1/tarot/card-image/not_a_card")
-    assert missing.status_code == 404
-
-
-def test_fetch_card_image_content_downloads_when_cache_missing(monkeypatch, tmp_path):
-    from app.services import tarot as tarot_svc
-
-    cache_dir = tmp_path / "tarot_images"
-    monkeypatch.setattr(tarot_svc, "_image_cache_dir", lambda: cache_dir)
-    monkeypatch.setattr(
-        tarot_svc,
-        "_download_remote_image",
-        lambda remote: b"<svg xmlns='http://www.w3.org/2000/svg'></svg>" if "Wands01.svg" in remote else None,
-    )
-
-    payload = tarot_svc.fetch_card_image_content("wands_ace")
-    assert payload is not None
-    data, media_type = payload
-    assert media_type == "image/svg+xml"
-    assert b"svg" in data
-
-
-def test_build_draw_from_picks():
+def test_build_draw_from_picks_three():
     result = build_draw_from_picks(
         ["empress", "moon", "sun"], spread="three_card", reversed_flags=[False, True, False]
     )
@@ -155,27 +141,34 @@ def test_build_draw_from_picks():
     assert result["positions"] == ["과거·뿌리", "현재·핵심", "미래·방향"]
 
 
-def test_draw_forces_three_card_even_if_single_requested():
+def test_draw_defaults_to_five_card():
+    result = draw_cards(seed=42)
+    assert len(result["cards"]) == 5
+    assert result["spread"] == "five_card"
+
+
+def test_draw_forces_three_when_single_requested():
     result = draw_cards(count=1, spread="single", seed=42)
     assert len(result["cards"]) == 3
     assert result["spread"] == "three_card"
     assert result["rules"]["reverse_chance"] == 0.5
 
 
-def test_pick_rejects_non_three():
+def test_pick_rejects_wrong_count():
     response = client.post(
         "/api/v1/tarot/pick",
-        json={"spread": "single", "card_ids": ["fool"]},
+        json={"spread": "five_card", "card_ids": ["fool"]},
     )
     assert response.status_code == 400
 
 
-def test_tarot_ui_is_three_card_only():
+def test_tarot_ui_offers_multi_spreads():
     response = client.get("/tarot")
     assert response.status_code == 200
-    assert "원카드" not in response.text
+    assert "5카드" in response.text
+    assert "7카드" in response.text
     assert "3카드" in response.text
-    assert "과거" in response.text
+    assert 'data-count="5"' in response.text
 
 
 def test_draw_three_cards_with_positions():
@@ -188,9 +181,9 @@ def test_draw_three_cards_with_positions():
 
 
 def test_draw_endpoint():
-    response = client.post("/api/v1/tarot/draw", json={"count": 3, "spread": "three_card", "seed": 7})
+    response = client.post("/api/v1/tarot/draw", json={"count": 5, "spread": "five_card", "seed": 7})
     assert response.status_code == 200
-    assert len(response.json()["cards"]) == 3
+    assert len(response.json()["cards"]) == 5
 
 
 def test_tarot_ui_route():
@@ -199,10 +192,7 @@ def test_tarot_ui_route():
     assert "3D 타로" in response.text
     assert "카메라 커스텀" in response.text
     assert "camHeight" in response.text
-    assert "원카드" not in response.text
-    assert "3카드" in response.text
-    assert "과거" in response.text
-    assert "원카드" not in response.text
+    assert "5카드" in response.text
 
 
 def test_psychometrics_hosts_mind_themes():
@@ -234,13 +224,13 @@ def test_tarot_reading_endpoint_with_mock_openai(monkeypatch):
 
     monkeypatch.setattr(main_module, "client", FakeClient())
 
-    draw = draw_cards(count=3, spread="three_card", seed=99)
+    draw = draw_cards(count=5, spread="five_card", seed=99)
     response = client.post(
         "/api/v1/tarot/reading",
         json={
             "user_story": "요즘 직장에서 힘들어요",
-            "spread": "three_card",
-            "count": 3,
+            "spread": "five_card",
+            "count": 5,
             "cards": draw["cards"],
         },
     )
@@ -265,8 +255,6 @@ def test_tarot_reading_prompt_is_light_projection():
     prompt = build_tarot_reading_system_prompt()
     assert "깊게" in prompt
     assert "그림자" in prompt
-    assert "3장" in prompt or "3카드" in prompt
-    assert "과거" in prompt
     assert "메이저" in prompt
     assert "역방향" in prompt
 

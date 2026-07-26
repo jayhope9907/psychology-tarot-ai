@@ -487,13 +487,18 @@ def build_agent_system_block(profile: MoodAgentProfile) -> str:
     return "\n".join(lines)
 
 
-def build_agent_welcome(profile: MoodAgentProfile, note: str = "", has_checkin: bool = True) -> str:
+def build_agent_welcome(
+    profile: MoodAgentProfile,
+    note: str = "",
+    has_checkin: bool = True,
+    expression: Optional[Dict[str, Any]] = None,
+) -> str:
     counselor = "이서연 상담사"
     if not has_checkin:
         return (
             f"안녕하세요, {counselor}예요.\n\n"
-            "홈에서 **입체 마음 체크인**(기분·에너지·불안·관계·수면)을 해 주시면, "
-            "그에 맞춘 AI 상담 에이전트로 더 정확히 돕고 싶어요.\n\n"
+            "홈에서 **오늘 마음** 표정을 골라 주시면, "
+            "그에 맞춘 AI 상담으로 더 정확히 돕고 싶어요.\n\n"
             "오늘 마음에 걸리는 장면을 하나 골라 말씀해 주시면 이어서 들을게요."
         )
 
@@ -502,8 +507,20 @@ def build_agent_welcome(profile: MoodAgentProfile, note: str = "", has_checkin: 
     if profile.concerns:
         concern_line = f"{profile.concerns[0]} 상태로 느껴지시는군요. "
 
+    expr = expression or {}
+    face_line = ""
+    if expr.get("label_ko"):
+        emoji = expr.get("emoji") or ""
+        guess = expr.get("guess_ko") or ""
+        face_line = (
+            f"홈에서 고르신 표정은 {emoji} **{expr['label_ko']}** 이었어요."
+            + (f" {guess}" if guess else "")
+            + "\n\n"
+        )
+
     return (
         f"안녕하세요, {counselor}예요.\n\n"
+        f"{face_line}"
         f"오늘 입체 체크인을 보니 **{profile.label}** 모드로 맞춰 드릴게요.{note_line}"
         f"{concern_line}"
         f"({dimension_summary(profile.dimensions)})\n\n"

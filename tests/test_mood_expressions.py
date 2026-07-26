@@ -42,6 +42,26 @@ def test_record_checkin_from_expression_only():
     assert today_checkin(user)["expression_id"] == "tearful"
 
 
+def test_seoyeon_welcome_mentions_expression():
+    from app.services.chat_session import ChatSessionState
+    from app.services.mood_assistant import (
+        build_mood_mandatory_system_block,
+        get_mood_welcome_message,
+        resolve_mood_context,
+    )
+
+    user = "expr-welcome-user"
+    record_checkin(user, expression_id="anxious")
+    ctx = resolve_mood_context(user)
+    assert ctx.expression_id == "anxious"
+    welcome = get_mood_welcome_message(ctx)
+    assert "이서연" in welcome
+    assert "식은땀" in welcome or "불안" in welcome
+    text = build_mood_mandatory_system_block(ctx, ChatSessionState(user_id=user))
+    assert "표정" in text
+    assert "식은땀" in text or "불안" in text
+
+
 def test_checkin_api_expression_id():
     from fastapi.testclient import TestClient
 

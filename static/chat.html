@@ -5328,13 +5328,23 @@
         if (!res.ok) return showWelcomeIfNeeded();
         const data = await res.json();
         if (data.mood) updateMoodChip(data.mood, data.agent);
-        if (localStorage.getItem(WELCOME_KEY) === "1") return;
+        const fromCheckin = new URLSearchParams(location.search).get("from") === "checkin";
+        const moodKey = data.mood?.expression_id
+          ? `expr:${data.mood.expression_id}`
+          : (data.mood?.has_checkin ? `score:${data.mood.score}` : "none");
+        const lastKey = localStorage.getItem("psychology_ai_mood_welcome_shown");
+        const already = localStorage.getItem(WELCOME_KEY) === "1" && lastKey === moodKey;
+        if (already && !fromCheckin) return;
         localStorage.setItem(WELCOME_KEY, "1");
+        localStorage.setItem("psychology_ai_mood_welcome_shown", moodKey);
         hideEmptyState();
         const bubble = createAssistantRow();
         bubble.textContent = data.welcome_message || "";
         const agentLabel = data.agent?.label;
-        sessionChip.textContent = agentLabel
+        const exprLabel = data.mood?.expression?.label_ko;
+        sessionChip.textContent = exprLabel
+          ? `표정 맞춤 · ${data.mood.expression.emoji || ""} ${exprLabel}`.trim()
+          : agentLabel
           ? `상담 맞춤 · ${agentLabel}`
           : (data.mood?.has_checkin ? "입체 기분 맞춤 대화" : "새 대화 시작");
         updateCounselingPhase({
@@ -5342,6 +5352,9 @@
           phase_label: "관계 형성",
           phase_description: "신뢰·안전감을 만들고 대화의 틀을 안내합니다.",
         });
+        if (fromCheckin) {
+          history.replaceState({}, "", "/chat");
+        }
       } catch (_) {
         showWelcomeIfNeeded();
       }

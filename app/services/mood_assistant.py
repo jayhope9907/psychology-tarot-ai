@@ -29,6 +29,8 @@ class MoodContext:
     has_checkin: bool
     dimensions: Dict[str, int] = field(default_factory=dict)
     agent: Optional[Dict[str, Any]] = None
+    expression_id: Optional[str] = None
+    expression: Optional[Dict[str, Any]] = None
 
     @classmethod
     def unknown(cls) -> "MoodContext":
@@ -43,6 +45,8 @@ class MoodContext:
             "dimensions": self.dimensions,
             "dimension_summary": dimension_summary(self.dimensions) if self.has_checkin else "",
             "agent": self.agent,
+            "expression_id": self.expression_id,
+            "expression": self.expression,
         }
 
 
@@ -136,6 +140,8 @@ def resolve_mood_context(user_id: str) -> MoodContext:
         return MoodContext.unknown()
     dims = normalize_dimensions(checkin.get("dimensions") or {})
     agent = checkin.get("agent") or build_mood_agent_profile(dims, checkin["mood_score"]).to_dict()
+    expression = checkin.get("expression")
+    expression_id = checkin.get("expression_id")
     return MoodContext(
         score=int(checkin["mood_score"]),
         label=checkin.get("mood_label") or MOOD_LABELS.get(int(checkin["mood_score"]), "보통"),
@@ -143,6 +149,8 @@ def resolve_mood_context(user_id: str) -> MoodContext:
         has_checkin=True,
         dimensions=dims,
         agent=agent,
+        expression_id=expression_id,
+        expression=expression if isinstance(expression, dict) else None,
     )
 
 
@@ -159,6 +167,18 @@ def build_mood_mandatory_system_block(ctx: MoodContext, state: ChatSessionState)
     if ctx.has_checkin:
         lines.append(f"- 종합 기분: **{ctx.score}/5 ({ctx.label})**")
         lines.append(f"- 입체 좌표: {dimension_summary(ctx.dimensions)}")
+        if ctx.expression:
+            emoji = ctx.expression.get("emoji") or ""
+            label = ctx.expression.get("label_ko") or ""
+            guess = ctx.expression.get("guess_ko") or ""
+            lines.append(
+                f"- 오늘 고른 표정: {emoji} **{label}**"
+                + (f" → 추측: {guess}" if guess else "")
+            )
+            lines.append(
+                "- 첫 인사와 초반 대화에서 이 표정을 **자연스럽게 언급**하세요. "
+                "검사처럼 묻지 말고, 표정에서 읽힌 기분을 함께 확인해 주세요."
+            )
         if ctx.note:
             lines.append(f'- 체크인 메모: "{ctx.note}"')
         if ctx.agent:
@@ -203,7 +223,12 @@ def build_mood_mandatory_system_block(ctx: MoodContext, state: ChatSessionState)
 def get_mood_welcome_message(ctx: MoodContext) -> str:
     if ctx.has_checkin and ctx.agent:
         profile = build_mood_agent_profile(ctx.dimensions, ctx.score)
-        return build_agent_welcome(profile, ctx.note, has_checkin=True)
+        return build_agent_welcome(
+            profile,
+            ctx.note,
+            has_checkin=True,
+            expression=ctx.expression,
+        )
     return build_agent_welcome(build_mood_agent_profile(), ctx.note, has_checkin=False)
 
 
@@ -239,19 +264,24 @@ def mood_priority_reply(
 
     if state.turn_count <= 1 and ctx.has_checkin:
         agent_label = (ctx.agent or {}).get("label", "")
+        expr = ctx.expression or {}
+        face = ""
+        if expr.get("label_ko"):
+            face = f"{expr.get('emoji', '')} **{expr['label_ko']}** 표정으로 체크인해 주셨네요. ".strip()
+            face = f"{face} "
         if ctx.score <= 2:
             return (
-                f"오늘 입체 체크인을 보니{concern_ref} 느껴지시는군요.{note_ref} "
+                f"{face}오늘 입체 체크인을 보니{concern_ref} 느껴지시는군요.{note_ref} "
                 f"{'**' + agent_label + '** 모드로 ' if agent_label else ''}"
                 "지금 몸이나 마음에서 가장 크게 느껴지는 부분을 한 가지 말씀해 주실 수 있을까요?"
             )
         if ctx.score >= 4:
             return (
-                f"오늘 {ctx.label}({ctx.score}/5)으로 체크인해 주셨네요.{note_ref} "
+                f"{face}오늘 {ctx.label}({ctx.score}/5)으로 보여요.{note_ref} "
                 "이 흐름 속에서 지금 나누고 싶은 이야기가 있다면 편하게 들려주세요."
             )
         return (
-            f"오늘 {ctx.label}({ctx.score}/5)으로 체크인해 주셨군요.{note_ref} "
+            f"{face}오늘 {ctx.label}({ctx.score}/5)으로 체크인해 주셨군요.{note_ref} "
             "그 마음 그대로 받아들이며 들을게요. 지금 가장 신경 쓰이는 건 무엇인가요?"
         )
 
