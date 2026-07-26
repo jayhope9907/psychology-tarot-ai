@@ -390,7 +390,34 @@ def compute_emotional_spectrum(
     result["behavioralMetrics"] = metrics
     result["approachLabelKo"] = APPROACH_LABELS_KO.get(result["suggested_approach"], "")
     result["mind_room"] = parse_clinical_state_to_room(result)
-    result["neurodevelopmental_matrix"] = to_neurodevelopmental_matrix(result)
+
+    notes = (getattr(state, "phase_notes", None) or {}) if state is not None else {}
+    wc_analysis = notes.get("word_card_analysis") or {}
+    mindmap = notes.get("mindmap") or notes.get("word_card_mindmap") or {}
+    if not wc_analysis or not mindmap:
+        try:
+            from app.services.word_card_store import get_user_last_mindmap, list_word_card_history
+
+            uid = getattr(state, "user_id", "") or ""
+            if not mindmap:
+                mindmap = get_user_last_mindmap(uid) or {}
+                if mindmap.get("updatedAt"):
+                    mindmap = {k: v for k, v in mindmap.items() if k != "updatedAt"}
+            if not wc_analysis and uid:
+                hist = list_word_card_history(uid, limit=1) or []
+                if hist:
+                    wc_analysis = hist[0].get("analysis") or {}
+                    if not mindmap:
+                        mindmap = hist[0].get("mindmap") or {}
+        except Exception:
+            pass
+    result["neurodevelopmental_matrix"] = to_neurodevelopmental_matrix(
+        result,
+        word_card_analysis=wc_analysis,
+        mindmap=mindmap,
+    )
+    if mindmap:
+        result["mindmap"] = mindmap
     return result
 
 
@@ -595,6 +622,8 @@ def to_integrated_diagnostic_model(
             "backbone_tension": round(backbone_tension, 1),
             "cluster_density": round(cluster_density, 1),
         },
+        "mind_room": parse_clinical_state_to_room(doc),
+        "non_diagnostic": True,
     }
 
 
@@ -653,7 +682,7 @@ def to_neurodevelopmental_matrix(
 
     sound_muffling_factor = min(1.0, (social_blindness + rigid_fixation) / 200.0)
 
-    return {
+    out: Dict[str, Any] = {
         "cognitive_disorganization_score": round(cds, 1),
         "spectrum_mapping": {
             "social_blindness": round(social_blindness, 1),
@@ -665,8 +694,12 @@ def to_neurodevelopmental_matrix(
             "wall_texture": wall_texture,
             "sound_muffling_factor": round(sound_muffling_factor, 4),
         },
+        "mind_room": parse_clinical_state_to_room(doc),
         "non_diagnostic": True,
     }
+    if mindmap:
+        out["mindmap"] = dict(mindmap)
+    return out
 
 
 def build_internalizing_dual_agent_prompt(result: Optional[Mapping[str, Any]]) -> str:

@@ -2280,6 +2280,11 @@
             <span class="t-stat-value">무의식 도면</span>
             <span class="t-stat-sub">원클릭 · 360° 회전</span>
           </button>
+          <button type="button" class="t-stat-card is-blue" id="dashMindRoom">
+            <span class="t-stat-label">마음의 방</span>
+            <span class="t-stat-value">3D 방</span>
+            <span class="t-stat-sub">대화·낱말카드 투사</span>
+          </button>
         </div>
       </section>
 
@@ -2409,7 +2414,7 @@
   <div class="wc-overlay" id="mindRoom3dOverlay" role="dialog" aria-label="마음의 방 3D" hidden>
     <div class="wc-panel mm-panel">
       <h3>🧊 마음의 방 3D</h3>
-      <p class="wc-guide" id="mr3dGuide">지금 마음 상태가 투사된 방이에요. 드래그해서 둘러보세요.</p>
+      <p class="wc-guide" id="mr3dGuide">지금 마음 상태가 투사된 방이에요. 낱말카드를 고르면 소품이 생기고, 대화하면 톤이 바뀌어요. 드래그해서 둘러보세요.</p>
       <div id="mindRoom3dCanvas" style="width:100%;height:420px;border-radius:16px;overflow:hidden;background:#14161c;"></div>
       <div class="wc-actions">
         <span class="wc-count" id="mr3dStatus"></span>
@@ -3641,7 +3646,7 @@
               );
             }
             if (!window.MindRoom3DScene) {
-              await this.loadScript("/static/js/mind-room-3d.js");
+              await this.loadScript("/static/js/mind-room-3d.js?v=2");
             }
           })();
         }
@@ -3649,6 +3654,7 @@
       },
       async open() {
         const status = document.getElementById("mr3dStatus");
+        const guide = document.getElementById("mr3dGuide");
         if (this.overlay) {
           this.overlay.hidden = false;
           this.overlay.classList.add("show");
@@ -3660,6 +3666,10 @@
             const host = document.getElementById("mindRoom3dCanvas");
             this.scene = new MindRoom3DScene(host);
           }
+          // 오버레이 표시 후 캔버스 크기 재계산
+          requestAnimationFrame(() => {
+            try { this.scene && this.scene.resize(); } catch (_) {}
+          });
           this.scene.resize();
           let doc = this.lastDiagnosticModel;
           if (!doc) {
@@ -3680,29 +3690,63 @@
               );
               if (res.ok) {
                 const j = await res.json();
-                doc = j.diagnostic || null;
+                doc = j.diagnostic || j.latest || null;
               }
             } catch (_) {}
           }
           if (doc) {
             this.scene.setDiagnostic(doc);
             this.lastDiagnosticModel = doc;
-            if (status) {
-              if (doc.clinical_meta?.room_projection) {
-                const proj = doc.clinical_meta?.room_projection || {};
-                status.textContent = `조도 ${proj.lighting_level ?? "-"} · ${proj.color_tone || ""}`;
-              } else if (doc.threeRenderMetrics) {
-                const t = doc.threeRenderMetrics || {};
-                status.textContent = `백본 ${t.backbone_tension ?? "-"} · 클러스터 ${t.cluster_density ?? "-"}`;
-              } else {
-                status.textContent = "방을 불러왔어요.";
+          }
+          // 낱말카드/마인드맵 소품 배치
+          let mm = (typeof MindmapView !== "undefined" && MindmapView.data) || null;
+          if (!mm) {
+            try {
+              const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/mindmap`);
+              if (res.ok) {
+                const d = await res.json();
+                mm = d.mindmap || null;
+                if (mm && typeof MindmapView !== "undefined") MindmapView.setData(mm);
               }
+            } catch (_) {}
+          }
+          if (mm && typeof this.scene.setMindmap === "function") {
+            this.scene.setMindmap(mm);
+          }
+          const propN = this.scene.getPropCount ? this.scene.getPropCount() : 0;
+          if (status) {
+            const proj = doc?.clinical_meta?.room_projection || doc?.mind_room || {};
+            const tone = proj.color_tone || "";
+            const light = proj.lighting_level != null ? `조도 ${proj.lighting_level}` : "";
+            const cards = propN ? ` · 낱말카드 ${propN}개` : "";
+            if (doc) {
+              status.textContent = `${light}${tone ? " · " + tone : ""}${cards}` || `방 준비됨${cards}`;
+            } else {
+              status.textContent = propN
+                ? `낱말카드 ${propN}개가 방에 놓였어요. 대화를 나누면 방 톤이 바뀌어요.`
+                : "아직 기록이 없어요. 대화하거나 낱말카드를 고르면 방이 채워져요.";
             }
-          } else if (status) {
-            status.textContent = "아직 기록이 없어요. 대화를 나누면 방이 그려져요.";
+          }
+          if (guide) {
+            guide.textContent = propN
+              ? "낱말카드가 방 안 소품으로 떠 있어요. 드래그로 둘러보세요."
+              : "지금 마음 상태가 투사된 방이에요. 낱말카드를 고르면 소품이 생기고, 대화하면 톤이 바뀌어요.";
           }
         } catch (_) {
           if (status) status.textContent = "3D를 불러오지 못했어요.";
+        }
+      },
+      applyLive(doc, mindmap) {
+        if (doc) this.lastDiagnosticModel = doc;
+        if (!this.scene) return;
+        if (doc) this.scene.setDiagnostic(doc);
+        if (mindmap && typeof this.scene.setMindmap === "function") {
+          this.scene.setMindmap(mindmap);
+        }
+        const status = document.getElementById("mr3dStatus");
+        if (status && this.overlay && !this.overlay.hidden) {
+          const n = this.scene.getPropCount ? this.scene.getPropCount() : 0;
+          status.textContent = n ? `실시간 갱신 · 낱말카드 ${n}개` : "실시간 갱신됨";
         }
       },
       close() {
@@ -3997,6 +4041,7 @@
     });
     document.getElementById("mn3dClose")?.addEventListener("click", () => MindNetwork3DView.close());
     document.getElementById("dashMindNetwork")?.addEventListener("click", () => MindNetwork3DView.open());
+    document.getElementById("dashMindRoom")?.addEventListener("click", () => MindRoom3DView.open());
     document.getElementById("mn3dResetOrbit")?.addEventListener("click", () => {
       if (MindNetwork3DView.scene && typeof MindNetwork3DView.scene.resetOrbit === "function") {
         MindNetwork3DView.scene.resetOrbit();
@@ -4021,12 +4066,16 @@
     document.getElementById("mn3dOpenProps")?.addEventListener("click", () => {
       location.href = "/stealth-props";
     });
-    // Deep-link: /chat#mind-network opens clinician viewer
+    // Deep-link: /chat#mind-network · /chat#mind-room
     if (location.hash === "#mind-network") {
       setTimeout(() => MindNetwork3DView.open(), 400);
     }
+    if (location.hash === "#mind-room") {
+      setTimeout(() => MindRoom3DView.open(), 400);
+    }
     window.addEventListener("hashchange", () => {
       if (location.hash === "#mind-network") MindNetwork3DView.open();
+      if (location.hash === "#mind-room") MindRoom3DView.open();
     });
 
     // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
@@ -4121,7 +4170,15 @@
           });
           if (res.ok) {
             const data = await res.json();
-            if (data.mindmap) MindmapView.setData(data.mindmap);
+            if (data.mindmap) {
+              MindmapView.setData(data.mindmap);
+              // 낱말카드 → 마음의 방 3D 소품 즉시 반영
+              if (MindRoom3DView.scene && typeof MindRoom3DView.scene.setMindmap === "function") {
+                MindRoom3DView.applyLive(MindRoom3DView.lastDiagnosticModel, data.mindmap);
+              } else {
+                MindRoom3DView._pendingMindmap = data.mindmap;
+              }
+            }
             if (data.warm_question_ko) {
               const bubble = createAssistantRow();
               bubble.textContent = data.warm_question_ko;
@@ -4973,30 +5030,48 @@
               updateCounselingPhase(data.counseling_phase || data.profile_delta?.counseling_phase);
               updateClinicalInsight(data.profile_delta?.clinical_insight);
               if (data.mindmap) MindmapView.setData(data.mindmap);
-              if (data.integrated_diagnostic_model) {
-                MindRoom3DView.lastDiagnosticModel = data.integrated_diagnostic_model;
-                MindNetwork3DView.lastDiagnosticModel = data.integrated_diagnostic_model;
-                if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.integrated_diagnostic_model);
-                if (MindNetwork3DView.scene) MindNetwork3DView.scene.setDiagnostic(data.integrated_diagnostic_model);
-              } else if (data.dsm5_integrated_diagnostic) {
-                MindRoom3DView.lastDiagnosticModel = data.dsm5_integrated_diagnostic;
-                MindNetwork3DView.lastDiagnosticModel = data.dsm5_integrated_diagnostic;
-                if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.dsm5_integrated_diagnostic);
-                if (MindNetwork3DView.scene) MindNetwork3DView.scene.setDiagnostic(data.dsm5_integrated_diagnostic);
+              // 대화 후 방 톤 + 낱말카드 소품 병합 갱신
+              {
+                const merged =
+                  data.dsm5_integrated_diagnostic ||
+                  data.integrated_diagnostic_model ||
+                  null;
+                if (merged) {
+                  if (data.integrated_diagnostic_model && data.dsm5_integrated_diagnostic) {
+                    merged.mind_room =
+                      data.dsm5_integrated_diagnostic.clinical_meta?.room_projection ||
+                      data.integrated_diagnostic_model.mind_room ||
+                      merged.mind_room;
+                    merged.clinical_meta = data.dsm5_integrated_diagnostic.clinical_meta;
+                  }
+                  if (data.mindmap) merged.mindmap = data.mindmap;
+                  MindRoom3DView.lastDiagnosticModel = merged;
+                  MindNetwork3DView.lastDiagnosticModel = data.integrated_diagnostic_model || merged;
+                  MindRoom3DView.applyLive(merged, data.mindmap || MindmapView.data);
+                  if (MindNetwork3DView.scene) {
+                    MindNetwork3DView.scene.setDiagnostic(
+                      data.integrated_diagnostic_model || merged
+                    );
+                  }
+                } else if (data.neurodevelopmental_matrix) {
+                  const nd = data.neurodevelopmental_matrix;
+                  if (data.mindmap) nd.mindmap = data.mindmap;
+                  MindRoom3DView.lastDiagnosticModel = nd;
+                  MindRoom3DView.applyLive(nd, data.mindmap || MindmapView.data);
+                }
               }
               if (data.neurodevelopmental_matrix) {
-                if (MindRoom3DView.scene) MindRoom3DView.scene.setDiagnostic(data.neurodevelopmental_matrix);
-                const wtLabel = document.getElementById('ndWallTextureLabel');
+                const wtLabel = document.getElementById("ndWallTextureLabel");
                 if (wtLabel) {
                   const coreRisk =
                     data.dsm5_integrated_diagnostic?.internalizing_risk_level ||
                     data.integrated_diagnostic_model?.internalizing_core?.internalizing_risk_level ||
                     data.emotional_spectrum?.internalizing_risk_level ||
-                    '';
+                    "";
                   const hasLoop = Boolean(
                     data.dsm5_integrated_diagnostic?.downstream_triggers?.ocd_asd_loop?.enabled
                   );
-                  let label = data.neurodevelopmental_matrix.three_d_room_fx?.wall_texture || '';
+                  let label = data.neurodevelopmental_matrix.three_d_room_fx?.wall_texture || "";
                   if (coreRisk) label += ` · ${coreRisk}`;
                   if (hasLoop) label += ` · OCD/ASD loop`;
                   wtLabel.textContent = label;
