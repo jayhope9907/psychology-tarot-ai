@@ -725,7 +725,7 @@ def _compose_output(user_story: str, drawn_card: str, plan: str, selected_cards:
 
 
 def _compose_tarot_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict[str, Any]:
-    """Light projection-style tarot reading + psychodynamic metrics sidecar."""
+    """Situation-grounded tarot reading + psychodynamic metrics sidecar."""
     from app.services.freud_jung_tracker import ensure_psychodynamic_metrics
 
     local = build_local_reading(user_story, draw_result)
@@ -742,14 +742,73 @@ def _compose_tarot_reading(user_story: str, draw_result: Dict[str, Any]) -> Dict
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=0.65,
-                max_tokens=520,
+                temperature=0.7,
+                max_tokens=900,
             )
             raw = response.choices[0].message.content or fallback
         except Exception:
             raw = fallback
     display, metrics = ensure_psychodynamic_metrics(raw, user_text=user_story)
     return {"ai_analysis": display, "psychodynamic_metrics": metrics}
+
+
+def _compose_deep_tarot_bridge_message(
+    user_story: str,
+    handoff: Dict[str, Any],
+) -> str:
+    """Optional LLM rewrite of the opening bridge so chat starts deep & situational."""
+    fallback = str(handoff.get("bridge_message") or "")
+    # Keep unit/API tests deterministic and offline-friendly.
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return fallback
+    if not (client and getattr(client, "api_key", None)):
+        return fallback
+    cards = handoff.get("cards") or []
+    card_lines = []
+    for card in cards:
+        card_lines.append(
+            f"- [{card.get('position')}] {card.get('name_ko')} ({card.get('orientation')}) "
+            f"— {card.get('meaning') or card.get('psychology_theme') or ''}"
+        )
+    analysis = (handoff.get("ai_analysis") or handoff.get("reading_summary") or "").strip()
+    system = (
+        "당신은 마음쉼터 상담사 서연입니다. 타로 풀이를 마음대화 첫 마디로 이어갑니다.\n"
+        "규칙을 지키세요:\n"
+        "1) 내담자 현상황(질문)에 카드를 깊게·세밀하게 연결해 말합니다.\n"
+        "2) 위치·정/역·카드 간 긴장을 짚고, 현실의 감정·관계·선택을 구체적으로 비춥니다.\n"
+        "3) 예언·확정 운세·진단·병명 금지. 거울·가능성 언어만.\n"
+        "4) 8~14문장, 사람 말. 번호·불릿·헤더 금지.\n"
+        "5) 마지막에 지금 가장 남는 한 장/한 감정을 묻는 질문 1개."
+    )
+    user = (
+        f"현상황: {(user_story or '').strip() or '(미기재)'}\n"
+        f"카드:\n" + ("\n".join(card_lines) or "(없음)") + "\n"
+        f"선행 풀이:\n{_clip_text(analysis, 1000) if analysis else '(없음)'}\n\n"
+        "위 내용을 바탕으로, 마음대화 첫 상담 멘트를 작성하세요."
+    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.7,
+            max_tokens=700,
+            timeout=20.0,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        return text or fallback
+    except Exception:
+        return fallback
+
+
+def _clip_text(text: str, limit: int) -> str:
+    t = (text or "").strip()
+    if len(t) <= limit:
+        return t
+    cut = t[: limit - 1].rsplit(" ", 1)[0]
+    return (cut or t[: limit - 1]).rstrip() + "…"
 
 def _store_record(user_id: str, user_story: str, drawn_card: str, plan: str, output: Dict[str, Any], preferred_school: Optional[ClinicalSchool] = None) -> None:
     existing_record = PSYCHOLOGY_DATABASE.get(user_id)
@@ -1949,7 +2008,10 @@ def _maybe_bridge_tarot(
         return None
     session = get_or_create_session(request.user_id, request.session_id, request.plan)
     handoff = build_tarot_handoff(request.user_story, draw_result, reading)
+    deep_bridge = _compose_deep_tarot_bridge_message(request.user_story, handoff)
+    handoff["bridge_message"] = deep_bridge
     result = apply_tarot_handoff(session, handoff)
+    result["bridge_message"] = deep_bridge
     save_session(session)
     sync_after_tarot(request.user_id, session.session_id, handoff)
     return result
@@ -1959,7 +2021,10 @@ def _maybe_bridge_tarot(
 async def tarot_bridge(request: TarotBridgeRequest):
     session = get_or_create_session(request.user_id, request.session_id)
     handoff = build_tarot_handoff(request.user_story, request.draw, request.reading)
+    deep_bridge = _compose_deep_tarot_bridge_message(request.user_story, handoff)
+    handoff["bridge_message"] = deep_bridge
     result = apply_tarot_handoff(session, handoff)
+    result["bridge_message"] = deep_bridge
     session.messages.append({"role": "assistant", "content": result["bridge_message"]})
     save_session(session)
     psych_profile = sync_after_tarot(

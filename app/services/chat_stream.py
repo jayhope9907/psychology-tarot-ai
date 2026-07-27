@@ -625,6 +625,16 @@ def build_chat_messages(
         state.user_id,
         session_mode=getattr(state, "consultation_mode", None),
     )
+    # Tarot handoff and faith/pastoral mode must not mix.
+    tarot_active = bool(
+        getattr(state, "tarot_blended", False)
+        or (
+            getattr(state, "tarot_handoff", None)
+            and (state.tarot_handoff or {}).get("blend_status") == "active"
+        )
+    )
+    if tarot_active and consultation_mode == MODE_FAITH:
+        consultation_mode = "psychology"
     state.consultation_mode = consultation_mode
 
     from app.services.commercial_license_context import resolve_license_context

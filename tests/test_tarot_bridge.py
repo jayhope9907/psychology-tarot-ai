@@ -84,3 +84,31 @@ def test_counselor_bridge_message_mentions_cards():
     msg = build_counselor_bridge_message("힘들어요", cards, {"summary": "요약"})
     assert "탑" in msg
     assert "카드" in msg
+    assert "세밀" in msg or "현상황" in msg or "상황" in msg
+    assert "힘들어요" in msg
+
+
+def test_tarot_handoff_forces_psychology_not_faith():
+    state = ChatSessionState(user_id="faith-sep")
+    state.consultation_mode = "faith"
+    draw = draw_cards(count=2, spread="three_card", seed=5)
+    handoff = build_tarot_handoff("마음이 복잡해요", draw, {"summary": "요약"})
+    apply_tarot_handoff(state, handoff)
+    assert state.consultation_mode == "psychology"
+    block = build_tarot_system_block(state)
+    assert "신앙" in block or "묵상" in block
+    assert "분리" in block
+
+
+def test_tarot_system_block_encourages_deep_situational_reading():
+    state = ChatSessionState(user_id="deep-user")
+    draw = draw_cards(count=3, spread="three_card", seed=11)
+    reading = {"summary": "관계의 긴장", "ai_analysis": "지금 선택이 방향을 바꿉니다"}
+    handoff = build_tarot_handoff("관계가 힘들어요", draw, reading)
+    apply_tarot_handoff(state, handoff)
+    block = build_tarot_system_block(state)
+    assert "세밀" in block or "깊게" in block
+    assert "깊은 해석 금지" not in block
+    assert "현상황" in block
+    assert "관계가 힘들어요" in block
+    assert "지금 선택이 방향을 바꿉니다" in block

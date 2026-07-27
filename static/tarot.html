@@ -1130,6 +1130,23 @@
               const data = await res.json();
               bridgeSession = data.session_id;
               bridgeMessage = data.bridge_message || bridgeMessage;
+              localStorage.setItem("psychology_ai_session_id", bridgeSession || "");
+              localStorage.setItem(TAROT_HANDOFF_KEY, JSON.stringify({
+                session_id: bridgeSession,
+                bridge_message: bridgeMessage,
+                cards: data.tarot_handoff?.cards || currentDraw?.cards || [],
+                reading_summary: data.tarot_handoff?.reading_summary || currentReading?.summary || "",
+                ai_analysis: data.tarot_handoff?.ai_analysis || currentReading?.ai_analysis || "",
+                draw: currentDraw,
+                reading: currentReading,
+                offline: false,
+              }));
+              if (window.MaumEmbed?.goChatFromTarot) {
+                window.MaumEmbed.goChatFromTarot();
+              } else {
+                window.location.href = "/chat?from_tarot=1";
+              }
+              return;
             }
           } catch (_) {}
         }

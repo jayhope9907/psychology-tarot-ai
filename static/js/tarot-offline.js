@@ -178,15 +178,43 @@
   }
 
   function buildBridgeMessage(userStory, draw, reading) {
-    const lines = (draw?.cards || []).map(
-      (c) => `${c.position}: ${c.name_ko}${c.reversed ? " (역)" : ""} — ${c.meaning_ko || ""}`
+    const story = (userStory || "").trim();
+    const parts = [
+      "타로에서 나온 장면을, 지금 당신 상황에 맞춰 조금 더 세밀하게 풀어볼게요.",
+      "",
+    ];
+    if (story) {
+      parts.push(`당신이 들고 온 이야기: 「${story}」`, "");
+    }
+    parts.push("카드가 가리킨 결:");
+    for (const c of draw?.cards || []) {
+      const orient = c.reversed ? "역방향" : "정방향";
+      const detail = c.meaning_ko || c.psychology_theme || "";
+      parts.push(
+        `· [${c.position || "카드"}] ${c.name_ko || ""}${c.reversed ? " (역)" : ""} (${orient})` +
+          (detail ? ` — ${detail}` : "")
+      );
+      if (story && detail) {
+        parts.push(
+          orient === "역방향"
+            ? `  → 「${story.slice(0, 40)}」 안에서, 이 힘이 막히거나 뒤집혀 느껴지는 지점일 수 있어요.`
+            : `  → 「${story.slice(0, 40)}」 안에서 이미 움직이고 있거나, 곧 손 뻗을 수 있는 결로 읽혀요.`
+        );
+      }
+    }
+    const analysis = (reading?.ai_analysis || reading?.summary || "")
+      .replace(/\*\*/g, "")
+      .trim();
+    if (analysis) {
+      parts.push("", "풀이에서 특히 당신 현실에 닿는 결:", analysis.slice(0, 900));
+    }
+    parts.push(
+      "",
+      "이 카드들은 운명이 아니라, 지금 마음·관계·선택이 어떻게 얽혀 있는지 보여주는 거울에 가깝습니다.",
+      "",
+      "지금 이 장면에서 가장 선명하게 남는 한 장—또는 한 감정—이 있다면 그대로 말해 주세요. 그 지점부터, 당신 현실에 맞춰 한 겹 더 깊게 이어가겠습니다."
     );
-    return (
-      "[타로 자기성찰 · 오프라인]\n" +
-      (userStory ? `질문: ${userStory}\n` : "") +
-      lines.join("\n") +
-      (reading?.summary ? `\n\n풀이: ${reading.summary.replace(/\*\*/g, "")}` : "")
-    );
+    return parts.join("\n");
   }
 
   global.TarotOffline = {

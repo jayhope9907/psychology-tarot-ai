@@ -2340,9 +2340,10 @@
           <button type="button" id="attachClear">제거</button>
         </div>
         <div class="mood-strip" id="modeStrip" aria-label="상담 모드">
-          <span class="mood-strip-label">상담 모드</span>
+          <span class="mood-strip-label" id="modeStripLabel">상담 모드</span>
           <button type="button" class="mood-chip" data-consultation-mode="psychology" aria-pressed="true">심리</button>
-          <button type="button" class="mood-chip" data-consultation-mode="faith" aria-pressed="false">신앙·묵상</button>
+          <button type="button" class="mood-chip" data-consultation-mode="faith" id="faithModeChip" aria-pressed="false" title="타로와는 별도 레인입니다">신앙·묵상</button>
+          <span class="mood-strip-label" id="tarotLaneNote" hidden style="margin-left:0.35rem;opacity:0.85">타로×심리 · 신앙 모드 분리</span>
         </div>
         <div class="mood-strip" id="clinicalSetupStrip" aria-label="임상 맞춤 설정">
           <span class="mood-strip-label">맞춤 설정</span>
@@ -2952,18 +2953,28 @@
     function renderTarotHandoffCard(handoff) {
       if (!handoff) return;
       hideEmptyState();
-      const cards = handoff.draw?.cards || handoff.reading?.cards || [];
+      const cards =
+        handoff.cards ||
+        handoff.tarot_handoff?.cards ||
+        handoff.draw?.cards ||
+        handoff.reading?.cards ||
+        [];
+      const summary =
+        handoff.reading_summary ||
+        handoff.reading?.summary ||
+        handoff.ai_analysis ||
+        "";
       const wrap = document.createElement("div");
       wrap.className = "tarot-handoff-card";
       wrap.innerHTML = `
-        <h4>✦ 타로 × AI 대화 연결</h4>
-        <p>${(handoff.reading?.summary || "").slice(0, 180)}</p>
+        <h4>✦ 타로 × 마음대화 · 깊은 연동</h4>
+        <p>${(summary || "풀이를 당신 상황에 맞춰 세밀하게 이어갑니다.").slice(0, 220)}</p>
         <div class="tarot-mini-grid">
-          ${cards.slice(0, 3).map((c) => `
+          ${cards.map((c) => `
             <div class="tarot-mini">
               <div>${c.symbol || "✦"}</div>
               <strong>${c.name_ko || c.title || ""}</strong>
-              <div>${c.position || ""}</div>
+              <div>${c.position || ""}${c.orientation ? ` · ${c.orientation}` : (c.reversed ? " · 역" : "")}</div>
             </div>
           `).join("")}
         </div>
@@ -2986,6 +2997,33 @@
       scrollToBottom();
     }
 
+    function setTarotFaithSeparation(active) {
+      const faithChip = document.getElementById("faithModeChip");
+      const laneNote = document.getElementById("tarotLaneNote");
+      const modeLabel = document.getElementById("modeStripLabel");
+      if (active) {
+        consultationMode = "psychology";
+        localStorage.setItem("psychology_ai_consultation_mode", "psychology");
+        localStorage.setItem("psychology_ai_tarot_lane", "1");
+        if (faithChip) {
+          faithChip.hidden = true;
+          faithChip.setAttribute("aria-pressed", "false");
+          faithChip.disabled = true;
+        }
+        if (laneNote) laneNote.hidden = false;
+        if (modeLabel) modeLabel.textContent = "상담 모드 · 타로 연동";
+      } else {
+        localStorage.removeItem("psychology_ai_tarot_lane");
+        if (faithChip) {
+          faithChip.hidden = false;
+          faithChip.disabled = false;
+        }
+        if (laneNote) laneNote.hidden = true;
+        if (modeLabel) modeLabel.textContent = "상담 모드";
+      }
+      syncMoodChips();
+    }
+
     async function processTarotHandoff() {
       const raw = localStorage.getItem(TAROT_HANDOFF_KEY);
       if (!raw) return;
@@ -2999,6 +3037,16 @@
         sessionChip.textContent = `대화 중 · ${sessionId.slice(0, 8)}`;
         syncTarotLink();
       }
+
+      // Tarot + faith/meditation do not mix — lock psychology lane.
+      setTarotFaithSeparation(true);
+      try {
+        await fetch("/api/v1/settings/consultation-mode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, consultation_mode: "psychology" }),
+        });
+      } catch (_) {}
 
       renderTarotHandoffCard(handoff);
       if (handoff.bridge_message) {
@@ -3397,9 +3445,12 @@
     if (modeStrip) {
       modeStrip.addEventListener("click", async (event) => {
         const btn = event.target.closest(".mood-chip");
-        if (!btn) return;
+        if (!btn || btn.disabled || btn.hidden) return;
         const mode = btn.getAttribute("data-consultation-mode");
         if (!mode || mode === consultationMode) return;
+        if (mode === "faith" && localStorage.getItem("psychology_ai_tarot_lane") === "1") {
+          return;
+        }
         consultationMode = mode;
         localStorage.setItem("psychology_ai_consultation_mode", consultationMode);
         syncMoodChips();
@@ -5550,6 +5601,11 @@
       await loadCounselingStyle();
       const restored = await restoreSession();
       if (!restored) await loadMoodWelcome();
+      const fromTarot =
+        new URLSearchParams(window.location.search).get("from_tarot") === "1" ||
+        localStorage.getItem("psychology_ai_tarot_lane") === "1" ||
+        !!localStorage.getItem(TAROT_HANDOFF_KEY);
+      if (fromTarot) setTarotFaithSeparation(true);
       processTarotHandoff();
       loadPersonaCatalog();
       loadSessionList();
