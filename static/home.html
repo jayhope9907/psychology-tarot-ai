@@ -164,6 +164,31 @@
     }
     .report-list { margin: 10px 0 0; padding-left: 18px; font-size: 0.82rem; color: var(--t-text-secondary); line-height: 1.6; }
     .reminder-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 0.85rem; }
+    .state-glance {
+      display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center;
+      padding: 12px; border-radius: 14px; margin-bottom: 10px;
+      background: linear-gradient(135deg, rgba(45,106,79,0.1), rgba(49,130,246,0.05));
+      border: 1px solid rgba(45,106,79,0.15);
+    }
+    .state-glance-orb {
+      width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 1.35rem;
+      background: radial-gradient(circle at 32% 28%, #fff, rgba(45,106,79,0.7) 48%, #1b4332);
+      box-shadow: 0 10px 22px rgba(27,67,50,0.22);
+    }
+    .state-glance strong { display: block; font-size: 0.92rem; margin-bottom: 3px; }
+    .state-glance p { margin: 0; font-size: 0.76rem; color: var(--t-text-secondary); line-height: 1.4; }
+    .state-glance-bars { display: grid; gap: 6px; margin-bottom: 10px; }
+    .home-bar-row { display: grid; grid-template-columns: 56px 1fr 32px; gap: 6px; align-items: center; }
+    .home-bar-row .lbl { font-size: 0.66rem; color: var(--t-text-secondary); font-weight: 700; }
+    .home-bar-track { height: 7px; border-radius: 999px; background: var(--t-bg); overflow: hidden; border: 1px solid var(--t-border); }
+    .home-bar-fill { height: 100%; background: linear-gradient(90deg, #95d5b2, #2d6a4f); border-radius: inherit; }
+    .home-bar-row .val { font-size: 0.64rem; text-align: right; color: #2d6a4f; font-weight: 800; }
+    .state-glance-meta {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      font-size: 0.74rem; color: var(--t-text-secondary);
+    }
+    .state-glance-meta a { color: var(--t-blue-dark); font-weight: 700; text-decoration: none; }
   </style>
 </head>
 <body class="toss-ui home-page">
@@ -250,6 +275,23 @@
     <div class="axis-trend-grid" id="axisTrendGrid"></div>
   </section>
 
+  <section class="checkin-card" id="myStateCard">
+    <h2>내 상태 한눈에</h2>
+    <p class="desc">타로·대화·소품이 남긴 결을 바로 볼 수 있어요.</p>
+    <div class="state-glance">
+      <div class="state-glance-orb" id="homeStateOrb">✦</div>
+      <div>
+        <strong id="homeStateTitle">아직 빈 캔버스에 가까워요</strong>
+        <p id="homeStateSub">기록을 시작하면 여기에 막대와 흐름이 생겨요.</p>
+      </div>
+    </div>
+    <div class="state-glance-bars" id="homeStateBars"></div>
+    <div class="state-glance-meta">
+      <span id="homePropMeta">소품 0/11</span>
+      <a href="/chat#status">자세히 보기 →</a>
+    </div>
+  </section>
+
   <section class="checkin-card">
     <h2>이번 주 기분</h2>
     <p class="desc">최근 7일 체크인</p>
@@ -275,6 +317,7 @@
     <a href="/" class="t-nav-item active"><span class="t-nav-icon">🏠</span>홈</a>
     <a href="/chat" class="t-nav-item"><span class="t-nav-icon">💬</span>AI 대화</a>
     <a href="/tarot" class="t-nav-item"><span class="t-nav-icon">✦</span>타로</a>
+    <a href="/chat#status" class="t-nav-item"><span class="t-nav-icon">📊</span>내 상태</a>
   </nav>
 
   <script src="/static/js/embed-bridge.js"></script>
@@ -548,6 +591,58 @@
       else refreshMoodUI();
     }
 
+    async function loadMyStateGlance() {
+      const title = document.getElementById("homeStateTitle");
+      const sub = document.getElementById("homeStateSub");
+      const bars = document.getElementById("homeStateBars");
+      const propMeta = document.getElementById("homePropMeta");
+      const orb = document.getElementById("homeStateOrb");
+      if (!title || !bars) return;
+      try {
+        const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/psych-profile?auto_backfill=true`);
+        if (res.ok) {
+          const profile = await res.json();
+          const spectra = (profile.recommendations?.top_spectra || []).slice(0, 3);
+          const status = profile.pipeline_status || {};
+          const done = ["tarot", "counseling", "recommendations", "tracking"].filter((k) => status[k]).length;
+          if (done >= 2) {
+            title.textContent = "패턴이 조금씩 보이기 시작했어요";
+            if (orb) orb.textContent = "◎";
+          } else if (done >= 1) {
+            title.textContent = "기록이 쌓이며 그림이 생기고 있어요";
+          }
+          if (spectra[0]) {
+            sub.textContent = `지금 선명한 결: ${spectra[0].label_ko || spectra[0].spectrum_id}`;
+          }
+          bars.innerHTML = spectra.length
+            ? spectra.map((s) => {
+                const pct = Math.min(100, Math.round((s.score || 0) * 100));
+                return `<div class="home-bar-row"><span class="lbl">${s.label_ko || s.spectrum_id}</span>
+                  <div class="home-bar-track"><div class="home-bar-fill" style="width:${pct}%"></div></div>
+                  <span class="val">${pct}</span></div>`;
+              }).join("")
+            : `<div class="home-bar-row"><span class="lbl">신호</span>
+                <div class="home-bar-track"><div class="home-bar-fill" style="width:6%"></div></div>
+                <span class="val">낮음</span></div>`;
+        }
+      } catch (_) {}
+      let propDone = 0;
+      try {
+        const cached = JSON.parse(localStorage.getItem("maum_stealth_progress") || "null");
+        if (cached?.done) propDone = Number(cached.done) || 0;
+      } catch (_) {}
+      try {
+        const sres = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/stealth-unconscious`);
+        if (sres.ok) {
+          const sdata = await sres.json();
+          const snap = (sdata.latest || {}).snapshot || sdata.latest || {};
+          const ingested = snap.ingestedProps || snap.ingested_props || [];
+          if (ingested.length) propDone = ingested.length;
+        }
+      } catch (_) {}
+      if (propMeta) propMeta.textContent = `소품 ${propDone}/11`;
+    }
+
     async function loadDashboard() {
       const res = await fetch(`/api/v1/dashboard/${encodeURIComponent(userId)}`);
       const data = await res.json();
@@ -592,6 +687,7 @@
       renderChart(data.recent_checkins || []);
       renderAxisTrends(data.dimension_trends || data.weekly_report?.dimension_trends || {});
       renderWeekly(data.weekly_report || {});
+      await loadMyStateGlance();
     }
 
     function renderChart(checkins) {

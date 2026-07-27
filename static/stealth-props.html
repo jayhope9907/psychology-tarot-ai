@@ -7,6 +7,9 @@
   <meta name="robots" content="noindex" />
   <meta name="description" content="11종 마술 소품으로 무의식 지표를 매핑하는 스텔스 게임" />
   <title>마음쉼터 · 11종 소품 무의식 매핑</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/embed.css" />
   <script src="/static/js/embed-bridge.js"></script>
   <style>
@@ -16,14 +19,18 @@
       --ink: #e8f0ea;
       --muted: #8aa396;
       --gold: #c9a227;
+      --gold-soft: rgba(201, 162, 39, 0.22);
       --emerald: #2dd4a8;
       --line: rgba(201, 162, 39, 0.28);
       --surface: rgba(21, 34, 28, 0.92);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --font-display: "Cormorant Garamond", serif;
+      --font-body: "Noto Sans KR", sans-serif;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
-      font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+      font-family: var(--font-body);
       color: var(--ink);
       background:
         radial-gradient(ellipse 80% 50% at 50% -10%, rgba(45, 212, 168, 0.18), transparent),
@@ -36,28 +43,139 @@
     .top {
       display: flex; align-items: center; gap: 10px;
       padding: 12px 16px; border-bottom: 1px solid var(--line);
-      background: rgba(8, 14, 12, 0.7); backdrop-filter: blur(8px);
+      background: rgba(8, 14, 12, 0.72); backdrop-filter: blur(10px);
+      position: sticky; top: 0; z-index: 20;
     }
     .top h1 {
-      margin: 0; flex: 1; font-size: 1rem; font-weight: 700;
-      letter-spacing: 0.02em;
+      margin: 0; flex: 1; font-family: var(--font-display);
+      font-size: 1.25rem; font-weight: 600; letter-spacing: 0.02em;
     }
     .top a, .top button {
       color: var(--gold); background: transparent; border: 1px solid var(--line);
       border-radius: 10px; padding: 8px 12px; text-decoration: none; font-size: 0.78rem;
-      cursor: pointer;
+      cursor: pointer; font-family: inherit;
     }
-    .progress-wrap { padding: 10px 16px; border-bottom: 1px solid var(--line); }
+    .state-strip {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+      margin: 12px 16px 0; padding: 12px 14px; border-radius: 16px;
+      background: rgba(0,0,0,0.28); border: 1px solid var(--line);
+    }
+    .state-orb {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: radial-gradient(circle at 32% 28%, #fff8, var(--emerald) 45%, #0a3 90%);
+      box-shadow: 0 0 24px rgba(45,212,168,0.35);
+      display: grid; place-items: center; font-size: 1.35rem;
+      transition: transform 0.45s var(--ease), filter 0.45s;
+    }
+    .state-orb.final { filter: saturate(1.25); box-shadow: 0 0 28px rgba(201,162,39,0.45); }
+    .state-copy strong { display: block; font-size: 0.92rem; margin-bottom: 2px; }
+    .state-copy span { font-size: 0.72rem; color: var(--muted); line-height: 1.4; }
+    .state-meter { width: 72px; text-align: right; }
+    .state-meter b { display: block; color: var(--gold); font-size: 1.05rem; }
+    .state-meter small { color: var(--muted); font-size: 0.65rem; }
+    .progress-wrap { padding: 10px 16px; }
     .bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
-    .fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--emerald), var(--gold)); transition: width .35s; }
+    .fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--emerald), var(--gold)); transition: width .35s var(--ease); }
     .progress-meta { margin-top: 6px; font-size: 0.72rem; color: var(--muted); display: flex; justify-content: space-between; }
-    main { flex: 1; max-width: 560px; margin: 0 auto; width: 100%; padding: 18px 16px 100px; }
-    .stage {
-      background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
-      padding: 18px; min-height: 360px;
+    main { flex: 1; max-width: 920px; margin: 0 auto; width: 100%; padding: 8px 16px 100px; }
+    .intro-head { text-align: center; margin: 8px 0 18px; }
+    .intro-head .eyebrow { color: var(--gold); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 6px; }
+    .intro-head h2 {
+      margin: 0 0 8px; font-family: var(--font-display); font-size: clamp(1.45rem, 4vw, 2rem);
+      font-weight: 600; line-height: 1.25;
     }
-    .eyebrow { color: var(--gold); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 8px; }
-    .stage h2 { margin: 0 0 8px; font-size: 1.25rem; line-height: 1.35; }
+    .intro-head p { margin: 0 auto; max-width: 36rem; color: var(--muted); font-size: 0.88rem; line-height: 1.55; }
+
+    /* Tarot-like prop deck */
+    .prop-deck {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      gap: 12px;
+      perspective: 900px;
+    }
+    .prop-card {
+      position: relative; aspect-ratio: 2 / 3.15; border: none; padding: 0;
+      background: transparent; cursor: pointer; font: inherit; color: inherit;
+      transform-style: preserve-3d; transition: transform 0.35s var(--ease);
+    }
+    .prop-card:hover:not(:disabled):not(.done) { transform: translateY(-6px) rotateX(4deg); }
+    .prop-card:disabled { cursor: default; opacity: 0.55; }
+    .prop-card.done { cursor: default; }
+    .prop-face {
+      position: absolute; inset: 0; border-radius: 14px;
+      backface-visibility: hidden; overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 14px 28px rgba(0,0,0,0.35);
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding: 12px 10px 14px; text-align: center;
+    }
+    .prop-back {
+      background:
+        radial-gradient(circle at 50% 30%, rgba(45,212,168,0.25), transparent 55%),
+        linear-gradient(160deg, #1a2c24, #0e1814 60%, #1c2818);
+    }
+    .prop-back::before {
+      content: ""; position: absolute; inset: 8px; border-radius: 10px;
+      border: 1px solid rgba(201,162,39,0.35);
+      background:
+        repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(201,162,39,0.05) 6px, rgba(201,162,39,0.05) 7px);
+    }
+    .prop-symbol {
+      position: relative; z-index: 1; font-size: 1.85rem; margin-bottom: 10px;
+      filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+      animation: floatSymbol 3.6s ease-in-out infinite;
+    }
+    .prop-card:nth-child(2n) .prop-symbol { animation-delay: 0.4s; }
+    .prop-card:nth-child(3n) .prop-symbol { animation-delay: 0.8s; }
+    @keyframes floatSymbol {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .prop-name {
+      position: relative; z-index: 1; font-family: var(--font-display);
+      font-size: 0.95rem; font-weight: 600; line-height: 1.2; margin: 0 0 4px;
+    }
+    .prop-cue {
+      position: relative; z-index: 1; font-size: 0.62rem; color: var(--muted);
+      line-height: 1.35; margin: 0; display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .prop-badge {
+      position: absolute; top: 10px; left: 10px; z-index: 2;
+      font-size: 0.6rem; letter-spacing: 0.08em; color: var(--gold);
+      border: 1px solid var(--line); border-radius: 999px; padding: 2px 7px;
+      background: rgba(0,0,0,0.35);
+    }
+    .prop-card.done .prop-face {
+      border-color: rgba(45,212,168,0.55);
+      box-shadow: 0 0 0 1px rgba(45,212,168,0.25), 0 14px 28px rgba(0,0,0,0.3);
+    }
+    .prop-card.done .prop-badge { color: var(--emerald); border-color: rgba(45,212,168,0.5); }
+    .prop-card.active .prop-face {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(201,162,39,0.35), 0 18px 36px rgba(0,0,0,0.4);
+    }
+    .deck-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 18px 0 8px; }
+    .btn {
+      border: none; border-radius: 12px; padding: 12px 16px; font-weight: 700;
+      cursor: pointer; font-size: 0.85rem; font-family: inherit;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--emerald), #1aa882); color: #062018; }
+    .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .stage {
+      display: none;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+      padding: 18px; min-height: 360px; margin-top: 8px;
+    }
+    .stage.open { display: block; animation: riseIn 0.4s var(--ease); }
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    .stage .eyebrow { color: var(--gold); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 8px; }
+    .stage h2 { margin: 0 0 8px; font-family: var(--font-display); font-size: 1.4rem; line-height: 1.3; }
     .stage p { margin: 0 0 14px; color: var(--muted); font-size: 0.88rem; line-height: 1.55; }
     .play-area {
       border: 1px dashed rgba(45, 212, 168, 0.35); border-radius: 14px;
@@ -66,13 +184,6 @@
     }
     .hint { font-size: 0.75rem; color: var(--muted); margin-top: 10px; }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-    .btn {
-      border: none; border-radius: 12px; padding: 12px 16px; font-weight: 700;
-      cursor: pointer; font-size: 0.85rem;
-    }
-    .btn-primary { background: linear-gradient(135deg, var(--emerald), #1aa882); color: #062018; }
-    .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .target {
       width: 44px; height: 44px; border-radius: 50%;
       background: radial-gradient(circle at 30% 30%, #fff, var(--emerald));
@@ -85,9 +196,7 @@
       position: absolute; opacity: 0.55; cursor: pointer;
     }
     input[type=range] { width: 100%; accent-color: var(--gold); }
-    .stat-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px;
-    }
+    .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
     .stat {
       background: rgba(0,0,0,0.28); border-radius: 12px; padding: 10px 12px;
       border: 1px solid var(--line);
@@ -99,25 +208,46 @@
       background: linear-gradient(135deg, rgba(45,212,168,0.12), rgba(201,162,39,0.12));
       border: 1px solid var(--line);
     }
-    .persona h3 { margin: 0 0 6px; font-size: 1.05rem; }
+    .persona h3 { margin: 0 0 6px; font-size: 1.05rem; font-family: var(--font-display); }
+    .live-bars { display: grid; gap: 8px; margin-top: 12px; }
+    .live-bar-row { display: grid; grid-template-columns: 88px 1fr 36px; gap: 8px; align-items: center; }
+    .live-bar-row .lbl { font-size: 0.68rem; color: var(--muted); }
+    .live-bar-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .live-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--emerald), var(--gold)); width: 0%; transition: width 0.4s var(--ease); }
+    .live-bar-row .val { font-size: 0.68rem; color: var(--gold); text-align: right; }
     .disclaimer {
       margin-top: 16px; font-size: 0.72rem; color: var(--muted); line-height: 1.45;
       border-top: 1px solid var(--line); padding-top: 12px;
     }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
-    .chip {
-      font-size: 0.65rem; padding: 4px 8px; border-radius: 999px;
-      border: 1px solid var(--line); color: var(--muted);
+    .deck-panel.hidden, .stage:not(.open) { }
+    .deck-panel.hidden { display: none; }
+    @media (max-width: 520px) {
+      .prop-deck { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .prop-name { font-size: 0.82rem; }
+      .prop-cue { display: none; }
     }
-    .chip.done { color: var(--emerald); border-color: rgba(45,212,168,0.5); }
   </style>
 </head>
 <body>
   <header class="top">
     <a href="/home">← 홈</a>
     <h1>11종 소품 · 스텔스 무의식 매핑</h1>
+    <a href="/chat#status">내 상태</a>
     <a href="/chat#mind-network">3D 도면</a>
   </header>
+
+  <section class="state-strip" aria-live="polite">
+    <div class="state-orb" id="stateOrb">✦</div>
+    <div class="state-copy">
+      <strong id="stateTitle">소품을 골라 무의식을 비춰 보세요</strong>
+      <span id="stateSub">타로처럼 카드를 고르면 미니 게임이 시작됩니다. 8장 이상이면 각성이 확정돼요.</span>
+    </div>
+    <div class="state-meter">
+      <b id="stateCount">0/11</b>
+      <small id="stateStatus">잠정</small>
+    </div>
+  </section>
+
   <div class="progress-wrap">
     <div class="bar"><div class="fill" id="fill"></div></div>
     <div class="progress-meta">
@@ -125,21 +255,36 @@
       <span id="statusLabel">잠정 (8개 이상 시 각성 확정)</span>
     </div>
   </div>
+
   <main>
+    <section class="deck-panel" id="deckPanel">
+      <div class="intro-head">
+        <p class="eyebrow">Now You See Me · Visible Props</p>
+        <h2>11장의 소품 카드</h2>
+        <p>타로처럼 소품이 한눈에 펼쳐져 있어요. 끌리는 카드를 고르면 그 소품의 행동이 무의식 지표로 남습니다.</p>
+      </div>
+      <div class="prop-deck" id="propDeck" role="list"></div>
+      <div class="deck-actions">
+        <button class="btn btn-primary" id="autoNextBtn">다음 미완료 카드</button>
+        <button class="btn btn-ghost" id="resetBtn">처음부터</button>
+        <button class="btn btn-ghost" id="resultBtn" hidden>결과 보기</button>
+      </div>
+    </section>
+
     <section class="stage" id="stage"></section>
     <p class="disclaimer">본 결과는 비진단 웰니스 참고 지표이며 의료 진단을 대체하지 않습니다. 소품 상호작용의 행동 프록시를 CHC·임상 스펙트럼 참고값으로 환산합니다.</p>
   </main>
 
   <script>
   (function () {
-    const USER_KEY = "maum_user_id";
+    const USER_KEY = "psychology_ai_user_id";
     const SESS_KEY = "stealth_prop_session";
     function uid() {
-      let id = localStorage.getItem(USER_KEY);
+      let id = localStorage.getItem(USER_KEY) || localStorage.getItem("maum_user_id");
       if (!id) {
-        id = "su-" + Math.random().toString(36).slice(2, 10);
-        localStorage.setItem(USER_KEY, id);
+        id = "user-" + Math.random().toString(36).slice(2, 10);
       }
+      localStorage.setItem(USER_KEY, id);
       return id;
     }
     function sid() {
@@ -152,40 +297,101 @@
     }
 
     const PROPS = [
-      { id: "RAIN_DROP", title: "물방울", cue: "빗방울 스트로보에 맞춰 점을 따라가세요.", kind: "chase" },
-      { id: "WATER_TANK", title: "수조 탈출", cue: "신호가 뜨면 즉시 탈출 버튼을 누르세요.", kind: "qte" },
-      { id: "CARD_STEALTH", title: "레이저 카드", cue: "레이저 격자 사이로 카드를 미끄러뜨리세요.", kind: "slider" },
-      { id: "CHAMBER_BOX", title: "차원 상자", cue: "패턴을 반복하지 말고 새 순서로 상자를 여세요.", kind: "sequence" },
-      { id: "MIRROR_SHADOW", title: "가짜 잔상", cue: "잔상을 쫓지 말고 가만히 관조하세요.", kind: "idle" },
-      { id: "ROULETTE_DIAL", title: "미스디렉션 루렛", cue: "미끼를 누르지 말고 진짜 눈을 고르세요.", kind: "bait" },
-      { id: "PERSONA_MASK", title: "페르소나 마스크", cue: "미세한 표정이 다른 마스크를 고르세요.", kind: "mask" },
-      { id: "SLEIGHT_PALMING", title: "손놀림", cue: "일정한 압력으로 원을 그리세요.", kind: "draw" },
-      { id: "MENTAL_PRIMING", title: "멘탈 프라이밍", cue: "암시에 끌리지 말고 스스로 고르세요.", kind: "prime" },
-      { id: "HOLOGRAM_REALITY", title: "홀로그램", cue: "허상을 쫓지 말고 실체만 터치하세요.", kind: "holo" },
-      { id: "INTERPERSONAL_SYNC", title: "인터랙션 동기화", cue: "상대 박자에 맞춰 탭하세요.", kind: "sync" },
+      { id: "RAIN_DROP", title: "물방울", cue: "빗방울 스트로보에 맞춰 점을 따라가세요.", kind: "chase", symbol: "💧" },
+      { id: "WATER_TANK", title: "수조 탈출", cue: "신호가 뜨면 즉시 탈출 버튼을 누르세요.", kind: "qte", symbol: "🫧" },
+      { id: "CARD_STEALTH", title: "레이저 카드", cue: "레이저 격자 사이로 카드를 미끄러뜨리세요.", kind: "slider", symbol: "🂠" },
+      { id: "CHAMBER_BOX", title: "차원 상자", cue: "패턴을 반복하지 말고 새 순서로 상자를 여세요.", kind: "sequence", symbol: "📦" },
+      { id: "MIRROR_SHADOW", title: "가짜 잔상", cue: "잔상을 쫓지 말고 가만히 관조하세요.", kind: "idle", symbol: "🪞" },
+      { id: "ROULETTE_DIAL", title: "미스디렉션 루렛", cue: "미끼를 누르지 말고 진짜 눈을 고르세요.", kind: "bait", symbol: "🎯" },
+      { id: "PERSONA_MASK", title: "페르소나 마스크", cue: "미세한 표정이 다른 마스크를 고르세요.", kind: "mask", symbol: "🎭" },
+      { id: "SLEIGHT_PALMING", title: "손놀림", cue: "일정한 압력으로 원을 그리세요.", kind: "draw", symbol: "✋" },
+      { id: "MENTAL_PRIMING", title: "멘탈 프라이밍", cue: "암시에 끌리지 말고 스스로 고르세요.", kind: "prime", symbol: "🧠" },
+      { id: "HOLOGRAM_REALITY", title: "홀로그램", cue: "허상을 쫓지 말고 실체만 터치하세요.", kind: "holo", symbol: "✨" },
+      { id: "INTERPERSONAL_SYNC", title: "인터랙션 동기화", cue: "상대 박자에 맞춰 탭하세요.", kind: "sync", symbol: "🤝" },
     ];
+
+    const CLINICAL_LABELS = {
+      ocdRigidityScore: "경직·반복",
+      panicAnxietyIndex: "공황·긴장",
+      asdStimmingRate: "자극 반복",
+      cognitiveFlexibility: "유연성",
+      dissociationScore: "거리감",
+      impulsivityMisdirection: "충동",
+      empathyTheoryOfMind: "공감",
+      fineMotorControlIndex: "손 조절",
+      hypnoticSuggestibility: "암시 수용",
+      perceptualDefusionIndex: "현실 검증",
+      interpersonalSynchrony: "동기화",
+      personaIdentityFluidity: "페르소나",
+    };
 
     const state = {
       index: 0,
       done: new Set(),
       lastReport: null,
       turn: 0,
+      activeId: null,
     };
 
     const stage = document.getElementById("stage");
+    const deckPanel = document.getElementById("deckPanel");
+    const propDeck = document.getElementById("propDeck");
     const fill = document.getElementById("fill");
     const progressLabel = document.getElementById("progressLabel");
     const statusLabel = document.getElementById("statusLabel");
+    const stateOrb = document.getElementById("stateOrb");
+    const stateTitle = document.getElementById("stateTitle");
+    const stateSub = document.getElementById("stateSub");
+    const stateCount = document.getElementById("stateCount");
+    const stateStatus = document.getElementById("stateStatus");
+    const resultBtn = document.getElementById("resultBtn");
+
+    function showDeck() {
+      deckPanel.classList.remove("hidden");
+      stage.classList.remove("open");
+      stage.innerHTML = "";
+      state.activeId = null;
+      renderDeck();
+    }
+
+    function showStage() {
+      deckPanel.classList.add("hidden");
+      stage.classList.add("open");
+    }
 
     function updateProgress(report) {
       const n = state.done.size;
       fill.style.width = (n / 11 * 100) + "%";
       progressLabel.textContent = n + " / 11";
+      stateCount.textContent = n + "/11";
+      let st = "잠정";
       if (report && report.progress) {
         const p = report.progress;
-        const st = p.assessmentStatus === "final" ? "각성 확정" : "잠정";
+        st = p.assessmentStatus === "final" ? "각성 확정" : "잠정";
         statusLabel.textContent = st + " · 확정에 " + (p.requiredForFinal || 8) + "개 필요";
+      } else {
+        statusLabel.textContent = "잠정 (8개 이상 시 각성 확정)";
       }
+      stateStatus.textContent = st;
+      stateOrb.classList.toggle("final", st === "각성 확정");
+      if (report && report.title) {
+        stateTitle.textContent = report.title;
+        stateSub.textContent = report.awakening_quote || "카드가 남긴 결이 페르소나로 모이고 있어요.";
+        stateOrb.textContent = st === "각성 확정" ? "★" : "✦";
+      } else if (n === 0) {
+        stateTitle.textContent = "소품을 골라 무의식을 비춰 보세요";
+        stateSub.textContent = "타로처럼 카드를 고르면 미니 게임이 시작됩니다. 8장 이상이면 각성이 확정돼요.";
+        stateOrb.textContent = "✦";
+      } else {
+        stateTitle.textContent = n + "장의 소품이 열렸어요";
+        stateSub.textContent = "남은 카드를 고르거나, 결과로 지금 상태를 확인해 보세요.";
+      }
+      resultBtn.hidden = n < 1;
+      try {
+        localStorage.setItem("maum_stealth_progress", JSON.stringify({
+          done: n, status: st, title: report?.title || null, at: Date.now(),
+        }));
+      } catch (_) {}
     }
 
     async function ingest(payload, opts) {
@@ -217,61 +423,71 @@
 
     function ms() { return Date.now(); }
 
-    function renderIntro() {
-      stage.innerHTML =
-        '<p class="eyebrow">Now You See Me · Clinical IDE</p>' +
-        "<h2>11개의 마술 소품으로<br/>무의식 벡터를 읽습니다</h2>" +
-        "<p>각 소품은 행동·타이밍·시선 프록시를 남깁니다. 8개 이상 완료하면 호스멘 페르소나가 확정되고, 결과는 임상의 3D 미래 도면에 연결됩니다.</p>" +
-        '<div class="chips" id="chipRow"></div>' +
-        '<div class="actions"><button class="btn btn-primary" id="startBtn">무대 열기</button>' +
-        '<button class="btn btn-ghost" id="resetBtn">처음부터</button></div>';
-      const row = document.getElementById("chipRow");
-      PROPS.forEach((p) => {
-        const c = document.createElement("span");
-        c.className = "chip" + (state.done.has(p.id) ? " done" : "");
-        c.textContent = p.title;
-        row.appendChild(c);
+    function renderDeck() {
+      propDeck.innerHTML = "";
+      PROPS.forEach((p, idx) => {
+        const done = state.done.has(p.id);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "prop-card" + (done ? " done" : "") + (state.activeId === p.id ? " active" : "");
+        btn.setAttribute("role", "listitem");
+        btn.innerHTML =
+          '<div class="prop-face prop-back">' +
+            '<span class="prop-badge">' + (done ? "완료" : String(idx + 1).padStart(2, "0")) + "</span>" +
+            '<div class="prop-symbol">' + p.symbol + "</div>" +
+            '<div class="prop-name">' + p.title + "</div>" +
+            '<p class="prop-cue">' + p.cue + "</p>" +
+          "</div>";
+        if (!done) btn.onclick = () => openProp(p);
+        propDeck.appendChild(btn);
       });
-      document.getElementById("startBtn").onclick = () => {
-        state.index = 0;
-        while (state.index < PROPS.length && state.done.has(PROPS[state.index].id)) state.index += 1;
-        if (state.index >= PROPS.length) renderResult();
-        else renderProp(PROPS[state.index]);
-      };
-      document.getElementById("resetBtn").onclick = () => {
-        state.done = new Set();
-        state.index = 0;
-        state.lastReport = null;
-        state.turn = 0;
-        sessionStorage.removeItem(SESS_KEY);
-        // 다음 ingest 때 reset:true 로 서버 집계를 비움
-        sessionStorage.setItem("stealth_force_reset", "1");
-        updateProgress(null);
-        renderIntro();
-      };
+    }
+
+    function openProp(prop) {
+      state.activeId = prop.id;
+      state.index = PROPS.findIndex((p) => p.id === prop.id);
+      showStage();
+      renderProp(prop);
     }
 
     function nextAfter(propId) {
       state.done.add(propId);
-      state.index += 1;
-      if (state.index >= PROPS.length) renderResult();
-      else renderProp(PROPS[state.index]);
+      const next = PROPS.find((p) => !state.done.has(p.id));
+      if (!next) renderResult();
+      else {
+        showDeck();
+        updateProgress(state.lastReport);
+      }
+    }
+
+    function renderLiveBars(report) {
+      const cli = (report && (report.clinical_profile || report.clinicalProfile)) || {};
+      const keys = Object.keys(CLINICAL_LABELS).filter((k) => cli[k] != null).slice(0, 6);
+      if (!keys.length) return "";
+      return '<div class="live-bars">' + keys.map((k) => {
+        const v = Math.round(Number(cli[k]) || 0);
+        return '<div class="live-bar-row"><span class="lbl">' + CLINICAL_LABELS[k] +
+          '</span><div class="live-bar-track"><div class="live-bar-fill" style="width:' + Math.min(100, v) +
+          '%"></div></div><span class="val">' + v + "</span></div>";
+      }).join("") + "</div>";
     }
 
     function renderProp(prop) {
       stage.innerHTML =
         '<p class="eyebrow">PROP ' + (state.index + 1) + " / 11 · " + prop.id + "</p>" +
-        "<h2>" + prop.title + "</h2>" +
+        "<h2>" + prop.symbol + " " + prop.title + "</h2>" +
         "<p>" + prop.cue + "</p>" +
         '<div class="play-area" id="play"></div>' +
         '<p class="hint" id="hint">준비되면 시작하세요.</p>' +
         '<div class="actions"><button class="btn btn-primary" id="goBtn">시작</button>' +
+        '<button class="btn btn-ghost" id="backDeckBtn">카드장으로</button>' +
         '<button class="btn btn-ghost" id="skipBtn">건너뛰기</button></div>';
 
       const play = document.getElementById("play");
       const hint = document.getElementById("hint");
       const goBtn = document.getElementById("goBtn");
       const skipBtn = document.getElementById("skipBtn");
+      document.getElementById("backDeckBtn").onclick = showDeck;
       skipBtn.onclick = () => nextAfter(prop.id);
 
       const finish = async (payload) => {
@@ -281,8 +497,8 @@
         try {
           const report = await ingest(payload);
           hint.textContent = report.assessment_status === "final"
-            ? "각성 확정 · 다음으로"
-            : "잠정 기록됨 · 다음으로";
+            ? "각성 확정 · 카드장으로"
+            : "잠정 기록됨 · 카드장으로";
           setTimeout(() => nextAfter(prop.id), 450);
         } catch (e) {
           hint.textContent = "전송 실패. 다시 시도해 주세요.";
@@ -304,7 +520,6 @@
           };
           move();
           const iv = setInterval(move, 700);
-          const started = performance.now();
           t.onclick = (ev) => {
             hits += 1;
             const r = t.getBoundingClientRect();
@@ -397,104 +612,85 @@
         };
       } else if (prop.kind === "bait") {
         goBtn.onclick = () => {
-          hint.textContent = "금색만 고르세요.";
+          hint.textContent = "미끼(회색)를 피하고 에메랄드만";
           let bait = 0;
           for (let i = 0; i < 5; i++) {
             const d = document.createElement("div");
-            d.className = i === 2 ? "target" : "decoy";
-            d.style.left = (8 + i * 18) + "%";
-            d.style.top = (30 + (i % 2) * 20) + "%";
+            const real = i === 2;
+            d.className = real ? "target" : "decoy";
+            d.style.left = (10 + i * 16) + "%";
+            d.style.top = (20 + (i % 2) * 30) + "%";
             play.appendChild(d);
             d.onclick = () => {
-              if (i !== 2) bait += 1;
-              else finish({
+              if (!real) { bait += 1; return; }
+              finish({
                 prop: prop.id, timestampMs: ms(),
                 misdirectionBaitClicks: bait,
-                entropyRandomnessIndex: Math.max(0.1, 1 - bait * 0.2),
+                entropyRandomnessIndex: Math.max(0.2, 1 - bait * 0.15),
               });
             };
           }
         };
       } else if (prop.kind === "mask") {
-        const faces = ["🙂", "😐", "😉", "😌"];
-        const truth = 2;
-        play.innerHTML = faces.map((f, i) =>
-          '<button class="btn btn-ghost mask" data-i="' + i + '" style="font-size:1.6rem">' + f + "</button>"
-        ).join(" ");
-        goBtn.style.display = "none";
-        hint.textContent = "미세하게 다른 표정(윙크)을 고르세요.";
-        const t0 = performance.now();
-        play.querySelectorAll(".mask").forEach((b) => {
-          b.onclick = () => {
-            const i = Number(b.getAttribute("data-i"));
-            finish({
-              prop: prop.id, timestampMs: ms(),
-              microExpressionScanLatencyMs: performance.now() - t0,
-              maskMatchAccuracyRatio: i === truth ? 1 : 0.2,
-            });
-          };
-        });
-      } else if (prop.kind === "draw") {
-        const canvas = document.createElement("canvas");
-        canvas.width = 320; canvas.height = 140;
-        canvas.style.width = "100%";
-        play.appendChild(canvas);
-        const ctx = canvas.getContext("2d");
-        ctx.strokeStyle = "#2dd4a8"; ctx.lineWidth = 2;
-        let drawing = false, pts = [], pressures = [];
-        const pos = (e) => {
-          const r = canvas.getBoundingClientRect();
-          const x = ((e.touches ? e.touches[0].clientX : e.clientX) - r.left) * (canvas.width / r.width);
-          const y = ((e.touches ? e.touches[0].clientY : e.clientY) - r.top) * (canvas.height / r.height);
-          return { x, y };
-        };
-        const start = (e) => { drawing = true; pts = []; pressures = []; const p = pos(e); pts.push(p); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-        const move = (e) => {
-          if (!drawing) return;
-          const p = pos(e); pts.push(p);
-          pressures.push(e.pressure || 0.5);
-          ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault();
-        };
-        const end = () => { drawing = false; };
-        canvas.addEventListener("mousedown", start); canvas.addEventListener("mousemove", move);
-        canvas.addEventListener("mouseup", end);
-        canvas.addEventListener("touchstart", start, { passive: false });
-        canvas.addEventListener("touchmove", move, { passive: false });
-        canvas.addEventListener("touchend", end);
-        goBtn.textContent = "궤적 제출";
         goBtn.onclick = () => {
-          let curv = 0.5;
-          if (pts.length > 3) {
-            let sum = 0;
-            for (let i = 2; i < pts.length; i++) {
-              const a = pts[i - 2], b = pts[i - 1], c = pts[i];
-              const ang = Math.abs(Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x));
-              sum += ang;
-            }
-            curv = Math.min(1, sum / pts.length);
-          }
-          const mean = pressures.length ? pressures.reduce((a, b) => a + b, 0) / pressures.length : 0.5;
-          const inst = pressures.length
-            ? Math.sqrt(pressures.reduce((s, p) => s + (p - mean) ** 2, 0) / pressures.length)
-            : 0.4;
-          finish({
-            prop: prop.id, timestampMs: ms(),
-            gestureCurvatureVariance: curv,
-            touchPressureInstability: Math.min(1, inst * 2),
+          const faces = ["🙂", "😐", "🙁", "😮"];
+          const answer = Math.floor(Math.random() * faces.length);
+          hint.textContent = "다른 표정을 고르세요 · 정답은 하나";
+          play.innerHTML = faces.map((f, i) =>
+            '<button class="btn btn-ghost" data-i="' + i + '" style="font-size:1.4rem;margin:4px">' + f + "</button>"
+          ).join("");
+          const t0 = performance.now();
+          play.querySelectorAll("button").forEach((b) => {
+            b.onclick = () => {
+              const ok = Number(b.getAttribute("data-i")) === answer;
+              finish({
+                prop: prop.id, timestampMs: ms(),
+                microExpressionScanLatencyMs: performance.now() - t0,
+                maskMatchAccuracyRatio: ok ? 1 : 0.35,
+              });
+            };
           });
         };
+      } else if (prop.kind === "draw") {
+        goBtn.onclick = () => {
+          hint.textContent = "원을 그리듯 드래그 (1.5초)";
+          let pts = [], sum = 0;
+          const onMove = (ev) => {
+            const x = (ev.touches ? ev.touches[0].clientX : ev.clientX);
+            const y = (ev.touches ? ev.touches[0].clientY : ev.clientY);
+            if (pts.length) {
+              const p = pts[pts.length - 1];
+              sum += Math.hypot(x - p.x, y - p.y);
+            }
+            pts.push({ x, y });
+          };
+          play.addEventListener("pointermove", onMove);
+          play.addEventListener("touchmove", onMove, { passive: true });
+          setTimeout(() => {
+            play.removeEventListener("pointermove", onMove);
+            const varn = pts.length < 4 ? 0.8 : Math.min(1, sum / (pts.length * 40));
+            finish({
+              prop: prop.id, timestampMs: ms(),
+              gestureCurvatureVariance: varn,
+              touchPressureInstability: Math.min(1, pts.length / 80),
+            });
+          }, 1500);
+        };
       } else if (prop.kind === "prime") {
-        play.innerHTML = '<p class="hint">암시: 「대부분 사람들은 왼쪽을 고릅니다.」</p>' +
-          '<button class="btn btn-ghost" id="left">왼쪽</button> <button class="btn btn-ghost" id="right">오른쪽</button>';
-        goBtn.style.display = "none";
-        const t0 = performance.now();
-        const pick = (side) => finish({
-          prop: prop.id, timestampMs: ms(),
-          primingBiasAcceptanceRatio: side === "left" ? 0.85 : 0.2,
-          decisionHesitationMs: performance.now() - t0,
-        });
-        document.getElementById("left").onclick = () => pick("left");
-        document.getElementById("right").onclick = () => pick("right");
+        goBtn.onclick = () => {
+          hint.textContent = "힌트에 끌리지 말고 고르세요";
+          play.innerHTML =
+            '<p class="hint" style="color:var(--gold)">힌트: 왼쪽이 정답처럼 느껴질 수 있어요</p>' +
+            '<button class="btn btn-ghost" id="L">왼쪽</button> <button class="btn btn-ghost" id="R">오른쪽</button>';
+          const t0 = performance.now();
+          const pick = (biased) => finish({
+            prop: prop.id, timestampMs: ms(),
+            primingBiasAcceptanceRatio: biased ? 0.85 : 0.2,
+            decisionHesitationMs: performance.now() - t0,
+          });
+          document.getElementById("L").onclick = () => pick(true);
+          document.getElementById("R").onclick = () => pick(false);
+        };
       } else if (prop.kind === "holo") {
         goBtn.onclick = () => {
           hint.textContent = "에메랄드 실체만 터치";
@@ -546,35 +742,84 @@
       const r = state.lastReport || {};
       const stats = r.stats || {};
       const locked = r.awakening_locked;
+      showStage();
       stage.innerHTML =
         '<p class="eyebrow">' + (locked ? "PROVISIONAL" : "AWAKENING FINAL") + "</p>" +
-        "<h2>세션 리포트</h2>" +
+        "<h2>지금 내 상태 · 소품 리포트</h2>" +
         '<div class="persona">' +
           "<h3>" + (r.title || "페르소나 미정") + "</h3>" +
           "<p>" + (r.awakening_quote || "소품을 더 진행해 주세요.") + "</p>" +
         "</div>" +
+        renderLiveBars(r) +
         '<div class="stat-grid">' +
           Object.keys(stats).map((k) =>
             '<div class="stat"><b>' + stats[k] + "</b><span>" + k + "</span></div>"
           ).join("") +
         "</div>" +
         '<div class="actions">' +
-          '<a class="btn btn-primary" href="/chat#mind-network" style="display:inline-block;text-decoration:none;">임상의 3D 미래 도면 열기</a>' +
+          '<a class="btn btn-primary" href="/chat#status" style="display:inline-block;text-decoration:none;">내 상태 한눈에</a>' +
+          '<a class="btn btn-ghost" href="/chat#mind-network" style="display:inline-block;text-decoration:none;">3D 도면</a>' +
+          '<button class="btn btn-ghost" id="backDeck">카드장</button>' +
           '<button class="btn btn-ghost" id="again">다시 하기</button>' +
-        "</div>" +
-        (r.clinical_ide_output
-          ? '<pre style="white-space:pre-wrap;font-size:0.65rem;color:var(--muted);margin-top:14px;max-height:220px;overflow:auto;">' +
-            String(r.clinical_ide_output).replace(/</g, "&lt;") + "</pre>"
-          : "");
+        "</div>";
       document.getElementById("again").onclick = () => {
-        state.index = 0;
-        renderIntro();
+        document.getElementById("resetBtn").click();
       };
+      document.getElementById("backDeck").onclick = showDeck;
       updateProgress(r);
     }
 
+    document.getElementById("autoNextBtn").onclick = () => {
+      const next = PROPS.find((p) => !state.done.has(p.id));
+      if (!next) renderResult();
+      else openProp(next);
+    };
+    document.getElementById("resetBtn").onclick = () => {
+      state.done = new Set();
+      state.index = 0;
+      state.lastReport = null;
+      state.turn = 0;
+      state.activeId = null;
+      sessionStorage.removeItem(SESS_KEY);
+      sessionStorage.setItem("stealth_force_reset", "1");
+      updateProgress(null);
+      showDeck();
+    };
+    resultBtn.onclick = () => {
+      if (state.done.size) renderResult();
+    };
+
+    async function hydrateDone() {
+      try {
+        const res = await fetch("/api/v1/users/" + encodeURIComponent(uid()) + "/stealth-unconscious");
+        if (!res.ok) return;
+        const data = await res.json();
+        const latest = data.latest || {};
+        const snap = latest.snapshot || latest;
+        const ingested = snap.ingestedProps || snap.ingested_props || [];
+        ingested.forEach((p) => state.done.add(p));
+        if (latest.title || data.title) {
+          state.lastReport = {
+            title: latest.title || data.title,
+            awakening_quote: latest.awakeningQuote || latest.awakening_quote,
+            assessment_status: data.assessment_status || latest.assessmentStatus,
+            awakening_locked: data.awakening_locked,
+            clinical_profile: snap.clinicalProfile || latest.clinicalProfile,
+            stats: latest.stats || snap.stats || {},
+            progress: {
+              assessmentStatus: data.assessment_status || latest.assessmentStatus,
+              requiredForFinal: 8,
+            },
+          };
+        }
+      } catch (_) {}
+      updateProgress(state.lastReport);
+      renderDeck();
+    }
+
     updateProgress(null);
-    renderIntro();
+    renderDeck();
+    hydrateDone();
   })();
   </script>
 </body>

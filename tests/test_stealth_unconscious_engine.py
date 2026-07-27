@@ -432,6 +432,15 @@ def test_stealth_props_game_page_exists():
         "stealth-unconscious/ingest",
     ):
         assert prop in src
+    assert "prop-deck" in src
+    assert "prop-card" in src
+
+
+def test_chat_status_sheet_visible():
+    html = (ROOT / "static" / "chat.html").read_text(encoding="utf-8")
+    assert 'id="statusSheet"' in html
+    assert "openStatusSheet" in html
+    assert "내 상태" in html
 
 
 def test_license_and_invention_registry():
