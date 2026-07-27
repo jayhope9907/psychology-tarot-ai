@@ -571,6 +571,120 @@
       color: var(--accent);
     }
 
+    .status-sheet-overlay {
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(12, 20, 18, 0.55);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: flex-end; justify-content: center;
+      padding: 12px 12px calc(72px + env(safe-area-inset-bottom));
+    }
+    .status-sheet-overlay[hidden] { display: none; }
+    .status-sheet {
+      width: min(560px, 100%);
+      max-height: min(86vh, 720px);
+      overflow: auto;
+      border-radius: 22px 22px 18px 18px;
+      background:
+        radial-gradient(ellipse 80% 40% at 20% 0%, rgba(90,143,120,0.18), transparent 55%),
+        linear-gradient(165deg, #f7faf8, #eef4f0);
+      border: 1px solid rgba(90,143,120,0.22);
+      box-shadow: 0 24px 48px rgba(15, 23, 20, 0.28);
+      padding: 16px 16px 18px;
+      animation: statusRise 0.35s cubic-bezier(0.22,1,0.36,1);
+    }
+    @keyframes statusRise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: none; }
+    }
+    .status-sheet-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      margin-bottom: 12px;
+    }
+    .status-eyebrow {
+      margin: 0; font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: #5a8f78; font-weight: 700;
+    }
+    .status-sheet-head h2 {
+      margin: 2px 0 0; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em;
+      color: #1a2822;
+    }
+    .status-close {
+      border: 1px solid rgba(90,143,120,0.28); background: #fff; border-radius: 999px;
+      padding: 8px 12px; font: inherit; font-size: 0.78rem; cursor: pointer; color: #2d5a45;
+    }
+    .status-hero {
+      display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center;
+      padding: 12px; border-radius: 16px;
+      background: linear-gradient(135deg, rgba(61,107,90,0.12), rgba(255,255,255,0.7));
+      border: 1px solid rgba(90,143,120,0.2);
+      margin-bottom: 12px;
+    }
+    .status-orb {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: grid; place-items: center; font-size: 1.5rem;
+      background: radial-gradient(circle at 32% 28%, #fff, rgba(90,143,120,0.75) 48%, #2d5a45);
+      box-shadow: 0 12px 28px rgba(45,90,69,0.28);
+      transition: transform 0.4s ease, filter 0.4s;
+    }
+    .status-orb.warm { filter: hue-rotate(-18deg) saturate(1.15); }
+    .status-orb.calm { filter: saturate(0.85) brightness(1.05); }
+    .status-hero-copy strong { display: block; font-size: 0.98rem; color: #1a2822; margin-bottom: 4px; }
+    .status-hero-copy p { margin: 0; font-size: 0.78rem; line-height: 1.45; color: #5c6670; }
+    .status-grid { display: grid; gap: 10px; }
+    @media (min-width: 520px) {
+      .status-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .status-tile {
+      background: rgba(255,255,255,0.78); border: 1px solid rgba(90,143,120,0.16);
+      border-radius: 14px; padding: 12px;
+    }
+    .status-tile h3 {
+      margin: 0 0 8px; font-size: 0.72rem; font-weight: 800; color: #2d5a45;
+      letter-spacing: 0.02em;
+    }
+    .status-pipeline { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .status-pipeline span {
+      font-size: 0.62rem; padding: 3px 7px; border-radius: 999px;
+      background: #eef0f2; color: #5c6670;
+    }
+    .status-pipeline span.done { background: #e8f2ec; color: #2d5a45; font-weight: 700; }
+    .status-list { margin: 0; padding: 0; list-style: none; font-size: 0.74rem; color: #5c6670; line-height: 1.45; }
+    .status-list li { margin-bottom: 3px; }
+    .status-prop-meter {
+      height: 8px; border-radius: 999px; background: #e8eee9; overflow: hidden; margin-bottom: 6px;
+    }
+    .status-prop-fill {
+      height: 100%; width: 0%; border-radius: inherit;
+      background: linear-gradient(90deg, #5a8f78, #c4a574); transition: width 0.4s ease;
+    }
+    .status-prop-meta { margin: 0; font-size: 0.72rem; font-weight: 700; color: #2d5a45; }
+    .status-prop-title { margin: 4px 0 8px; font-size: 0.74rem; color: #5c6670; line-height: 1.4; }
+    .status-link {
+      font-size: 0.74rem; font-weight: 700; color: #2d5a45; text-decoration: none;
+    }
+    .status-kv {
+      display: flex; justify-content: space-between; gap: 8px;
+      font-size: 0.74rem; padding: 4px 0; border-bottom: 1px dashed rgba(90,143,120,0.15);
+    }
+    .status-kv span { color: #5c6670; }
+    .status-kv b { color: #1a2822; font-weight: 700; }
+    .status-bars { display: grid; gap: 7px; }
+    .status-bar-row { display: grid; grid-template-columns: 64px 1fr 34px; gap: 6px; align-items: center; }
+    .status-bar-row .lbl { font-size: 0.66rem; color: #5c6670; }
+    .status-bar-track { height: 7px; border-radius: 999px; background: #e8eee9; overflow: hidden; }
+    .status-bar-fill { height: 100%; width: 0; background: linear-gradient(90deg, #a8c4b6, #3d6b5a); border-radius: inherit; }
+    .status-bar-row .val { font-size: 0.64rem; text-align: right; color: #2d5a45; font-weight: 700; }
+    .status-note { margin: 8px 0 0; font-size: 0.62rem; color: #8a9399; line-height: 1.4; }
+    .status-actions {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+    }
+    .status-actions a, .status-actions button {
+      flex: 1; min-width: 72px; text-align: center; text-decoration: none;
+      border: 1px solid rgba(90,143,120,0.28); background: #fff; color: #2d5a45;
+      border-radius: 12px; padding: 10px 8px; font: inherit; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer;
+    }
+
     .pace-bar {
       height: 4px;
       border-radius: 999px;
@@ -2341,8 +2455,8 @@
         </div>
         <div class="mood-strip" id="modeStrip" aria-label="상담 모드">
           <span class="mood-strip-label" id="modeStripLabel">상담 모드</span>
-          <button type="button" class="mood-chip" data-consultation-mode="psychology" aria-pressed="true">심리</button>
-          <button type="button" class="mood-chip" data-consultation-mode="faith" id="faithModeChip" aria-pressed="false" title="타로와는 별도 레인입니다">신앙·묵상</button>
+          <button type="button" class="mood-chip" data-consultation-mode="psychology" aria-pressed="true">심리 · 자기성찰</button>
+          <button type="button" class="mood-chip" data-consultation-mode="faith" id="faithModeChip" aria-pressed="false" hidden title="타로와 별도 · 신앙 상담 전용">신앙·묵상</button>
           <span class="mood-strip-label" id="tarotLaneNote" hidden style="margin-left:0.35rem;opacity:0.85">타로×심리 · 신앙 모드 분리</span>
         </div>
         <div class="mood-strip" id="clinicalSetupStrip" aria-label="임상 맞춤 설정">
@@ -2498,6 +2612,64 @@
     </div>
   </div>
 
+  <!-- 내 상태 · 직관 시트 -->
+  <div class="status-sheet-overlay" id="statusSheet" hidden role="dialog" aria-label="내 상태">
+    <div class="status-sheet">
+      <header class="status-sheet-head">
+        <div>
+          <p class="status-eyebrow">지금 한눈에</p>
+          <h2>내 상태</h2>
+        </div>
+        <button type="button" class="status-close" id="statusClose" aria-label="닫기">닫기</button>
+      </header>
+      <div class="status-hero">
+        <div class="status-orb" id="statusOrb" aria-hidden="true">✦</div>
+        <div class="status-hero-copy">
+          <strong id="statusHeadline">기록을 모으는 중이에요</strong>
+          <p id="statusBlurb">타로·대화·소품·체크인이 쌓이면 여기 그림이 또렷해져요.</p>
+        </div>
+      </div>
+      <div class="status-grid">
+        <article class="status-tile">
+          <h3>마음 흐름</h3>
+          <div class="status-pipeline" id="statusPipeline">
+            <span data-stage="tarot">타로</span>
+            <span data-stage="counseling">대화</span>
+            <span data-stage="recommendations">탐색</span>
+            <span data-stage="tracking">추적</span>
+          </div>
+          <ul class="status-list" id="statusSpectra"><li>아직 신호가 적어요</li></ul>
+        </article>
+        <article class="status-tile">
+          <h3>소품 게임</h3>
+          <div class="status-prop-meter">
+            <div class="status-prop-fill" id="statusPropFill"></div>
+          </div>
+          <p class="status-prop-meta" id="statusPropMeta">0 / 11 · 미시작</p>
+          <p class="status-prop-title" id="statusPropTitle">11장 카드로 무의식을 비춰 보세요</p>
+          <a class="status-link" href="/stealth-props">소품 카드장 열기 →</a>
+        </article>
+        <article class="status-tile">
+          <h3>오늘 리듬</h3>
+          <div class="status-kv"><span>대화 단계</span><b id="statusPhase">—</b></div>
+          <div class="status-kv"><span>마음 체크</span><b id="statusBattery">—</b></div>
+          <div class="status-kv"><span>페이스</span><b id="statusPace">—</b></div>
+        </article>
+        <article class="status-tile">
+          <h3>관찰 막대</h3>
+          <div class="status-bars" id="statusBars"></div>
+          <p class="status-note">웰니스 참고용이며 의료 진단이 아닙니다.</p>
+        </article>
+      </div>
+      <div class="status-actions">
+        <a href="/tarot">타로</a>
+        <a href="/stealth-props">소품</a>
+        <a href="/home">오늘마음</a>
+        <button type="button" id="statusOpenSidebar">자세히</button>
+      </div>
+    </div>
+  </div>
+
   <nav class="t-bottom-nav" aria-label="하단 메뉴">
     <a href="/" class="t-nav-item" id="navHome">
       <span class="t-nav-icon" aria-hidden="true">🏠</span>
@@ -2642,7 +2814,147 @@
     }
 
     dashPhase?.addEventListener("click", () => toggleSidebar(true));
-    navStatus?.addEventListener("click", () => toggleSidebar(true));
+    navStatus?.addEventListener("click", () => openStatusSheet());
+
+    const statusSheet = document.getElementById("statusSheet");
+    const statusClose = document.getElementById("statusClose");
+    const statusOpenSidebar = document.getElementById("statusOpenSidebar");
+
+    function closeStatusSheet() {
+      if (!statusSheet) return;
+      statusSheet.hidden = true;
+      if (location.hash === "#status") {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    }
+
+    async function openStatusSheet() {
+      if (!statusSheet) {
+        toggleSidebar(true);
+        return;
+      }
+      statusSheet.hidden = false;
+      await refreshStatusSheet();
+      if (location.hash !== "#status") {
+        history.replaceState(null, "", "#status");
+      }
+    }
+
+    statusClose?.addEventListener("click", closeStatusSheet);
+    statusSheet?.addEventListener("click", (e) => {
+      if (e.target === statusSheet) closeStatusSheet();
+    });
+    statusOpenSidebar?.addEventListener("click", () => {
+      closeStatusSheet();
+      toggleSidebar(true);
+    });
+
+    async function refreshStatusSheet() {
+      const headline = document.getElementById("statusHeadline");
+      const blurb = document.getElementById("statusBlurb");
+      const orb = document.getElementById("statusOrb");
+      const spectraEl = document.getElementById("statusSpectra");
+      const pipeline = document.getElementById("statusPipeline");
+      const bars = document.getElementById("statusBars");
+      const propFill = document.getElementById("statusPropFill");
+      const propMeta = document.getElementById("statusPropMeta");
+      const propTitle = document.getElementById("statusPropTitle");
+
+      document.getElementById("statusPhase").textContent =
+        (dashPhaseValue?.textContent || phaseCurrent?.textContent || "—").trim();
+      document.getElementById("statusBattery").textContent =
+        (batteryChip?.textContent || "—").trim();
+      document.getElementById("statusPace").textContent =
+        (paceLabel?.textContent || "—").trim();
+
+      let profile = null;
+      try {
+        const res = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/psych-profile?auto_backfill=true`);
+        if (res.ok) profile = await res.json();
+      } catch (_) {}
+
+      if (profile) {
+        updatePsychProfile(profile);
+        const status = profile.pipeline_status || profile;
+        pipeline?.querySelectorAll("[data-stage]").forEach((el) => {
+          const key = el.getAttribute("data-stage");
+          el.classList.toggle("done", Boolean(status[key]));
+        });
+        const spectra = (profile.recommendations?.top_spectra || profile.top_spectra || []).slice(0, 4);
+        if (spectraEl) {
+          spectraEl.innerHTML = spectra.length
+            ? spectra.map((s) => {
+                const pct = Math.round((s.score || 0) * 100);
+                return `<li>${s.label_ko || s.spectrum_id} · ${pct}%</li>`;
+              }).join("")
+            : "<li>아직 관찰 영역 신호가 적어요</li>";
+        }
+        if (bars) {
+          bars.innerHTML = spectra.length
+            ? spectra.map((s) => {
+                const pct = Math.min(100, Math.round((s.score || 0) * 100));
+                return `<div class="status-bar-row"><span class="lbl">${s.label_ko || s.spectrum_id}</span>
+                  <div class="status-bar-track"><div class="status-bar-fill" style="width:${pct}%"></div></div>
+                  <span class="val">${pct}</span></div>`;
+              }).join("")
+            : `<div class="status-bar-row"><span class="lbl">신호</span>
+                <div class="status-bar-track"><div class="status-bar-fill" style="width:8%"></div></div>
+                <span class="val">낮음</span></div>`;
+        }
+        const doneStages = ["tarot", "counseling", "recommendations", "tracking"].filter((k) => status[k]).length;
+        if (headline) {
+          if (doneStages >= 3) {
+            headline.textContent = "패턴이 꽤 또렷해졌어요";
+            orb?.classList.add("warm");
+            orb?.classList.remove("calm");
+            if (orb) orb.textContent = "◎";
+          } else if (doneStages >= 1) {
+            headline.textContent = "기록이 쌓이며 그림이 생기고 있어요";
+            orb?.classList.add("calm");
+            orb?.classList.remove("warm");
+            if (orb) orb.textContent = "✦";
+          } else {
+            headline.textContent = "아직 빈 캔버스에 가까워요";
+            if (orb) orb.textContent = "·";
+          }
+        }
+        if (blurb) {
+          const top = spectra[0];
+          blurb.textContent = top
+            ? `지금 가장 선명한 결은 「${top.label_ko || top.spectrum_id}」 쪽이에요. 진단이 아니라, 대화로 더 살펴볼 힌트입니다.`
+            : "타로·대화·소품·체크인을 이어가면 여기에 막대와 흐름이 채워져요.";
+        }
+      }
+
+      let propDone = 0;
+      let propStatus = "미시작";
+      let propLabel = "11장 카드로 무의식을 비춰 보세요";
+      try {
+        const cached = JSON.parse(localStorage.getItem("maum_stealth_progress") || "null");
+        if (cached?.done) {
+          propDone = Number(cached.done) || 0;
+          propStatus = cached.status || propStatus;
+          if (cached.title) propLabel = cached.title;
+        }
+      } catch (_) {}
+      try {
+        const sres = await fetch(`/api/v1/users/${encodeURIComponent(userId)}/stealth-unconscious`);
+        if (sres.ok) {
+          const sdata = await sres.json();
+          const latest = sdata.latest || {};
+          const snap = latest.snapshot || latest;
+          const ingested = snap.ingestedProps || snap.ingested_props || [];
+          if (ingested.length) propDone = ingested.length;
+          if (sdata.assessment_status === "final" || latest.assessmentStatus === "final") {
+            propStatus = "각성 확정";
+          } else if (propDone) propStatus = "잠정";
+          propLabel = latest.title || snap.title || propLabel;
+        }
+      } catch (_) {}
+      if (propFill) propFill.style.width = `${Math.round((propDone / 11) * 100)}%`;
+      if (propMeta) propMeta.textContent = `${propDone} / 11 · ${propStatus}`;
+      if (propTitle) propTitle.textContent = propLabel;
+    }
 
     function hideEmptyState() {
       if (emptyState) emptyState.remove();
@@ -3001,28 +3313,63 @@
       const faithChip = document.getElementById("faithModeChip");
       const laneNote = document.getElementById("tarotLaneNote");
       const modeLabel = document.getElementById("modeStripLabel");
+      document.body.classList.toggle("is-tarot-lane", !!active);
       if (active) {
         consultationMode = "psychology";
         localStorage.setItem("psychology_ai_consultation_mode", "psychology");
         localStorage.setItem("psychology_ai_tarot_lane", "1");
         if (faithChip) {
           faithChip.hidden = true;
+          faithChip.style.display = "none";
           faithChip.setAttribute("aria-pressed", "false");
           faithChip.disabled = true;
         }
         if (laneNote) laneNote.hidden = false;
-        if (modeLabel) modeLabel.textContent = "상담 모드 · 타로 연동";
+        if (modeLabel) modeLabel.textContent = "상담 모드 · 타로×심리";
       } else {
         localStorage.removeItem("psychology_ai_tarot_lane");
+        // Faith stays hidden in consumer chat unless explicitly enabled.
+        const showFaith =
+          localStorage.getItem("psychology_ai_show_faith_mode") === "1" ||
+          new URLSearchParams(window.location.search).get("faith") === "1";
         if (faithChip) {
-          faithChip.hidden = false;
           faithChip.disabled = false;
+          faithChip.hidden = !showFaith;
+          faithChip.style.display = showFaith ? "" : "none";
         }
         if (laneNote) laneNote.hidden = true;
         if (modeLabel) modeLabel.textContent = "상담 모드";
       }
       syncMoodChips();
     }
+
+    // Apply immediately (before async bootstrap) so tarot lane never flashes faith UI.
+    (function earlyTarotFaithGate() {
+      try {
+        const fromTarot =
+          new URLSearchParams(window.location.search).get("from_tarot") === "1" ||
+          localStorage.getItem("psychology_ai_tarot_lane") === "1" ||
+          !!localStorage.getItem(TAROT_HANDOFF_KEY);
+        const faithChip = document.getElementById("faithModeChip");
+        if (faithChip) {
+          const showFaith =
+            !fromTarot &&
+            (localStorage.getItem("psychology_ai_show_faith_mode") === "1" ||
+              new URLSearchParams(window.location.search).get("faith") === "1");
+          faithChip.hidden = !showFaith;
+          faithChip.style.display = showFaith ? "" : "none";
+          if (fromTarot) {
+            document.body.classList.add("is-tarot-lane");
+            const laneNote = document.getElementById("tarotLaneNote");
+            const modeLabel = document.getElementById("modeStripLabel");
+            if (laneNote) laneNote.hidden = false;
+            if (modeLabel) modeLabel.textContent = "상담 모드 · 타로×심리";
+            localStorage.setItem("psychology_ai_consultation_mode", "psychology");
+            localStorage.setItem("psychology_ai_tarot_lane", "1");
+          }
+        }
+      } catch (_) {}
+    })();
 
     async function processTarotHandoff() {
       const raw = localStorage.getItem(TAROT_HANDOFF_KEY);
@@ -4155,16 +4502,20 @@
     document.getElementById("mn3dOpenProps")?.addEventListener("click", () => {
       location.href = "/stealth-props";
     });
-    // Deep-link: /chat#mind-network · /chat#mind-room
+    // Deep-link: /chat#mind-network · /chat#mind-room · /chat#status
     if (location.hash === "#mind-network") {
       setTimeout(() => MindNetwork3DView.open(), 400);
     }
     if (location.hash === "#mind-room") {
       setTimeout(() => MindRoom3DView.open(), 400);
     }
+    if (location.hash === "#status") {
+      setTimeout(() => openStatusSheet(), 200);
+    }
     window.addEventListener("hashchange", () => {
       if (location.hash === "#mind-network") MindNetwork3DView.open();
       if (location.hash === "#mind-room") MindRoom3DView.open();
+      if (location.hash === "#status") openStatusSheet();
     });
 
     // ── 낱말카드 놀이 (WordCardGame) & 마인드맵 (MindmapView) ──
