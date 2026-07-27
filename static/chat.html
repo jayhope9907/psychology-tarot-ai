@@ -2650,7 +2650,7 @@
             <div class="status-prop-fill" id="statusPropFill"></div>
           </div>
           <p class="status-prop-meta" id="statusPropMeta">0 / 11 · 미시작</p>
-          <p class="status-prop-title" id="statusPropTitle">11장 카드로 무의식을 비춰 보세요</p>
+          <p class="status-prop-title" id="statusPropTitle">11장 카드로 가볍게 놀아 보세요</p>
           <a class="status-link" href="/stealth-props">소품 카드장 열기 →</a>
         </article>
         <article class="status-tile">
@@ -2931,8 +2931,8 @@
       }
 
       let propDone = 0;
-      let propStatus = "미시작";
-      let propLabel = "11장 카드로 무의식을 비춰 보세요";
+      let propStatus = "아직 안 함";
+      let propLabel = "11장 카드로 가볍게 놀아 보세요";
       try {
         const cached = JSON.parse(localStorage.getItem("maum_stealth_progress") || "null");
         if (cached?.done) {
@@ -2950,8 +2950,8 @@
           const ingested = snap.ingestedProps || snap.ingested_props || [];
           if (ingested.length) propDone = ingested.length;
           if (sdata.assessment_status === "final" || latest.assessmentStatus === "final") {
-            propStatus = "각성 확정";
-          } else if (propDone) propStatus = "잠정";
+            propStatus = "한 바퀴 모았어요";
+          } else if (propDone) propStatus = "이어가는 중";
           propLabel = latest.title || snap.title || propLabel;
         }
       } catch (_) {}

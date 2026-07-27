@@ -1106,7 +1106,7 @@ async def health_check(request: Request):
             "3D 타로": urls.get("tarot", "/tarot"),
             "마음 돌보기": urls.get("clinical", "/clinical"),
             "그림 표현": urls.get("picture_assessment", "/picture-assessment"),
-            "소품 무의식 게임": urls.get("stealth_props", "/stealth-props"),
+            "소품 카드 놀이": urls.get("stealth_props", "/stealth-props"),
             "이용 안내": urls.get("legal", "/legal"),
             "혁신·IP": urls.get("innovation", "/innovation"),
             "에이전트 랩": urls.get("agent_lab", "/agent-lab"),

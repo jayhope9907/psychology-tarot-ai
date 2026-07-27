@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0c1412" />
   <meta name="robots" content="noindex" />
-  <meta name="description" content="11종 마술 소품으로 무의식 지표를 매핑하는 스텔스 게임" />
-  <title>마음쉼터 · 11종 소품 무의식 매핑</title>
+  <meta name="description" content="11장의 소품 카드로 가볍게 마음 놀이하기" />
+  <title>마음쉼터 · 소품 카드 놀이</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -231,7 +231,7 @@
 <body>
   <header class="top">
     <a href="/home">← 홈</a>
-    <h1>11종 소품 · 스텔스 무의식 매핑</h1>
+    <h1>소품 카드 놀이</h1>
     <a href="/chat#status">내 상태</a>
     <a href="/chat#mind-network">3D 도면</a>
   </header>
@@ -239,12 +239,12 @@
   <section class="state-strip" aria-live="polite">
     <div class="state-orb" id="stateOrb">✦</div>
     <div class="state-copy">
-      <strong id="stateTitle">소품을 골라 무의식을 비춰 보세요</strong>
-      <span id="stateSub">타로처럼 카드를 고르면 미니 게임이 시작됩니다. 8장 이상이면 각성이 확정돼요.</span>
+      <strong id="stateTitle">끌리는 카드가 있으면, 하나만 골라 보세요</strong>
+      <span id="stateSub">부담 없이요. 고르면 짧은 놀이가 열리고, 천천히 이어가도 충분해요.</span>
     </div>
     <div class="state-meter">
       <b id="stateCount">0/11</b>
-      <small id="stateStatus">잠정</small>
+      <small id="stateStatus">시작 전</small>
     </div>
   </section>
 
@@ -252,16 +252,16 @@
     <div class="bar"><div class="fill" id="fill"></div></div>
     <div class="progress-meta">
       <span id="progressLabel">0 / 11</span>
-      <span id="statusLabel">잠정 (8개 이상 시 각성 확정)</span>
+      <span id="statusLabel">원하면 몇 장만 해도 괜찮아요</span>
     </div>
   </div>
 
   <main>
     <section class="deck-panel" id="deckPanel">
       <div class="intro-head">
-        <p class="eyebrow">Now You See Me · Visible Props</p>
+        <p class="eyebrow">가벼운 카드 놀이</p>
         <h2>11장의 소품 카드</h2>
-        <p>타로처럼 소품이 한눈에 펼쳐져 있어요. 끌리는 카드를 고르면 그 소품의 행동이 무의식 지표로 남습니다.</p>
+        <p>타로처럼 카드가 펼쳐져 있어요. 끌리는 걸 고르면 짧은 미니 게임이 열려요. 정답은 없고, 중간에 멈춰도 괜찮습니다.</p>
       </div>
       <div class="prop-deck" id="propDeck" role="list"></div>
       <div class="deck-actions">
@@ -272,7 +272,7 @@
     </section>
 
     <section class="stage" id="stage"></section>
-    <p class="disclaimer">본 결과는 비진단 웰니스 참고 지표이며 의료 진단을 대체하지 않습니다. 소품 상호작용의 행동 프록시를 CHC·임상 스펙트럼 참고값으로 환산합니다.</p>
+    <p class="disclaimer">가벼운 자기성찰·웰니스 참고용이며 의료 진단을 대체하지 않습니다. 부담 없이 몇 장만 해도 괜찮아요.</p>
   </main>
 
   <script>
@@ -364,27 +364,29 @@
       fill.style.width = (n / 11 * 100) + "%";
       progressLabel.textContent = n + " / 11";
       stateCount.textContent = n + "/11";
-      let st = "잠정";
+      let st = "시작 전";
       if (report && report.progress) {
         const p = report.progress;
-        st = p.assessmentStatus === "final" ? "각성 확정" : "잠정";
-        statusLabel.textContent = st + " · 확정에 " + (p.requiredForFinal || 8) + "개 필요";
+        st = p.assessmentStatus === "final" ? "한 바퀴 모았어요" : "이어가는 중";
+        statusLabel.textContent = st === "한 바퀴 모았어요"
+          ? "충분해요 · 결과는 참고용이에요"
+          : "원하면 " + (p.requiredForFinal || 8) + "장쯤까지 천천히";
       } else {
-        statusLabel.textContent = "잠정 (8개 이상 시 각성 확정)";
+        statusLabel.textContent = "원하면 몇 장만 해도 괜찮아요";
       }
       stateStatus.textContent = st;
-      stateOrb.classList.toggle("final", st === "각성 확정");
+      stateOrb.classList.toggle("final", st === "한 바퀴 모았어요");
       if (report && report.title) {
         stateTitle.textContent = report.title;
-        stateSub.textContent = report.awakening_quote || "카드가 남긴 결이 페르소나로 모이고 있어요.";
-        stateOrb.textContent = st === "각성 확정" ? "★" : "✦";
+        stateSub.textContent = report.awakening_quote || "카드가 남긴 결이 조금씩 모여요.";
+        stateOrb.textContent = st === "한 바퀴 모았어요" ? "★" : "✦";
       } else if (n === 0) {
-        stateTitle.textContent = "소품을 골라 무의식을 비춰 보세요";
-        stateSub.textContent = "타로처럼 카드를 고르면 미니 게임이 시작됩니다. 8장 이상이면 각성이 확정돼요.";
+        stateTitle.textContent = "끌리는 카드가 있으면, 하나만 골라 보세요";
+        stateSub.textContent = "부담 없이요. 고르면 짧은 놀이가 열리고, 천천히 이어가도 충분해요.";
         stateOrb.textContent = "✦";
       } else {
-        stateTitle.textContent = n + "장의 소품이 열렸어요";
-        stateSub.textContent = "남은 카드를 고르거나, 결과로 지금 상태를 확인해 보세요.";
+        stateTitle.textContent = n + "장을 만져 봤어요";
+        stateSub.textContent = "더 하고 싶으면 이어서, 멈추고 싶으면 결과만 봐도 괜찮아요.";
       }
       resultBtn.hidden = n < 1;
       try {
@@ -497,8 +499,8 @@
         try {
           const report = await ingest(payload);
           hint.textContent = report.assessment_status === "final"
-            ? "각성 확정 · 카드장으로"
-            : "잠정 기록됨 · 카드장으로";
+            ? "잘 모였어요 · 카드장으로"
+            : "기록됐어요 · 카드장으로";
           setTimeout(() => nextAfter(prop.id), 450);
         } catch (e) {
           hint.textContent = "전송 실패. 다시 시도해 주세요.";
@@ -744,11 +746,11 @@
       const locked = r.awakening_locked;
       showStage();
       stage.innerHTML =
-        '<p class="eyebrow">' + (locked ? "PROVISIONAL" : "AWAKENING FINAL") + "</p>" +
-        "<h2>지금 내 상태 · 소품 리포트</h2>" +
+        '<p class="eyebrow">' + (locked ? "아직 이어가도 돼요" : "충분히 모았어요") + "</p>" +
+        "<h2>지금 내 상태 · 가벼운 리포트</h2>" +
         '<div class="persona">' +
-          "<h3>" + (r.title || "페르소나 미정") + "</h3>" +
-          "<p>" + (r.awakening_quote || "소품을 더 진행해 주세요.") + "</p>" +
+          "<h3>" + (r.title || "아직 비어 있어요") + "</h3>" +
+          "<p>" + (r.awakening_quote || "카드를 조금 더 만져 보시면 그림이 또렷해져요.") + "</p>" +
         "</div>" +
         renderLiveBars(r) +
         '<div class="stat-grid">' +

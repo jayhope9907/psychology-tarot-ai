@@ -451,10 +451,10 @@ class FullUnconsciousEngine:
             remaining = int(progress.get("requiredForFinal") or FINAL_MIN_PROPS) - int(
                 progress.get("uniquePropCount") or 0
             )
-            title = f"잠정 · {title}"
+            title = f"이어가는 중 · {title}"
             quote = (
-                f"아직 {max(0, remaining)}개 소품이 더 필요합니다. "
-                f"잠정 페르소나 후보: {persona}. " + quote
+                f"부담 없이 {max(0, remaining)}장만 더 만져 보시면 그림이 더 또렷해져요. "
+                f"지금 결의 이름은 {persona} 쪽에 가깝게 보여요. " + quote
             )
 
         clinical_ide_output = _render_clinical_ide(

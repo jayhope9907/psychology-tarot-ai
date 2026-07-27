@@ -17,7 +17,7 @@ def product_surfaces() -> Dict[str, Any]:
         {"id": "clinical", "label_ko": "마음 돌보기", "route": "/clinical"},
         {"id": "psychometrics", "label_ko": "MBTI·탐색", "route": "/psychometrics"},
         {"id": "picture_assessment", "label_ko": "그림·이야기 표현", "route": "/picture-assessment"},
-        {"id": "stealth_props", "label_ko": "11종 소품 무의식 게임", "route": "/stealth-props"},
+        {"id": "stealth_props", "label_ko": "소품 카드 놀이", "route": "/stealth-props"},
     ]
     license_routes: List[Dict[str, str]] = [
         {"id": "associations", "label_ko": "학회 라이선스", "route": "/associations"},

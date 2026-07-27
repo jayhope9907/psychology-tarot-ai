@@ -33,7 +33,7 @@ def test_health_includes_product_lines():
     assert "장애인용(보관)" in body["share_links"]
     assert "그림 마음" not in body["share_links"]
     assert body["urls"].get("stealth_props") == "/stealth-props"
-    assert "소품 무의식 게임" in body["share_links"]
+    assert "소품 카드 놀이" in body["share_links"]
 
 
 def test_app_shell_includes_props_tab():
