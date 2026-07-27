@@ -21,6 +21,7 @@ FEATURE_NODES: Dict[str, Dict[str, str]] = {
     "tarot": {"emoji": "✦", "label": "타로", "tab": "tarot", "route": "/tarot"},
     "chat": {"emoji": "💬", "label": "AI 대화", "tab": "chat", "route": "/chat"},
     "clinical": {"emoji": "💚", "label": "마음 돌보기", "tab": "clinical", "route": "/clinical"},
+    "props": {"emoji": "🎩", "label": "소품게임", "tab": "props", "route": "/stealth-props"},
 }
 
 # 기능 간 기본 연결 (거미줄 골격) — 장애인용 picto는 별도 제품으로 분리
@@ -31,6 +32,8 @@ DEFAULT_EDGES: List[Tuple[str, str, str]] = [
     ("checkin", "clinical", "기분 → 검사"),
     ("chat", "clinical", "대화 → 검사"),
     ("clinical", "chat", "검사 → 대화"),
+    ("props", "chat", "소품 → 대화"),
+    ("checkin", "props", "기분 → 소품"),
 ]
 
 EVENT_FEATURE_MAP: Dict[str, str] = {
@@ -45,6 +48,8 @@ EVENT_FEATURE_MAP: Dict[str, str] = {
     "counseling_session": "chat",
     "assessment_answer": "clinical",
     "projective_answer": "clinical",
+    "stealth_prop": "props",
+    "stealth_props_play": "props",
 }
 
 
@@ -319,7 +324,7 @@ def build_organism_state(user_id: str) -> Dict[str, Any]:
     return {
         "user_id": user_id,
         "mode": "organism",
-        "description": "기분·타로·대화·마음 돌보기가 하나의 마음 이야기로 연결됩니다.",
+        "description": "기분·타로·대화·마음 돌보기·소품게임이 하나의 마음 이야기로 연결됩니다.",
         "unified_session_id": unified_session,
         "nodes": nodes,
         "edges": _build_edges(events, pulse),

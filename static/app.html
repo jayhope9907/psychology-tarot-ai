@@ -36,13 +36,14 @@
       background: #eef3ff; color: #1a56db;
     }
     .app-tabs {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
       background: #fff; border-bottom: 1px solid #e5e8eb;
     }
     .app-tabs button {
-      border: none; background: transparent; padding: 10px 4px;
-      font: inherit; font-size: 0.72rem; font-weight: 600; color: #8b95a1; cursor: pointer;
+      border: none; background: transparent; padding: 10px 2px;
+      font: inherit; font-size: 0.68rem; font-weight: 600; color: #8b95a1; cursor: pointer;
       border-bottom: 2px solid transparent;
+      white-space: nowrap;
     }
     .app-tabs button.active { color: #3182f6; border-bottom-color: #3182f6; }
     .organism-bar {
@@ -131,6 +132,7 @@
     <button type="button" data-tab="checkin" id="tabCheckin">오늘 마음</button>
     <button type="button" data-tab="chat" id="tabChat">AI 대화</button>
     <button type="button" data-tab="clinical" id="tabClinical">마음 돌보기</button>
+    <button type="button" data-tab="props" id="tabProps">소품게임</button>
   </nav>
 
   <div class="organism-bar" id="organismBar" aria-label="마음 기능 연결"></div>
@@ -140,6 +142,7 @@
     <iframe class="app-frame" id="frameCheckin" title="오늘 마음 체크인" src="/home?embed=1"></iframe>
     <iframe class="app-frame" id="frameChat" title="AI 마음 대화" src="/chat?embed=1"></iframe>
     <iframe class="app-frame" id="frameClinical" title="마음 돌보기" src="/clinical?embed=1"></iframe>
+    <iframe class="app-frame" id="frameProps" title="소품 게임" src="/stealth-props?embed=1"></iframe>
   </main>
 
   <footer class="app-footer">
@@ -162,6 +165,7 @@
       checkin: document.getElementById("frameCheckin"),
       chat: document.getElementById("frameChat"),
       clinical: document.getElementById("frameClinical"),
+      props: document.getElementById("frameProps"),
     };
     const tabs = document.querySelectorAll(".app-tabs button");
 

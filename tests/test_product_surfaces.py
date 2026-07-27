@@ -36,6 +36,15 @@ def test_health_includes_product_lines():
     assert "소품 무의식 게임" in body["share_links"]
 
 
+def test_app_shell_includes_props_tab():
+    res = client.get("/")
+    assert res.status_code == 200
+    assert "소품게임" in res.text
+    assert 'data-tab="props"' in res.text
+    assert "/stealth-props?embed=1" in res.text
+    assert "repeat(5" in res.text
+
+
 def test_stealth_props_page_served():
     res = client.get("/stealth-props")
     assert res.status_code == 200

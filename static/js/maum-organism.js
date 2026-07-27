@@ -78,7 +78,13 @@
         if (global.parent && global.parent !== global) {
           global.parent.postMessage({ type: "maum-nav", tab }, "*");
         } else if (tab) {
-          global.location.href = { checkin: "/home", chat: "/chat", tarot: "/tarot", clinical: "/clinical" }[tab] || "/";
+          global.location.href = {
+            checkin: "/home",
+            chat: "/chat",
+            tarot: "/tarot",
+            clinical: "/clinical",
+            props: "/stealth-props",
+          }[tab] || "/";
         }
       });
     });

@@ -2,7 +2,8 @@
 html.embed-mode .t-bottom-nav,
 html.embed-mode .mobile-header,
 html.embed-mode .t-topbar,
-html.embed-mode .app-hide-embed {
+html.embed-mode .app-hide-embed,
+html.embed-mode header.top {
   display: none !important;
 }
 

@@ -11,6 +11,7 @@
       "/chat": "chat",
       "/tarot": "tarot",
       "/clinical": "clinical",
+      "/stealth-props": "props",
       "/picture-assessment": "clinical",
     }[global.location.pathname];
     if (tab) {
@@ -35,7 +36,13 @@
     isEmbed: true,
     goTab(tab, extra) {
       if (parentNav(tab, extra || {})) return;
-      const map = { checkin: "/home", chat: "/chat", tarot: "/tarot", clinical: "/clinical" };
+      const map = {
+        checkin: "/home",
+        chat: "/chat",
+        tarot: "/tarot",
+        clinical: "/clinical",
+        props: "/stealth-props",
+      };
       global.location.href = map[tab] || "/";
     },
     goChatFromTarot() {
@@ -59,6 +66,7 @@
       "/home": "checkin",
       "/tarot": "tarot",
       "/clinical": "clinical",
+      "/stealth-props": "props",
     };
     const tab = tabMap[path];
     if (tab && parentNav(tab, {})) {
