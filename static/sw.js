@@ -1,4 +1,4 @@
-const CACHE = "maum-cache-v29";
+const CACHE = "maum-cache-v30";
 const ASSETS = [
   "/static/manifest.json",
   "/static/icons/icon.svg",
@@ -27,6 +27,7 @@ const NETWORK_FIRST_PATHS = new Set([
   "/chat",
   "/tarot",
   "/clinical",
+  "/stealth-props",
   "/picture-assessment",
   "/psychometrics",
   "/legal",
