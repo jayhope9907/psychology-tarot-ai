@@ -13,22 +13,34 @@
     :root {
       --app-header-h: 52px;
       --app-tabs-h: 48px;
-      --app-organism-h: 72px;
-      --app-footer-h: 56px;
+      --app-safe-bottom: env(safe-area-inset-bottom, 0px);
     }
-    html, body { height: 100%; margin: 0; }
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      margin: 0;
+      overflow: hidden;
+    }
     body.app-shell {
-      display: grid;
-      grid-template-rows: var(--app-header-h) var(--app-tabs-h) var(--app-organism-h) 1fr auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
       max-width: 960px;
       margin: 0 auto;
       background: var(--t-bg, #f2f4f6);
       font-family: system-ui, -apple-system, sans-serif;
+      padding-bottom: var(--app-safe-bottom);
+      box-sizing: border-box;
     }
     .app-header {
+      flex: 0 0 auto;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 16px; background: #fff; border-bottom: 1px solid #e5e8eb;
-      position: sticky; top: 0; z-index: 10;
+      padding: 0 16px; min-height: var(--app-header-h);
+      background: #fff; border-bottom: 1px solid #e5e8eb;
+      z-index: 10;
     }
     .app-header h1 { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.03em; }
     .scope-badge {
@@ -36,7 +48,9 @@
       background: #eef3ff; color: #1a56db;
     }
     .app-tabs {
+      flex: 0 0 auto;
       display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+      min-height: var(--app-tabs-h);
       background: #fff; border-bottom: 1px solid #e5e8eb;
     }
     .app-tabs button {
@@ -47,9 +61,14 @@
     }
     .app-tabs button.active { color: #3182f6; border-bottom-color: #3182f6; }
     .organism-bar {
+      flex: 0 0 auto;
+      max-height: 18vh;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
       background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
       border-bottom: 1px solid #e5e8eb;
-      padding: 8px 10px 10px;
+      padding: 6px 10px 8px;
     }
     .organism-nodes {
       display: flex; align-items: center; justify-content: center; gap: 4px;
@@ -60,34 +79,50 @@
       opacity: 0.55; border-radius: 2px;
     }
     .organism-node {
-      width: 44px; height: 44px; border-radius: 14px; border: 2px solid #e5e8eb;
+      width: 40px; height: 40px; border-radius: 14px; border: 2px solid #e5e8eb;
       background: #fff; cursor: pointer; display: grid; place-items: center;
       transform: scale(calc(0.88 + var(--pulse, 0.2) * 0.12));
       box-shadow: 0 0 0 calc(var(--pulse, 0.15) * 6px) rgba(49, 130, 246, 0.12);
       transition: transform 0.2s, border-color 0.2s;
+      flex: 0 0 auto;
     }
     .organism-node.active { border-color: #3182f6; }
     .organism-node.linked { border-color: #2d6a4f; }
-    .organism-emoji { font-size: 1.25rem; line-height: 1; }
+    .organism-emoji { font-size: 1.15rem; line-height: 1; }
     .organism-actions {
-      display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+      display: none; /* free vertical space on phones; tabs already cover navigation */
     }
-    .organism-action-chip {
-      border: none; border-radius: 999px; padding: 6px 12px; font: inherit;
-      font-size: 0.72rem; font-weight: 600; background: #eef3ff; color: #1a56db; cursor: pointer;
+    .app-main {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      background: #fff;
+      overflow: hidden;
     }
-    .app-main { min-height: 0; position: relative; background: #fff; }
     .app-frame {
       position: absolute; inset: 0; width: 100%; height: 100%; border: none;
       display: none; background: #fff;
+      /* iOS: allow touch scrolling inside iframe */
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .app-frame.active { display: block; }
     .app-footer {
-      padding: 8px 12px 12px; font-size: 0.65rem; color: #6b7684; line-height: 1.5;
+      flex: 0 0 auto;
+      padding: 6px 12px 8px; font-size: 0.62rem; color: #6b7684; line-height: 1.4;
       background: #fff; border-top: 1px solid #e5e8eb; text-align: center;
     }
     .app-footer a { color: #3182f6; text-decoration: none; margin: 0 4px; }
-    .crisis-line { font-weight: 700; color: #d14343; margin-bottom: 4px; }
+    .crisis-line { font-weight: 700; color: #d14343; margin-bottom: 2px; }
+    @media (max-width: 520px) {
+      .app-header { min-height: 44px; }
+      .app-header h1 { font-size: 0.95rem; }
+      .scope-badge { font-size: 0.55rem; padding: 3px 6px; }
+      .app-tabs button { font-size: 0.62rem; padding: 8px 1px; }
+      .organism-bar { max-height: 56px; padding: 4px 8px; }
+      .organism-node { width: 36px; height: 36px; }
+      .app-footer { padding: 4px 10px 6px; font-size: 0.58rem; }
+    }
     .consent-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000;
       display: grid; place-items: center; padding: 16px;
@@ -96,6 +131,8 @@
     .consent-card {
       max-width: 420px; width: 100%; background: #fff; border-radius: 16px;
       padding: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+      max-height: min(80vh, 560px); overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .consent-card h2 { margin: 0 0 8px; font-size: 1.05rem; }
     .consent-card p { margin: 0 0 10px; font-size: 0.82rem; color: #4e5968; line-height: 1.55; }

@@ -7,8 +7,40 @@ html.embed-mode header.top {
   display: none !important;
 }
 
+/*
+ * Mobile shell fix:
+ * Inside an iframe, 100vh = phone screen (not iframe box) → content taller than
+ * visible area and parent can't scroll. Force % height + scrollable document.
+ */
+html.embed-mode {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+html.embed-mode body {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+/* Chat keeps its own scroll column */
+html.embed-mode body:has(.app) {
+  overflow: hidden !important;
+}
+html.embed-mode .app,
+html.embed-mode .main {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+}
+
 html.embed-mode body.toss-ui.home-page {
   padding-bottom: 16px;
+  min-height: 0 !important;
 }
 
 html.embed-mode .sidebar-overlay {

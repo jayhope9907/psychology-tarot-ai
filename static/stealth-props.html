@@ -28,7 +28,7 @@
       --font-body: "Noto Sans KR", sans-serif;
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
+    html, body { margin: 0; height: 100%; }
     body {
       font-family: var(--font-body);
       color: var(--ink);
@@ -39,6 +39,18 @@
       min-height: 100%;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    html.embed-mode body {
+      height: 100%;
+      max-height: 100%;
+    }
+    main {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
     }
     .top {
       display: flex; align-items: center; gap: 10px;
