@@ -292,12 +292,9 @@
       el.addEventListener("pointercancel", this._onPointerUp);
       el.addEventListener("pointerleave", this._onPointerLeave);
       el.addEventListener("wheel", this._onWheel, { passive: false });
-      // Extra mobile safety: stop scroll/zoom from leaving the canvas
-      el.addEventListener("touchstart", (e) => {
-        if (e.cancelable && e.touches.length >= 1) e.preventDefault();
-      }, { passive: false });
+      // Prevent page scroll only while actively dragging/pinching (do not block taps)
       el.addEventListener("touchmove", (e) => {
-        if (e.cancelable) e.preventDefault();
+        if (this._pointers.size > 0 && e.cancelable) e.preventDefault();
       }, { passive: false });
       this._animate = this._animate.bind(this);
       requestAnimationFrame(this._animate);

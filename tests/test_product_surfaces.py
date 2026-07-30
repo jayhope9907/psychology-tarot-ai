@@ -71,6 +71,9 @@ def test_tarot_embed_canvas_owns_touch():
     assert page.status_code == 200
     assert "btnZoomInStage" in page.text
     assert 'touch-action: none' in page.text or "touch-action: none" in page.text
+    # Auto reading after pick so 풀이 is not stuck behind a disabled button
+    assert "runReadingFlow" in page.text
+    assert "tarot-has-reading" in page.text
 
 
 def test_stealth_props_page_served():

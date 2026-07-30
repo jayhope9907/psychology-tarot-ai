@@ -189,6 +189,19 @@ html.embed-mode body.tarot-page input[type="range"] {
   touch-action: pan-x !important;
   pointer-events: auto !important;
 }
+/* After reading: give the text panel room so 풀이 is not trapped off-screen */
+html.embed-mode body.tarot-page.tarot-has-reading .stage-panel {
+  flex: 0 1 34% !important;
+}
+html.embed-mode body.tarot-page.tarot-has-reading .control-panel {
+  flex: 1 1 66% !important;
+  max-height: none !important;
+}
+html.embed-mode body.tarot-page .reading-panel.visible {
+  max-height: none !important;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 
 html.embed-mode body.toss-ui.home-page {
   padding-bottom: 16px;

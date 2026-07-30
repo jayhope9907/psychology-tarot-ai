@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/toss-ui.css" />
-  <link rel="stylesheet" href="/static/css/embed.css?v=33" />
+  <link rel="stylesheet" href="/static/css/embed.css?v=34" />
   <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
   <style>
     :root {
@@ -149,9 +149,13 @@
     }
     .reading-panel {
       margin-top: 4px; display: none; flex-direction: column; gap: 12px;
-      max-height: 42vh; overflow-y: auto;
+      max-height: min(70vh, 640px); overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .reading-panel.visible { display: flex; }
+    body.tarot-has-reading .reading-panel.visible {
+      max-height: none;
+    }
     .reading-summary {
       padding: 14px; border-radius: 14px;
       background: rgba(61,107,90,0.18); border: 1px solid rgba(90,143,120,0.25);
@@ -501,7 +505,7 @@
   <script src="/static/js/tarot-image-settings.js"></script>
   <script src="/static/js/tarot-offline.js?v=2"></script>
   <script src="/static/js/vendor/three.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js'"></script>
-  <script src="/static/js/tarot-scene.js?v=25"></script>
+  <script src="/static/js/tarot-scene.js?v=26"></script>
   <script>
     const PHASE_LABELS = {
       idle: "준비",
@@ -811,14 +815,15 @@
         renderMiniCards(currentDraw.cards, false);
         els.setupStep.style.display = "none";
         els.revealStep.style.display = "block";
-        els.revealDesc.textContent = "원에서 뽑은 카드를 눌러 직접 뒤집어 보세요.";
-        els.btnReading.disabled = true;
+        els.revealDesc.textContent = "카드를 확인하는 중… 곧 마음 풀이가 이어져요.";
+        els.btnReading.disabled = false;
         flippedIndices = new Set();
         setTarotStep(3);
-        setStatus(currentDraw.offline ? "오프라인 타로 — 카드를 눌러 확인하세요" : "카드를 눌러 그림을 확인하세요");
-        // Keep reading CTA in view on mobile / tall control panels
+        setStatus(currentDraw.offline ? "오프라인 타로 — 풀이를 준비합니다" : "카드 배치 완료 · 풀이 준비 중");
         try { els.revealStep.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (_) {}
         if (window.MaumEmbed) MaumEmbed.refreshOrganism("tarot_pick");
+        // Pick complete → flip + reading without requiring extra taps
+        setTimeout(() => { runReadingFlow({ auto: true }); }, 350);
       } catch (err) {
         console.error(err);
         setStatus("카드 배치 중 문제가 생겼어요. 다시 선택해 주세요.");
@@ -1005,12 +1010,12 @@
 
     function renderReading(reading) {
       currentReading = reading;
-      els.readingSummary.textContent = reading.summary || "";
+      els.readingSummary.textContent = reading.summary || reading.ai_analysis || "카드 풀이가 준비됐어요.";
       els.cardReadings.innerHTML = (reading.cards || []).map((c) => `
         <div class="card-reading">
-          <h3>${c.position} · ${c.title}</h3>
+          <h3>${c.position || ""} · ${c.title || c.name_ko || ""}</h3>
           ${c.position_guide ? `<p style="margin:0 0 6px;font-size:0.78rem;color:var(--gold)">${c.position_guide}</p>` : ""}
-          <p>${c.meaning}</p>
+          <p>${c.meaning || c.meaning_ko || ""}</p>
           <div class="theme">마음 테마: ${c.psychology_theme || ""}</div>
           ${c.orientation_guide ? `<div class="theme">정·역: ${c.orientation_guide}</div>` : ""}
           ${c.element ? `<div class="theme">수트·원소: ${c.suit_label || ""} / ${c.element}</div>` : ""}
@@ -1024,12 +1029,88 @@
           box.dataset.filled = "1";
         }
       }
-      els.aiAnalysis.textContent = reading.ai_analysis || "";
+      els.aiAnalysis.textContent = reading.ai_analysis || reading.summary || "";
       els.actionList.innerHTML = (reading.recommended_actions || reading.cbt_actions || [])
         .map((a) => `<li>${typeof a === "string" ? a : a.text || a}</li>`).join("");
       els.readingPanel.classList.add("visible");
       els.blendBanner.style.display = "block";
       els.btnToChat.disabled = false;
+      document.body.classList.add("tarot-has-reading");
+      els.revealDesc.textContent = "풀이가 준비됐어요. 아래에서 읽어 보세요.";
+      try {
+        els.readingPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (_) {}
+    }
+
+    let readingInFlight = false;
+    async function ensureAllFlipped() {
+      if (!currentDraw?.cards?.length) return;
+      for (let i = 0; i < currentDraw.cards.length; i++) {
+        if (!flippedIndices.has(i)) {
+          await flipAtIndex(i);
+          await new Promise((r) => setTimeout(r, 120));
+        }
+      }
+    }
+
+    async function runReadingFlow({ auto = false } = {}) {
+      if (!currentDraw?.cards?.length) {
+        if (!auto) alert("먼저 카드를 뽑아 주세요.");
+        return;
+      }
+      if (readingInFlight) return;
+      if (currentReading && auto) return;
+      readingInFlight = true;
+      els.btnReading.disabled = true;
+      els.loadingReading.classList.add("visible");
+      setStatus("카드와 마음을 연결하고 있어요…");
+      try {
+        await ensureAllFlipped();
+        let reading = null;
+        if (navigator.onLine !== false) {
+          try {
+            const res = await fetch("/api/v1/tarot/reading", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: userId,
+                session_id: sessionId,
+                user_story: els.userStory.value.trim(),
+                spread: selectedSpread,
+                count: selectedCount,
+                cards: currentDraw.cards,
+                bridge_to_chat: false,
+              }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const candidate = data.reading;
+              if (candidate && (candidate.summary || candidate.ai_analysis || (candidate.cards || []).length)) {
+                reading = candidate;
+              }
+            }
+          } catch (_) {}
+        }
+        if (!reading) {
+          if (typeof TarotOffline?.buildLocalReading !== "function") {
+            throw new Error("offline reading unavailable");
+          }
+          reading = TarotOffline.buildLocalReading(els.userStory.value.trim(), currentDraw);
+        }
+        renderReading(reading);
+        setTarotStep(4);
+        setStatus(reading.offline ? "오프라인 풀이 준비됐어요. 연결되면 AI 대화로 이어갈 수 있어요." : "풀이가 준비됐어요. AI 대화와 이어가실 수 있어요.");
+        if (window.MaumEmbed) MaumEmbed.refreshOrganism("tarot_reading");
+      } catch (err) {
+        console.error(err);
+        if (!auto) alert("풀이를 가져오지 못했어요.");
+        setStatus("풀이를 불러오지 못했어요. ‘마음 풀이 받기’를 다시 눌러 주세요.");
+        els.btnReading.disabled = false;
+      } finally {
+        els.loadingReading.classList.remove("visible");
+        readingInFlight = false;
+        if (!currentReading) els.btnReading.disabled = false;
+      }
     }
 
     els.btnShuffle.addEventListener("click", async () => {
@@ -1038,7 +1119,10 @@
       pickedIds = [];
       flippedIndices = new Set();
       pickFinalizing = false;
+      readingInFlight = false;
       currentDraw = null;
+      currentReading = null;
+      document.body.classList.remove("tarot-has-reading");
       els.readingPanel.classList.remove("visible");
       els.blendBanner.style.display = "none";
       els.btnToChat.disabled = true;
@@ -1080,49 +1164,7 @@
       }
     });
 
-    els.btnReading.addEventListener("click", async () => {
-      els.btnReading.disabled = true;
-      els.loadingReading.classList.add("visible");
-      setStatus("카드와 마음을 연결하고 있어요…");
-      try {
-        let reading = null;
-        if (navigator.onLine !== false) {
-          try {
-            const res = await fetch("/api/v1/tarot/reading", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                user_id: userId,
-                session_id: sessionId,
-                user_story: els.userStory.value.trim(),
-                spread: selectedSpread,
-                count: selectedCount,
-                cards: currentDraw.cards,
-                bridge_to_chat: false,
-              }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              reading = data.reading || {};
-            }
-          } catch (_) {}
-        }
-        if (!reading) {
-          reading = TarotOffline.buildLocalReading(els.userStory.value.trim(), currentDraw);
-        }
-        currentReading = reading;
-        renderReading(reading);
-        setTarotStep(4);
-        setStatus(reading.offline ? "오프라인 풀이 준비됐어요. 연결되면 AI 대화로 이어갈 수 있어요." : "풀이가 준비됐어요. AI 대화와 이어가실 수 있어요.");
-        if (window.MaumEmbed) MaumEmbed.refreshOrganism("tarot_reading");
-      } catch (err) {
-        alert("풀이를 가져오지 못했어요.");
-        setStatus("");
-      } finally {
-        els.loadingReading.classList.remove("visible");
-        els.btnReading.disabled = false;
-      }
-    });
+    els.btnReading.addEventListener("click", () => runReadingFlow({ auto: false }));
 
     els.btnToChat.addEventListener("click", async () => {
       if (!currentDraw || !currentReading) {
@@ -1196,9 +1238,11 @@
     els.btnReset.addEventListener("click", () => {
       currentDraw = null;
       currentReading = null;
+      readingInFlight = false;
       pickedIds = [];
       flippedIndices = new Set();
       pickFinalizing = false;
+      document.body.classList.remove("tarot-has-reading");
       els.setupStep.style.display = "block";
       els.revealStep.style.display = "none";
       els.readingPanel.classList.remove("visible");
