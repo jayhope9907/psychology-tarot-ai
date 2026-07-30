@@ -999,7 +999,10 @@
     async function flipAtIndex(index, fromScene = false) {
       if (!currentDraw?.cards?.[index] || flippedIndices.has(index)) return;
       flippedIndices.add(index);
-      if (!fromScene && use3d && scene) await scene.flipCard(index);
+      if (!fromScene && use3d && scene) {
+        // Do not block reading flow on texture/3D timing.
+        scene.flipCard(index).catch(() => {});
+      }
       renderMiniCards(currentDraw.cards, false);
       if (flippedIndices.size >= currentDraw.cards.length) {
         els.revealDesc.textContent = "모든 카드가 공개됐어요. 마음 풀이를 받아 보세요.";
@@ -1011,7 +1014,10 @@
     function renderReading(reading) {
       currentReading = reading;
       els.readingSummary.textContent = reading.summary || reading.ai_analysis || "카드 풀이가 준비됐어요.";
-      els.cardReadings.innerHTML = (reading.cards || []).map((c) => `
+      const cardsForView = Array.isArray(reading.cards) && reading.cards.length
+        ? reading.cards
+        : (currentDraw?.cards || []);
+      els.cardReadings.innerHTML = cardsForView.map((c) => `
         <div class="card-reading">
           <h3>${c.position || ""} · ${c.title || c.name_ko || ""}</h3>
           ${c.position_guide ? `<p style="margin:0 0 6px;font-size:0.78rem;color:var(--gold)">${c.position_guide}</p>` : ""}
@@ -1030,6 +1036,9 @@
         }
       }
       els.aiAnalysis.textContent = reading.ai_analysis || reading.summary || "";
+      if (!els.cardReadings.innerHTML.trim()) {
+        els.cardReadings.innerHTML = `<div class="card-reading"><h3>카드 해석</h3><p>${reading.summary || "카드 해석을 준비했습니다."}</p></div>`;
+      }
       els.actionList.innerHTML = (reading.recommended_actions || reading.cbt_actions || [])
         .map((a) => `<li>${typeof a === "string" ? a : a.text || a}</li>`).join("");
       els.readingPanel.classList.add("visible");
@@ -1047,8 +1056,9 @@
       if (!currentDraw?.cards?.length) return;
       for (let i = 0; i < currentDraw.cards.length; i++) {
         if (!flippedIndices.has(i)) {
-          await flipAtIndex(i);
-          await new Promise((r) => setTimeout(r, 120));
+          await flipAtIndex(i, true);
+          if (use3d && scene) scene.flipCard(i).catch(() => {});
+          await new Promise((r) => setTimeout(r, 30));
         }
       }
     }
@@ -1069,9 +1079,12 @@
         let reading = null;
         if (navigator.onLine !== false) {
           try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 9000);
             const res = await fetch("/api/v1/tarot/reading", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
+              signal: controller.signal,
               body: JSON.stringify({
                 user_id: userId,
                 session_id: sessionId,
@@ -1089,6 +1102,7 @@
                 reading = candidate;
               }
             }
+            clearTimeout(timeout);
           } catch (_) {}
         }
         if (!reading) {
