@@ -44,6 +44,7 @@ html.embed-mode .app {
   flex: 1 1 auto !important;
   display: grid !important;
   grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
   height: 100% !important;
   max-height: 100% !important;
   min-height: 0 !important;
@@ -52,9 +53,17 @@ html.embed-mode .app {
   margin: 0 !important;
   max-width: none !important;
 }
+/* Sidebar is unused in embed shell — keep it out of layout/hit-testing */
+html.embed-mode .sidebar,
+html.embed-mode .sidebar-overlay {
+  display: none !important;
+  pointer-events: none !important;
+}
 html.embed-mode .main {
   display: grid !important;
-  grid-template-rows: 1fr auto !important;
+  /* header(hidden) | dash | messages(1fr) | composer */
+  grid-template-rows: auto auto 1fr auto !important;
+  grid-column: 1 / -1 !important;
   height: 100% !important;
   max-height: 100% !important;
   min-height: 0 !important;
@@ -62,14 +71,23 @@ html.embed-mode .main {
   border: none !important;
   box-shadow: none !important;
 }
+html.embed-mode .t-dash {
+  flex-shrink: 0 !important;
+  min-height: 0 !important;
+  max-height: 96px !important;
+  overflow: hidden !important;
+  padding: 8px 10px 0 !important;
+}
 html.embed-mode .chat-scroll {
   min-height: 0 !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 html.embed-mode .composer-wrap {
   position: relative !important;
   z-index: 6 !important;
+  flex-shrink: 0 !important;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
   background: rgba(255,255,255,0.96) !important;
   pointer-events: auto !important;
@@ -83,6 +101,7 @@ html.embed-mode button {
 }
 html.embed-mode textarea,
 html.embed-mode input {
+  font-size: 16px !important; /* iOS: avoid zoom-steal that feels like "input dead" */
   -webkit-user-select: text !important;
   user-select: text !important;
 }
@@ -91,18 +110,23 @@ html.embed-mode body.toss-ui.home-page {
   padding-bottom: 16px;
 }
 
-html.embed-mode .sidebar-overlay {
-  z-index: 200;
-}
-html.embed-mode .sidebar {
-  z-index: 201;
-}
-
 /* Never leave invisible blockers over the UI */
 html.embed-mode .consent-overlay-chat[hidden],
 html.embed-mode .crisis-overlay[hidden],
 html.embed-mode .status-sheet-overlay[hidden],
-html.embed-mode .wc-overlay:not(.show) {
+html.embed-mode .wc-overlay:not(.show),
+html.embed-mode .wc-overlay[hidden] {
   display: none !important;
   pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+@media (max-width: 720px) {
+  /* Drop dash on phones; only messages + composer remain → 1fr auto */
+  html.embed-mode .t-dash {
+    display: none !important;
+  }
+  html.embed-mode .main {
+    grid-template-rows: 1fr auto !important;
+  }
 }

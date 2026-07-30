@@ -47,6 +47,21 @@ def test_app_shell_includes_props_tab():
     assert "about:blank" in res.text
 
 
+def test_chat_embed_keeps_composer_row():
+    """Dashboard must not steal the 1fr row or the chat input is clipped on phones."""
+    res = client.get("/chat")
+    assert res.status_code == 200
+    assert "grid-template-rows: auto auto 1fr auto" in res.text
+    css = client.get("/static/css/embed.css")
+    assert css.status_code == 200
+    assert "grid-template-rows: auto auto 1fr auto" in css.text
+    assert "html.embed-mode .sidebar" in css.text
+    # Phone embed: dash hidden → messages 1fr + composer auto
+    assert "grid-template-rows: 1fr auto !important" in css.text.replace("\n", " ") or (
+        "grid-template-rows: 1fr auto !important" in css.text
+    )
+
+
 def test_stealth_props_page_served():
     res = client.get("/stealth-props")
     assert res.status_code == 200

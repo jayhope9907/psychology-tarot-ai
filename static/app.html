@@ -243,16 +243,18 @@
       try { location.hash = name; } catch (_) {}
     }
 
+    let lastTabAt = 0;
+    function onTabPress(name) {
+      const now = Date.now();
+      if (now - lastTabAt < 350) return;
+      lastTabAt = now;
+      switchTab(name);
+    }
     tabs.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        switchTab(btn.dataset.tab);
+        onTabPress(btn.dataset.tab);
       });
-      btn.addEventListener("touchend", (e) => {
-        // iOS: ensure tab switches even if click is delayed/lost
-        if (e.cancelable) e.preventDefault();
-        switchTab(btn.dataset.tab);
-      }, { passive: false });
     });
 
     const hash = (location.hash || `#${DEFAULT_TAB}`).replace("#", "");
