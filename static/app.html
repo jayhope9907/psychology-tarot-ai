@@ -241,6 +241,14 @@
         if (active) ensureFrameSrc(frame);
       });
       try { location.hash = name; } catch (_) {}
+      // Tarot WebGL needs a resize after iframe becomes visible
+      if (name === "tarot") {
+        const ping = () => {
+          try { frames.tarot.contentWindow?.postMessage({ type: "maum-frame-resize" }, "*"); } catch (_) {}
+        };
+        setTimeout(ping, 50);
+        setTimeout(ping, 300);
+      }
     }
 
     let lastTabAt = 0;

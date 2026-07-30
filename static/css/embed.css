@@ -92,18 +92,102 @@ html.embed-mode .composer-wrap {
   background: rgba(255,255,255,0.96) !important;
   pointer-events: auto !important;
 }
+/* Only chat composer — do NOT set touch-action on all inputs/buttons
+   (breaks tarot range sliders + can confuse canvas hit-testing). */
 html.embed-mode .composer,
-html.embed-mode textarea,
-html.embed-mode input,
-html.embed-mode button {
+html.embed-mode .composer textarea,
+html.embed-mode .composer input,
+html.embed-mode .composer button,
+html.embed-mode .composer-wrap button {
   pointer-events: auto !important;
   touch-action: manipulation;
 }
-html.embed-mode textarea,
-html.embed-mode input {
+html.embed-mode .composer textarea,
+html.embed-mode .composer input {
   font-size: 16px !important; /* iOS: avoid zoom-steal that feels like "input dead" */
   -webkit-user-select: text !important;
   user-select: text !important;
+}
+
+/* ── Tarot 3D embed: canvas must own gestures (no body scroll steal) ── */
+html.embed-mode body.tarot-page {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+html.embed-mode body.tarot-page .shell {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  padding: 8px !important;
+  padding-bottom: 8px !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+html.embed-mode body.tarot-page .t-step-flow {
+  flex: 0 0 auto;
+  margin: 0 !important;
+}
+html.embed-mode body.tarot-page .layout {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  grid-template-columns: none !important;
+}
+html.embed-mode body.tarot-page .stage-panel {
+  flex: 1 1 58% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+html.embed-mode body.tarot-page #tarotCanvas {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  touch-action: none !important;
+  pointer-events: auto !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+html.embed-mode body.tarot-page #tarotCanvas canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none !important;
+  pointer-events: auto !important;
+}
+html.embed-mode body.tarot-page .stage-footer {
+  flex: 0 0 auto;
+  pointer-events: auto !important;
+  z-index: 3;
+}
+html.embed-mode body.tarot-page .control-panel {
+  flex: 0 1 42% !important;
+  min-height: 140px !important;
+  max-height: 46% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+html.embed-mode body.tarot-page .touch-camera-bar button,
+html.embed-mode body.tarot-page .spread-btn,
+html.embed-mode body.tarot-page .btn {
+  touch-action: manipulation;
+  pointer-events: auto !important;
+}
+html.embed-mode body.tarot-page input[type="range"] {
+  touch-action: pan-x !important;
+  pointer-events: auto !important;
 }
 
 html.embed-mode body.toss-ui.home-page {

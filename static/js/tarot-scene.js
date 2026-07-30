@@ -292,6 +292,13 @@
       el.addEventListener("pointercancel", this._onPointerUp);
       el.addEventListener("pointerleave", this._onPointerLeave);
       el.addEventListener("wheel", this._onWheel, { passive: false });
+      // Extra mobile safety: stop scroll/zoom from leaving the canvas
+      el.addEventListener("touchstart", (e) => {
+        if (e.cancelable && e.touches.length >= 1) e.preventDefault();
+      }, { passive: false });
+      el.addEventListener("touchmove", (e) => {
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false });
       this._animate = this._animate.bind(this);
       requestAnimationFrame(this._animate);
       if (loadTiltEnabled() && this._tilt.supported) {

@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/toss-ui.css" />
-  <link rel="stylesheet" href="/static/css/embed.css" />
+  <link rel="stylesheet" href="/static/css/embed.css?v=33" />
   <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");</script>
   <style>
     :root {
@@ -93,7 +93,17 @@
       padding: 12px 16px; border-top: 1px solid var(--glass-border);
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
       font-size: 0.82rem; color: var(--text-soft);
+      flex-wrap: wrap;
     }
+    .stage-zoom { display: flex; gap: 6px; margin-left: auto; }
+    .stage-zoom button {
+      min-width: 44px; min-height: 40px; border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255,252,247,0.08); color: inherit;
+      font: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer;
+      touch-action: manipulation; pointer-events: auto;
+    }
+    .stage-zoom button:active { background: rgba(196,165,116,0.22); }
     .phase-pill {
       padding: 4px 10px; border-radius: 999px;
       background: var(--gold-soft); color: var(--gold); font-weight: 600;
@@ -358,6 +368,10 @@
         <div class="stage-footer">
           <span class="phase-pill" id="phaseLabel">준비</span>
           <span id="stageHint">마음에 닿는 질문을 적고, 카드를 섞어 보세요</span>
+          <div class="stage-zoom" aria-label="카메라 줌">
+            <button type="button" id="btnZoomOutStage" aria-label="축소">−</button>
+            <button type="button" id="btnZoomInStage" aria-label="확대">+</button>
+          </div>
         </div>
       </section>
 
@@ -876,12 +890,22 @@
       if (scene?.resetCameraPrefs) syncCameraUI(scene.resetCameraPrefs());
       else syncCameraUI(window.TarotCameraDefaults);
     });
-    document.getElementById("btnZoomIn")?.addEventListener("click", () => {
-      if (scene?.nudgeZoom) syncCameraUI(scene.nudgeZoom(1.12));
-    });
-    document.getElementById("btnZoomOut")?.addEventListener("click", () => {
-      if (scene?.nudgeZoom) syncCameraUI(scene.nudgeZoom(1 / 1.12));
-    });
+    function bindZoomBtn(id, factor) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      let last = 0;
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        const now = Date.now();
+        if (now - last < 280) return;
+        last = now;
+        if (scene?.nudgeZoom) syncCameraUI(scene.nudgeZoom(factor));
+      });
+    }
+    bindZoomBtn("btnZoomIn", 1.12);
+    bindZoomBtn("btnZoomOut", 1 / 1.12);
+    bindZoomBtn("btnZoomInStage", 1.12);
+    bindZoomBtn("btnZoomOutStage", 1 / 1.12);
     document.getElementById("tiltToggle")?.addEventListener("change", async (e) => {
       if (!scene?.setTiltEnabled) return;
       const want = !!e.target.checked;
@@ -1187,6 +1211,18 @@
       setTarotStep(1);
       setStatus("다시 질문을 적고 카드를 섞어 주세요.");
       if (use3d && scene) scene.buildDeck(activeDeckCatalog());
+    });
+
+    window.addEventListener("message", (event) => {
+      if (event.data?.type !== "maum-frame-resize") return;
+      try {
+        window.dispatchEvent(new Event("resize"));
+        if (scene && typeof scene._resize === "function") scene._resize();
+      } catch (_) {}
+    });
+    // First paint inside iframe can report 0 height — resize after layout
+    requestAnimationFrame(() => {
+      try { window.dispatchEvent(new Event("resize")); } catch (_) {}
     });
 
     loadDeck();

@@ -62,6 +62,17 @@ def test_chat_embed_keeps_composer_row():
     )
 
 
+def test_tarot_embed_canvas_owns_touch():
+    css = client.get("/static/css/embed.css")
+    assert css.status_code == 200
+    assert "body.tarot-page #tarotCanvas" in css.text
+    assert "touch-action: none !important" in css.text
+    page = client.get("/tarot")
+    assert page.status_code == 200
+    assert "btnZoomInStage" in page.text
+    assert 'touch-action: none' in page.text or "touch-action: none" in page.text
+
+
 def test_stealth_props_page_served():
     res = client.get("/stealth-props")
     assert res.status_code == 200
