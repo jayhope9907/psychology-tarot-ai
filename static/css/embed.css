@@ -7,50 +7,102 @@ html.embed-mode header.top {
   display: none !important;
 }
 
-/*
- * Mobile shell fix:
- * Inside an iframe, 100vh = phone screen (not iframe box) → content taller than
- * visible area and parent can't scroll. Force % height + scrollable document.
- */
-html.embed-mode {
-  height: 100% !important;
-  overflow: hidden !important;
+html.embed-mode .t-bottom-nav-spacer {
+  display: none !important;
 }
+
+/*
+ * Fill the iframe box (NOT the phone 100vh). 100vh inside iframes overflows and
+ * breaks touch / composer focus on iOS.
+ */
+html.embed-mode,
 html.embed-mode body {
   height: 100% !important;
   max-height: 100% !important;
   min-height: 0 !important;
+  margin: 0 !important;
+}
+
+html.embed-mode {
+  overflow: hidden !important;
+}
+
+html.embed-mode body {
   overflow-x: hidden !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  touch-action: pan-y;
 }
 
-/* Chat keeps its own scroll column */
+/* Chat: single-column fill + sticky composer */
 html.embed-mode body:has(.app) {
   overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
-html.embed-mode .app,
-html.embed-mode .main {
+html.embed-mode .app {
+  flex: 1 1 auto !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
   height: 100% !important;
   max-height: 100% !important;
   min-height: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  max-width: none !important;
+}
+html.embed-mode .main {
+  display: grid !important;
+  grid-template-rows: 1fr auto !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+html.embed-mode .chat-scroll {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+html.embed-mode .composer-wrap {
+  position: relative !important;
+  z-index: 6 !important;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  background: rgba(255,255,255,0.96) !important;
+  pointer-events: auto !important;
+}
+html.embed-mode .composer,
+html.embed-mode textarea,
+html.embed-mode input,
+html.embed-mode button {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+html.embed-mode textarea,
+html.embed-mode input {
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 html.embed-mode body.toss-ui.home-page {
   padding-bottom: 16px;
-  min-height: 0 !important;
 }
 
 html.embed-mode .sidebar-overlay {
   z-index: 200;
 }
-
 html.embed-mode .sidebar {
   z-index: 201;
 }
 
-html.embed-mode .t-bottom-nav-spacer {
+/* Never leave invisible blockers over the UI */
+html.embed-mode .consent-overlay-chat[hidden],
+html.embed-mode .crisis-overlay[hidden],
+html.embed-mode .status-sheet-overlay[hidden],
+html.embed-mode .wc-overlay:not(.show) {
   display: none !important;
+  pointer-events: none !important;
 }

@@ -42,7 +42,9 @@ def test_app_shell_includes_props_tab():
     assert "소품게임" in res.text
     assert 'data-tab="props"' in res.text
     assert "/stealth-props?embed=1" in res.text
-    assert "repeat(5" in res.text
+    # Lazy-load: src starts blank, data-src holds the real URL
+    assert 'data-src="/stealth-props?embed=1"' in res.text
+    assert "about:blank" in res.text
 
 
 def test_stealth_props_page_served():
