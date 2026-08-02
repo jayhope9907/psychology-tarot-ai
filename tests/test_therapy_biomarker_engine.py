@@ -18,6 +18,7 @@ def test_therapy_catalog_includes_modern_waves():
     catalog = get_therapy_catalog()
     assert catalog["count"] == len(ClinicalSchool)
     assert catalog["non_diagnostic"] is True
+    assert catalog["evidence_paper_count"] >= 20
     assert "modern_cbt" in catalog["waves"]
     assert "brief_trauma" in catalog["waves"]
     ids = {a["id"] for a in catalog["axes"]}

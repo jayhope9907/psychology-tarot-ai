@@ -137,25 +137,40 @@ def _score_axis(kind: str, value: float, coef: float) -> float:
 
 
 def get_therapy_catalog() -> Dict[str, Any]:
+    from app.services.therapy_evidence_corpus import (
+        attach_evidence_to_axes,
+        build_evidence_corpus,
+    )
+
     waves: Dict[str, int] = {}
     for spec in AXIS_SPECS:
         waves[spec["wave"]] = waves.get(spec["wave"], 0) + 1
+    axes = [
+        {
+            "id": s["id"],
+            "theory": s["school"].lower(),
+            "school": s["school"],
+            "raw": s["raw"],
+            "kind": s["kind"],
+            "label_ko": s["label_ko"],
+            "wave": s["wave"],
+        }
+        for s in AXIS_SPECS
+    ]
+    evidence = build_evidence_corpus()
     return {
-        "axes": [
-            {
-                "id": s["id"],
-                "theory": s["school"].lower(),
-                "school": s["school"],
-                "raw": s["raw"],
-                "kind": s["kind"],
-                "label_ko": s["label_ko"],
-                "wave": s["wave"],
-            }
-            for s in AXIS_SPECS
-        ],
+        "axes": attach_evidence_to_axes(axes),
         "count": len(AXIS_SPECS),
         "waves": waves,
         "clinical_school_count": len(ClinicalSchool),
+        "evidence_paper_count": evidence["paper_count"],
+        "evidence_disclaimer": evidence["disclaimer"],
+        "architecture_hooks": [
+            "process_based_therapy",
+            "fit_session_feedback",
+            "trauma_safety_gate",
+            "therapy_evidence_corpus",
+        ],
         "non_diagnostic": True,
         "ts_contract": "/static/types/TherapyBiomarkerEngine.ts",
     }

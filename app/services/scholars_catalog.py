@@ -98,6 +98,17 @@ SCHOLARS: List[Dict[str, Any]] = [
     {"id": "rawson_matrix", "name": "Richard A. Rawson", "name_ko": "리처드 로우슨", "school": "MATRIX_MODEL", "era": "현대", "focus": "Matrix 모델", "techniques": ["구조화 외래", "가족교육"], "works": ["Matrix Model"]},
     {"id": "bowen_mbrp", "name": "Sarah Bowen", "name_ko": "사라 보웬", "school": "CRAVING_MINDFULNESS", "era": "현대", "focus": "MBRP", "techniques": ["urge surfing", "자동조종 알아차림"], "works": ["Mindfulness-Based Relapse Prevention"]},
     {"id": "nowinski_tsf", "name": "Joseph Nowinski", "name_ko": "조제프 노윈스키", "school": "TWELVE_STEP_FACILITATION", "era": "현대", "focus": "TSF", "techniques": ["12단계 촉진", "모임 연계"], "works": ["Twelve Step Facilitation Handbook"]},
+    # Modern waves (evidence-linked)
+    {"id": "schwartz_ifs", "name": "Richard C. Schwartz", "name_ko": "리처드 슈워츠", "school": "IFS", "era": "현대", "focus": "내부가족체계(IFS)", "techniques": ["Self", "파트", "언버든"], "works": ["Internal Family Systems Therapy"]},
+    {"id": "dimidjian_ba", "name": "Sona Dimidjian", "name_ko": "소나 디미지안", "school": "BEHAVIORAL_ACTIVATION", "era": "현대", "focus": "행동활성화", "techniques": ["활동 스케줄", "회피 줄이기"], "works": ["Behavioral Activation for Depression"]},
+    {"id": "martell_ba", "name": "Christopher R. Martell", "name_ko": "크리스토퍼 마텔", "school": "BEHAVIORAL_ACTIVATION", "era": "현대", "focus": "BA 임상", "techniques": ["TRAC", "활동 실험"], "works": ["Behavioral Activation for Depression"]},
+    {"id": "resick_cpt", "name": "Patricia A. Resick", "name_ko": "패트리샤 레식", "school": "CPT_INFORMED", "era": "현대", "focus": "인지처리치료(CPT)", "techniques": ["stuck point", "시트"], "works": ["Cognitive Processing Therapy for PTSD"]},
+    {"id": "foa_pe", "name": "Edna B. Foa", "name_ko": "에드나 포아", "school": "PROLONGED_EXPOSURE_INFORMED", "era": "현대", "focus": "장시간노출(PE)", "techniques": ["상상노출", "실제노출"], "works": ["Prolonged Exposure Therapy for PTSD"]},
+    {"id": "levine_se", "name": "Peter A. Levine", "name_ko": "피터 레빈", "school": "SOMATIC_EXPERIENCING", "era": "현대", "focus": "신체경험치료(SE)", "techniques": ["타이틀레이션", "자원", "방전"], "works": ["In an Unspoken Voice", "Waking the Tiger"]},
+    {"id": "porges_polyvagal", "name": "Stephen W. Porges", "name_ko": "스티븐 포르지스", "school": "POLYVAGAL_INFORMED", "era": "현대", "focus": "다미주신경이론", "techniques": ["안전 신호", "공동조절"], "works": ["The Polyvagal Theory"]},
+    {"id": "hofmann_pbt", "name": "Stefan G. Hofmann", "name_ko": "슈테판 호프만", "school": "INTEGRATIVE", "era": "현대", "focus": "과정기반치료(PBT)", "techniques": ["과정 네트워크", "개인화 개입"], "works": ["Process-Based CBT"]},
+    {"id": "barlow_up", "name": "David H. Barlow", "name_ko": "데이비드 발로", "school": "INTEGRATIVE", "era": "현대", "focus": "통합프로토콜(UP)", "techniques": ["초진단", "감정노출"], "works": ["Unified Protocol"]},
+    {"id": "lambert_rom", "name": "Michael J. Lambert", "name_ko": "마이클 램버트", "school": "INTEGRATIVE", "era": "현대", "focus": "성과모니터링(ROM/FIT)", "techniques": ["세션 피드백", "경고 신호"], "works": ["Prevention of Treatment Failure"]},
 ]
 
 ART_THERAPY_TECHNIQUES: List[Dict[str, Any]] = [

@@ -45,6 +45,21 @@ PLATFORM_INVENTIONS: List[Dict[str, Any]] = [
         "modules": ["product_surfaces", "consumer_access", "association_licensing"],
         "covers": ["B2C", "B2B associations", "disability line"],
     },
+    {
+        "id": "INV-13",
+        "title_ko": "논문매핑 과정기반·피드백·안전게이트 아키텍처",
+        "title_en": "Evidence-mapped PBT / FIT / trauma-safety gate architecture",
+        "claim_sketch": (
+            "치료학파 바이오마커 벡터를 과정차원·세션피드백·외상안전게이트로 변환하고 "
+            "DOI 논문 코퍼스에 훅을 연결하는 비진단 웰니스 아키텍처"
+        ),
+        "modules": [
+            "therapy_biomarker_engine",
+            "therapy_evidence_corpus",
+            "process_based_therapy",
+        ],
+        "covers": ["PBT", "FIT/ROM", "polyvagal safety gate", "evidence corpus"],
+    },
 ]
 
 

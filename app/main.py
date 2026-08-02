@@ -317,6 +317,14 @@ class TherapySynergyRequest(BaseModel):
     user_b: TherapyProfileVectorModel
 
 
+class TherapyProcessBundleRequest(BaseModel):
+    """Biomarker vector (+ optional FIT scores) → PBT/FIT/safety architecture bundle."""
+
+    vector: TherapyProfileVectorModel
+    progress_score: Optional[float] = None
+    alliance_score: Optional[float] = None
+
+
 class AgeCohortExportRequest(BaseModel):
     age_group: Optional[str] = None
     risk_cohort: str = "any"
@@ -2496,7 +2504,7 @@ async def stealth_unconscious_props():
 
 @app.get("/api/v1/therapy-biomarkers/catalog")
 async def therapy_biomarkers_catalog():
-    """9-therapy axis catalog (non_diagnostic)."""
+    """Full ClinicalSchool axis catalog + evidence paper refs (non_diagnostic)."""
     from app.services.therapy_biomarker_engine import get_therapy_catalog
 
     return get_therapy_catalog()
@@ -2504,7 +2512,7 @@ async def therapy_biomarkers_catalog():
 
 @app.post("/api/v1/therapy-biomarkers/extract")
 async def therapy_biomarkers_extract(request: TherapyExtractRequest):
-    """9-therapy raw → 0~100 TherapyProfileVector (TS parity)."""
+    """Raw biomarkers → 0~100 TherapyProfileVector (TS parity)."""
     from app.services.therapy_biomarker_engine import extract_therapy_vector
 
     return {
@@ -2521,6 +2529,38 @@ async def therapy_biomarkers_synergy(request: TherapySynergyRequest):
     return calculate_therapeutic_synergy(
         request.user_a.model_dump(),
         request.user_b.model_dump(),
+    )
+
+
+@app.get("/api/v1/therapy-evidence/corpus")
+async def therapy_evidence_corpus_api(
+    school: Optional[str] = None,
+    hook: Optional[str] = None,
+    year_from: Optional[int] = None,
+):
+    """DOI-linked landmark/meta/RCT papers mapped to schools & architecture hooks."""
+    from app.services.therapy_evidence_corpus import build_evidence_corpus, list_evidence_papers
+
+    if school or hook or year_from is not None:
+        papers = list_evidence_papers(school=school, hook=hook, year_from=year_from)
+        return {
+            "paper_count": len(papers),
+            "papers": papers,
+            "non_diagnostic": True,
+            "disclaimer": build_evidence_corpus()["disclaimer"],
+        }
+    return build_evidence_corpus()
+
+
+@app.post("/api/v1/therapy-architecture/process-bundle")
+async def therapy_architecture_process_bundle(request: TherapyProcessBundleRequest):
+    """PBT process dims + FIT feedback + trauma safety gate (paper-informed)."""
+    from app.services.process_based_therapy import build_paper_architecture_bundle
+
+    return build_paper_architecture_bundle(
+        request.vector.model_dump(),
+        progress_score=request.progress_score,
+        alliance_score=request.alliance_score,
     )
 
 
