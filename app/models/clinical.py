@@ -62,6 +62,14 @@ class ClinicalSchool(str, Enum):
     MULTICULTURAL = "MULTICULTURAL"
     INTEGRATIVE = "INTEGRATIVE"
 
+    # Contemporary evidence-informed (latest wave)
+    IFS = "IFS"  # Internal Family Systems
+    BEHAVIORAL_ACTIVATION = "BEHAVIORAL_ACTIVATION"
+    CPT_INFORMED = "CPT_INFORMED"  # Cognitive Processing Therapy (informed)
+    SOMATIC_EXPERIENCING = "SOMATIC_EXPERIENCING"
+    POLYVAGAL_INFORMED = "POLYVAGAL_INFORMED"
+    PROLONGED_EXPOSURE_INFORMED = "PROLONGED_EXPOSURE_INFORMED"
+
     # Substance · behavioral addiction (wellness / education — not medical treatment delivery)
     RELAPSE_PREVENTION = "RELAPSE_PREVENTION"
     CONTINGENCY_MANAGEMENT = "CONTINGENCY_MANAGEMENT"

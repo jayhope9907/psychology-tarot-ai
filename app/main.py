@@ -271,6 +271,52 @@ class StealthBiomarkerIngestRequest(BaseModel):
     reset: bool = False
 
 
+class TherapyBiomarkerRawModel(BaseModel):
+    """9-therapy + full ClinicalSchool raw biomarkers (extra keys allowed)."""
+
+    model_config = {"extra": "allow"}
+
+    psychoanalysisInsightMs: float = 800.0
+    adlerResilienceDelayMs: float = 600.0
+    logotherapyEnduranceSec: float = 8.0
+    personCenteredStability: float = 2.0
+    existentialAutonomyRatio: float = 0.5
+    realityFocusRatio: float = 0.5
+    cbtCognitiveShiftMs: float = 700.0
+    solutionOrientedRatio: float = 0.5
+    positiveStrengthBoost: float = 5.0
+
+
+class TherapyExtractRequest(BaseModel):
+    user_id: str = "anonymous"
+    raw: TherapyBiomarkerRawModel = TherapyBiomarkerRawModel()
+
+
+class TherapyProfileVectorModel(BaseModel):
+    """Scores are open-ended; classic + modern axis ids accepted."""
+
+    model_config = {"extra": "allow"}
+
+    userId: str = "anonymous"
+    insightScore: float = 50.0
+    courageScore: float = 50.0
+    meaningScore: float = 50.0
+    acceptanceScore: float = 50.0
+    autonomyScore: float = 50.0
+    realityScore: float = 50.0
+    cbtShiftScore: float = 50.0
+    solutionScore: float = 50.0
+    strengthsScore: float = 50.0
+    dbtRegulationScore: float = 50.0
+    actValuesScore: float = 50.0
+    traumaSafetyScore: float = 50.0
+
+
+class TherapySynergyRequest(BaseModel):
+    user_a: TherapyProfileVectorModel
+    user_b: TherapyProfileVectorModel
+
+
 class AgeCohortExportRequest(BaseModel):
     age_group: Optional[str] = None
     risk_cohort: str = "any"
@@ -2446,6 +2492,36 @@ async def stealth_unconscious_props():
     from app.services.stealth_unconscious_engine import get_prop_catalog
 
     return get_prop_catalog()
+
+
+@app.get("/api/v1/therapy-biomarkers/catalog")
+async def therapy_biomarkers_catalog():
+    """9-therapy axis catalog (non_diagnostic)."""
+    from app.services.therapy_biomarker_engine import get_therapy_catalog
+
+    return get_therapy_catalog()
+
+
+@app.post("/api/v1/therapy-biomarkers/extract")
+async def therapy_biomarkers_extract(request: TherapyExtractRequest):
+    """9-therapy raw → 0~100 TherapyProfileVector (TS parity)."""
+    from app.services.therapy_biomarker_engine import extract_therapy_vector
+
+    return {
+        "vector": extract_therapy_vector(request.user_id, request.raw.model_dump()),
+        "non_diagnostic": True,
+    }
+
+
+@app.post("/api/v1/therapy-biomarkers/synergy")
+async def therapy_biomarkers_synergy(request: TherapySynergyRequest):
+    """2인 Quant Complementary Alpha (CBT × 해결중심 × 아들러 보완)."""
+    from app.services.therapy_biomarker_engine import calculate_therapeutic_synergy
+
+    return calculate_therapeutic_synergy(
+        request.user_a.model_dump(),
+        request.user_b.model_dump(),
+    )
 
 
 @app.post("/api/v1/users/{user_id}/stealth-unconscious/ingest")

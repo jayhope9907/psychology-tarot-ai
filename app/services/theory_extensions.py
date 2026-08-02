@@ -27,6 +27,12 @@ EXTRA_USER_LABELS: Dict[ClinicalSchool, Dict[str, str]] = {
     ClinicalSchool.POSITIVE_PSYCHOLOGY: {"user_label": "강점·행복 상담", "user_short_label": "긍정심리"},
     ClinicalSchool.FEMINIST: {"user_label": "페미니스트 상담", "user_short_label": "페미니스트"},
     ClinicalSchool.MULTICULTURAL: {"user_label": "다문화 상담", "user_short_label": "다문화"},
+    ClinicalSchool.IFS: {"user_label": "내면 파트 상담", "user_short_label": "IFS"},
+    ClinicalSchool.BEHAVIORAL_ACTIVATION: {"user_label": "활동 되살리기 상담", "user_short_label": "행동활성화"},
+    ClinicalSchool.CPT_INFORMED: {"user_label": "외상 의미 안내", "user_short_label": "CPT안내"},
+    ClinicalSchool.SOMATIC_EXPERIENCING: {"user_label": "몸 감각 안정 안내", "user_short_label": "SE안내"},
+    ClinicalSchool.POLYVAGAL_INFORMED: {"user_label": "안전·연결 안내", "user_short_label": "다미주"},
+    ClinicalSchool.PROLONGED_EXPOSURE_INFORMED: {"user_label": "점진적 노출 안내", "user_short_label": "PE안내"},
 }
 
 EXTRA_THEORIES: Dict[ClinicalSchool, Dict[str, Any]] = {
@@ -356,6 +362,96 @@ EXTRA_THEORIES: Dict[ClinicalSchool, Dict[str, Any]] = {
             "서구 중심 가정을 강요하지 않습니다."
         ),
         "weight_profile": {"empathy": 0.8, "interpretation": 0.45, "structure": 0.45, "confrontation": 0.25},
+    },
+    ClinicalSchool.IFS: {
+        "label": "내면가족체계 · IFS",
+        "short_label": "IFS",
+        "subtitle": "Richard Schwartz · Parts · Self-leadership",
+        "category": "brief_emotion",
+        "founder": "Richard Schwartz",
+        "techniques": ["파트 식별", "Self 접근", "언블렌딩", "보호자 감사", "망명자 돌봄"],
+        "routing_keywords": ("파트", "내면아이", "자기비판", "IFS", "보호자", "망명자", "자기자비"),
+        "counselor_tone": "호기심 어린 Self 리더십",
+        "directive": (
+            "IFS 정보제공처럼: 내담자의 여러 '파트'를 적으로 두지 않고 호기심으로 만나며, "
+            "Self 자질(호기심·연민·평정)을 키우도록 돕습니다. 진단·최면·의료시술이 아닙니다."
+        ),
+        "weight_profile": {"empathy": 0.8, "interpretation": 0.55, "structure": 0.5, "confrontation": 0.2},
+    },
+    ClinicalSchool.BEHAVIORAL_ACTIVATION: {
+        "label": "행동활성화 · BA",
+        "short_label": "BA",
+        "subtitle": "Martell · Dimidjian · 활동·보상 회로",
+        "category": "cognitive_behavioral",
+        "founder": "Christopher Martell / Sona Dimidjian",
+        "techniques": ["활동 모니터링", "가치 기반 활동 계획", "회피 순환 끊기", "작은 행동 실험", "보상 스케줄"],
+        "routing_keywords": ("무기력", "침대", "아무것도", "의욕", "활동", "미루", "게으", "우울"),
+        "counselor_tone": "따뜻하고 구체적 행동 설계",
+        "directive": (
+            "행동활성화 안내처럼: 기분 개선을 '기다려서'가 아니라 작은 가치 활동으로 열도록 돕고, "
+            "회피 패턴을 비난 없이 함께 관찰합니다."
+        ),
+        "weight_profile": {"empathy": 0.7, "interpretation": 0.4, "structure": 0.75, "confrontation": 0.25},
+    },
+    ClinicalSchool.CPT_INFORMED: {
+        "label": "인지처리치료 안내 · CPT",
+        "short_label": "CPT안내",
+        "subtitle": "Resick · stuck points · 의미 재구성 (정보제공)",
+        "category": "brief_emotion",
+        "founder": "Patricia Resick",
+        "techniques": ["stuck point 식별", "충격 진술", "도전적 질문", "안전·신뢰·힘·존중·친밀 주제", "의미 재구성"],
+        "routing_keywords": ("stuck", "트라우마의미", "자책", "왜내가", "CPT", "인지처리", "외상의미"),
+        "counselor_tone": "구조적이되 안전한 의미 탐색",
+        "directive": (
+            "CPT 자격 치료를 대체하지 않습니다. stuck point·의미 재구성 개념만 교육적으로 안내하고, "
+            "강한 외상 재노출이 필요하면 전문 기관으로 연결합니다."
+        ),
+        "weight_profile": {"empathy": 0.7, "interpretation": 0.65, "structure": 0.7, "confrontation": 0.3},
+    },
+    ClinicalSchool.SOMATIC_EXPERIENCING: {
+        "label": "신체감각 기반 안정화 · SE 안내",
+        "short_label": "SE안내",
+        "subtitle": "Levine · 체성 감각·타이틀레이션 (정보제공)",
+        "category": "brief_emotion",
+        "founder": "Peter Levine",
+        "techniques": ["신체 감각 추적", "타이틀레이션", "펜듈레이션", "자원 감각", "방전 허용"],
+        "routing_keywords": ("몸이", "긴장", "떨림", "과각성", "감각", "몸속", "SE", "체성"),
+        "counselor_tone": "느리고 안전한 신체 자각",
+        "directive": (
+            "SE 자격 치료를 대체하지 않습니다. 과도한 재노출 없이 안전·자원·감각 자각만 안내하고, "
+            "강렬한 외상 기억 작업은 전문가에게 맡깁니다."
+        ),
+        "weight_profile": {"empathy": 0.8, "interpretation": 0.4, "structure": 0.45, "confrontation": 0.15},
+    },
+    ClinicalSchool.POLYVAGAL_INFORMED: {
+        "label": "다미주신경 이론 안내 · 안전·연결",
+        "short_label": "다미주",
+        "subtitle": "Porges · 안전·사회참여·방어 상태 (정보제공)",
+        "category": "integrative",
+        "founder": "Stephen Porges",
+        "techniques": ["안전 신호 탐색", "상태 이름 붙이기", "공동조절", "호흡·시선 안정", "연결 회복"],
+        "routing_keywords": ("안전감", "과각성", "동결", "셧다운", "다미주", "폴리vagal", "연결"),
+        "counselor_tone": "안전·공동조절 중심",
+        "directive": (
+            "다미주 이론을 교육적으로 빌려: 상태가 '성격'이 아니라 신경계 반응일 수 있음을 알리고, "
+            "안전·연결 신호를 함께 찾습니다. 의료·신경학적 진단이 아닙니다."
+        ),
+        "weight_profile": {"empathy": 0.85, "interpretation": 0.45, "structure": 0.4, "confrontation": 0.1},
+    },
+    ClinicalSchool.PROLONGED_EXPOSURE_INFORMED: {
+        "label": "장시간노출 안내 · PE",
+        "short_label": "PE안내",
+        "subtitle": "Foa · 점진적 노출·회피 감소 (정보제공)",
+        "category": "brief_emotion",
+        "founder": "Edna Foa",
+        "techniques": ["회피 지도", "상상의 노출 개념", "실제 노출 계층", "습관화 교육", "안전 계획"],
+        "routing_keywords": ("회피", "노출", "못가", "두려움장소", "PE", "장시간노출", "공포"),
+        "counselor_tone": "협력적·계층적 노출 교육",
+        "directive": (
+            "PE 자격 치료를 대체하지 않습니다. 회피 순환과 점진적 접근 개념만 안내하고, "
+            "강한 외상 노출 연습은 전문 치료 환경에서만 하도록 분명히 합니다."
+        ),
+        "weight_profile": {"empathy": 0.65, "interpretation": 0.45, "structure": 0.8, "confrontation": 0.35},
     },
 }
 
