@@ -169,6 +169,8 @@ def get_therapy_catalog() -> Dict[str, Any]:
             "process_based_therapy",
             "fit_session_feedback",
             "trauma_safety_gate",
+            "aai_attachment_coherence",
+            "pesm_ecological_systems",
             "therapy_evidence_corpus",
         ],
         "non_diagnostic": True,

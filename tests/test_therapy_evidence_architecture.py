@@ -99,5 +99,19 @@ def test_fit_and_architecture_bundle():
     assert "process_based_therapy" in bundle
     assert "fit_session_feedback" in bundle
     assert "trauma_safety_gate" in bundle
-    assert len(bundle["architecture_modules"]) >= 4
-    assert any(m["id"] == "therapy_evidence_corpus" for m in bundle["architecture_modules"])
+    assert "aai_attachment_coherence" in bundle
+    assert "pesm_ecological_systems" in bundle
+    assert bundle["aai_attachment_coherence"]["not_aai_scoring"] is True
+    assert "layers" in bundle["pesm_ecological_systems"]
+    assert any(m["id"] == "aai_attachment_coherence" for m in bundle["architecture_modules"])
+    assert any(m["id"] == "pesm_ecological_systems" for m in bundle["architecture_modules"])
+    assert any(p["id"] == "van_ijzendoorn_1995_aai" for p in bundle["evidence_papers"])
+    assert any(p["id"] == "reeb_2018_pesm" for p in bundle["evidence_papers"])
+
+
+def test_aai_and_pesm_in_corpus():
+    ids = {p["id"] for p in EVIDENCE_PAPERS}
+    assert "van_ijzendoorn_1995_aai" in ids
+    assert "reeb_2018_pesm" in ids
+    assert list_evidence_papers(hook="aai_attachment_coherence")
+    assert list_evidence_papers(hook="pesm_ecological_systems")

@@ -227,6 +227,96 @@ def trauma_safety_gate(vector: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def aai_attachment_coherence(vector: Mapping[str, Any]) -> Dict[str, Any]:
+    """AAI-informed coherence proxy (not Adult Attachment Interview scoring)."""
+    secure = _n(vector, "attachmentSecureScore", 50.0)
+    eft = _n(vector, "eftBondScore", 50.0)
+    ifs_self = _n(vector, "ifsSelfLeadershipScore", 50.0)
+    narrative = _n(vector, "narrativeAgencyScore", 50.0)
+    coherence = _clamp(_avg([secure, eft, ifs_self, narrative]))
+
+    if coherence >= 70:
+        state = "coherent_secure_lean"
+        coach = "관계 서술이 비교적 일관돼 보여요. 안전기지·연결 경험을 구체 장면으로 이어가세요."
+    elif coherence >= 45:
+        state = "mixed_or_organizing"
+        coach = "관계 이야기에 엇갈림이 있을 수 있어요. 한 장면만 골라 감정·욕구를 천천히 정리해 보세요."
+    else:
+        state = "incoherent_or_dismissing_lean"
+        coach = "관계 서술이 막히거나 끊길 수 있어요. 평가 없이 ‘지금 느껴지는 안전감’부터 짧게 말해 보세요."
+
+    return {
+        "coherenceProxy": round(coherence, 1),
+        "stateHint": state,
+        "coach_ko": coach,
+        "non_diagnostic": True,
+        "not_aai_scoring": True,
+        "evidence_paper_ids": [
+            "van_ijzendoorn_1995_aai",
+            "bakermans_1993_aai_psychometric",
+            "main_1985_aai_protocol",
+        ],
+    }
+
+
+def pesm_ecological_systems(vector: Mapping[str, Any]) -> Dict[str, Any]:
+    """PESM-inspired multi-level wellness context (micro→macro), non-diagnostic."""
+    micro = _avg(
+        [
+            _n(vector, "mindfulnessScore"),
+            _n(vector, "acceptanceScore"),
+            _n(vector, "dbtRegulationScore"),
+            _n(vector, "actValuesScore"),
+        ]
+    )
+    meso = _avg(
+        [
+            _n(vector, "eftBondScore"),
+            _n(vector, "attachmentSecureScore"),
+            _n(vector, "iptRoleScore"),
+            _n(vector, "ifsSelfLeadershipScore"),
+        ]
+    )
+    exo = _avg(
+        [
+            _n(vector, "solutionScore"),
+            _n(vector, "baActivationScore"),
+            _n(vector, "realityScore"),
+            _n(vector, "miChangeTalkScore"),
+        ]
+    )
+    macro = _avg(
+        [
+            _n(vector, "multiculturalHumilityScore", 50.0),
+            _n(vector, "feministEmpowermentScore", 50.0),
+            _n(vector, "bowenDifferentiationScore", 50.0),
+            _n(vector, "strengthsScore"),
+        ]
+    )
+    layers = {
+        "micro_individual": round(micro, 1),
+        "meso_relational": round(meso, 1),
+        "exo_activity_context": round(exo, 1),
+        "macro_cultural_structural": round(macro, 1),
+    }
+    weakest = min(layers.items(), key=lambda x: x[1])[0]
+    focus_ko = {
+        "micro_individual": "개인 조절·알아차림(미시) 층을 우선하세요.",
+        "meso_relational": "관계·애착·역할(중간체계) 층을 우선하세요.",
+        "exo_activity_context": "일상 활동·환경 맥락(외체계) 층을 우선하세요.",
+        "macro_cultural_structural": "문화·권력·구조 맥락(거시) 층을 우선하세요.",
+    }[weakest]
+
+    return {
+        "layers": layers,
+        "primaryLayerFocus": weakest,
+        "focus_ko": focus_ko,
+        "balanceScore": round(_avg(list(layers.values())), 1),
+        "non_diagnostic": True,
+        "evidence_paper_ids": ["reeb_2018_pesm"],
+    }
+
+
 def build_paper_architecture_bundle(
     vector: Mapping[str, Any],
     *,
@@ -240,13 +330,19 @@ def build_paper_architecture_bundle(
         process_dims=process_dims,
     )
     safety = trauma_safety_gate(vector)
+    aai = aai_attachment_coherence(vector)
+    pesm = pesm_ecological_systems(vector)
     return {
         "process_based_therapy": process_dims,
         "fit_session_feedback": fit,
         "trauma_safety_gate": safety,
+        "aai_attachment_coherence": aai,
+        "pesm_ecological_systems": pesm,
         "evidence_papers": list_evidence_papers(hook="process_based_therapy")
         + list_evidence_papers(hook="fit_session_feedback")
-        + list_evidence_papers(hook="trauma_safety_gate"),
+        + list_evidence_papers(hook="trauma_safety_gate")
+        + list_evidence_papers(hook="aai_attachment_coherence")
+        + list_evidence_papers(hook="pesm_ecological_systems"),
         "architecture_modules": [
             {
                 "id": "process_based_therapy",
@@ -262,6 +358,16 @@ def build_paper_architecture_bundle(
                 "id": "trauma_safety_gate",
                 "path": "app/services/process_based_therapy.py",
                 "role": "Safety/titration gate before intense exploration prompts",
+            },
+            {
+                "id": "aai_attachment_coherence",
+                "path": "app/services/process_based_therapy.py",
+                "role": "AAI-informed narrative coherence proxy (not AAI scoring)",
+            },
+            {
+                "id": "pesm_ecological_systems",
+                "path": "app/services/process_based_therapy.py",
+                "role": "PESM multi-level ecological context layer",
             },
             {
                 "id": "therapy_evidence_corpus",

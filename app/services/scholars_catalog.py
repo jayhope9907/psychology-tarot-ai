@@ -109,6 +109,9 @@ SCHOLARS: List[Dict[str, Any]] = [
     {"id": "hofmann_pbt", "name": "Stefan G. Hofmann", "name_ko": "슈테판 호프만", "school": "INTEGRATIVE", "era": "현대", "focus": "과정기반치료(PBT)", "techniques": ["과정 네트워크", "개인화 개입"], "works": ["Process-Based CBT"]},
     {"id": "barlow_up", "name": "David H. Barlow", "name_ko": "데이비드 발로", "school": "INTEGRATIVE", "era": "현대", "focus": "통합프로토콜(UP)", "techniques": ["초진단", "감정노출"], "works": ["Unified Protocol"]},
     {"id": "lambert_rom", "name": "Michael J. Lambert", "name_ko": "마이클 램버트", "school": "INTEGRATIVE", "era": "현대", "focus": "성과모니터링(ROM/FIT)", "techniques": ["세션 피드백", "경고 신호"], "works": ["Prevention of Treatment Failure"]},
+    {"id": "main_aai", "name": "Mary Main", "name_ko": "메리 메인", "school": "ATTACHMENT", "era": "현대", "focus": "성인애착면담(AAI)", "techniques": ["서술 일관성", "애착 표상"], "works": ["Adult Attachment Interview"]},
+    {"id": "van_ijzendoorn", "name": "Marinus H. van IJzendoorn", "name_ko": "마리너스 반 아이젠도른", "school": "ATTACHMENT", "era": "현대", "focus": "AAI 예측타당도 메타분석", "techniques": ["애착 표상", "세대전달"], "works": ["AAI predictive validity meta-analysis"]},
+    {"id": "reeb_pesm", "name": "Roger N. Reeb", "name_ko": "로저 리브", "school": "INTEGRATIVE", "era": "현대", "focus": "심리생태체계모형(PESM)", "techniques": ["다층 평가", "공동체 영향"], "works": ["Psycho-Ecological Systems Model"]},
 ]
 
 ART_THERAPY_TECHNIQUES: List[Dict[str, Any]] = [
